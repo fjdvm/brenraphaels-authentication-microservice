@@ -78,4 +78,19 @@ describe("requirePortalUser", () => {
       requirePortalUser({ allowMustChangePassword: true }),
     ).resolves.toMatchObject({ mustChangePassword: true });
   });
+
+  it("does not send an active User through the password-change route again", async () => {
+    const { requirePasswordChangeUser } = await import("./session");
+
+    await expect(requirePasswordChangeUser()).rejects.toThrow("redirect:/");
+  });
+
+  it("allows a User Awaiting first login through the password-change guard", async () => {
+    mocks.findUnique.mockResolvedValue({ ...activeUser, mustChangePassword: true });
+    const { requirePasswordChangeUser } = await import("./session");
+
+    await expect(requirePasswordChangeUser()).resolves.toMatchObject({
+      mustChangePassword: true,
+    });
+  });
 });
