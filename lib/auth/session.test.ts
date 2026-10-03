@@ -93,4 +93,38 @@ describe("requirePortalUser", () => {
       mustChangePassword: true,
     });
   });
+
+  it("redirects a non-Super-Admin away from the admin area", async () => {
+    mocks.findUnique.mockResolvedValue({
+      ...activeUser,
+      role: { isSuperAdmin: false },
+    });
+    const { requireSuperAdmin } = await import("./session");
+
+    await expect(requireSuperAdmin()).rejects.toThrow(/^redirect:\/$/);
+  });
+
+  it("redirects an awaiting non-Super-Admin to the portal before password change", async () => {
+    mocks.findUnique.mockResolvedValue({
+      ...activeUser,
+      mustChangePassword: true,
+      role: { isSuperAdmin: false },
+    });
+    const { requireSuperAdmin } = await import("./session");
+
+    await expect(requireSuperAdmin()).rejects.toThrow(/^redirect:\/$/);
+  });
+
+  it("rechecks a Super Admin's role on every request", async () => {
+    const { requireSuperAdmin } = await import("./session");
+
+    await expect(requireSuperAdmin()).resolves.toMatchObject({ isSuperAdmin: true });
+
+    mocks.findUnique.mockResolvedValue({
+      ...activeUser,
+      role: { isSuperAdmin: false },
+    });
+
+    await expect(requireSuperAdmin()).rejects.toThrow("redirect:/");
+  });
 });
