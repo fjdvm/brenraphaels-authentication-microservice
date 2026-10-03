@@ -86,10 +86,14 @@ export async function requirePasswordChangeUser(): Promise<PortalUser> {
 }
 
 export async function requireSuperAdmin(): Promise<PortalUser> {
-  const user = await requirePortalUser();
+  const user = await requirePortalUser({ allowMustChangePassword: true });
 
   if (!user.isSuperAdmin) {
     redirect("/");
+  }
+
+  if (user.mustChangePassword) {
+    redirect("/change-password");
   }
 
   return user;
