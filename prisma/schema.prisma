@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model System {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  url         String
+  iconName    String?
+  description String?
+  modules     Module[]
+}
+
+model Module {
+  id              String           @id @default(cuid())
+  systemId        String
+  name            String
+  system          System           @relation(fields: [systemId], references: [id])
+  accessTemplates AccessTemplate[]
+  accessGrants    AccessGrant[]
+
+  @@unique([systemId, name])
+}
+
+model Role {
+  id              String           @id @default(cuid())
+  name            String           @unique
+  isSuperAdmin    Boolean          @default(false)
+  accessTemplates AccessTemplate[]
+  users           User[]
+}
+
+model AccessTemplate {
+  id       String @id @default(cuid())
+  roleId   String
+  moduleId String
+  role     Role   @relation(fields: [roleId], references: [id])
+  module   Module @relation(fields: [moduleId], references: [id])
+
+  @@unique([roleId, moduleId])
+}
+
+model User {
+  id                 String        @id @default(cuid())
+  username           String        @unique
+  email              String        @unique
+  firstName          String
+  lastName           String
+  roleId             String
+  // Id of the matching Neon Auth user (neon_auth."user".id). Neon Auth owns the
+  // credentials and sessions; this table owns everything portal-specific.
+  neonAuthUserId     String        @unique
+  mustChangePassword Boolean       @default(true)
+  isDeleted          Boolean       @default(false)
+  deletedAt          DateTime?
+  role               Role          @relation(fields: [roleId], references: [id])
+  accessGrants       AccessGrant[] @relation("AccessGrantUser")
+  accessGrantsMade   AccessGrant[] @relation("AccessGrantGrantedBy")
+}
+
+model UsernameSequence {
+  year       Int @id
+  lastNumber Int
+}
+
+model AccessGrant {
+  id            String    @id @default(cuid())
+  userId        String
+  moduleId      String
+  grantedAt     DateTime  @default(now())
+  grantedBy     String?
+  revokedAt     DateTime?
+  user          User      @relation("AccessGrantUser", fields: [userId], references: [id])
+  module        Module    @relation(fields: [moduleId], references: [id])
+  grantedByUser User?     @relation("AccessGrantGrantedBy", fields: [grantedBy], references: [id])
+
+  @@index([userId, moduleId])
+}
