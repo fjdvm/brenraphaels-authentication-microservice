@@ -70,6 +70,21 @@ export async function requirePortalUser(
   return user;
 }
 
+/**
+ * Guard for the one-time password-change route and its Server Action. An active
+ * User cannot be sent back through this flow once their temporary password has
+ * been replaced.
+ */
+export async function requirePasswordChangeUser(): Promise<PortalUser> {
+  const user = await requirePortalUser({ allowMustChangePassword: true });
+
+  if (!user.mustChangePassword) {
+    redirect("/");
+  }
+
+  return user;
+}
+
 export async function requireSuperAdmin(): Promise<PortalUser> {
   const user = await requirePortalUser();
 

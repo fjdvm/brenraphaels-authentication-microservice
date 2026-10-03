@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import { resetLinkParams, verifyResetLinkEmail } from "@/lib/auth/reset-link";
 import { auth } from "@/lib/auth/server";
-import { requirePortalUser } from "@/lib/auth/session";
+import { requirePasswordChangeUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import {
   changePasswordSchema,
@@ -63,7 +63,7 @@ export async function changePasswordAction(
   _previous: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const user = await requirePortalUser({ allowMustChangePassword: true });
+  const user = await requirePasswordChangeUser();
 
   const parsed = changePasswordSchema.safeParse({
     currentPassword: formData.get("currentPassword"),
