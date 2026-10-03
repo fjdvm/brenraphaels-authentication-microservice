@@ -3,8 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   findUnique: vi.fn(),
   update: vi.fn(),
+  updateMany: vi.fn(),
   signInEmail: vi.fn(),
   changePassword: vi.fn(),
+  requestPasswordReset: vi.fn(),
+  resetPassword: vi.fn(),
   signOut: vi.fn(),
   redirect: vi.fn((destination: string) => {
     throw new Error(`redirect:${destination}`);
@@ -14,7 +17,13 @@ const mocks = vi.hoisted(() => ({
 vi.mock("server-only", () => ({}));
 
 vi.mock("@/lib/db/prisma", () => ({
-  prisma: { user: { findUnique: mocks.findUnique, update: mocks.update } },
+  prisma: {
+    user: {
+      findUnique: mocks.findUnique,
+      update: mocks.update,
+      updateMany: mocks.updateMany,
+    },
+  },
 }));
 
 vi.mock("@/lib/auth/server", () => ({
@@ -22,6 +31,8 @@ vi.mock("@/lib/auth/server", () => ({
     signIn: { email: mocks.signInEmail },
     signOut: mocks.signOut,
     changePassword: mocks.changePassword,
+    requestPasswordReset: mocks.requestPasswordReset,
+    resetPassword: mocks.resetPassword,
   },
 }));
 
@@ -31,8 +42,15 @@ vi.mock("@/lib/auth/session", () => ({
 
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 
-import { changePasswordAction, loginAction, logoutAction } from "./auth";
+import {
+  changePasswordAction,
+  forgotPasswordAction,
+  loginAction,
+  logoutAction,
+  resetPasswordAction,
+} from "./auth";
 import { requirePasswordChangeUser } from "@/lib/auth/session";
+import { resetLinkParams } from "@/lib/auth/reset-link";
 
 const validForm = (username = "2026-admin-001", password = "password") => {
   const form = new FormData();
@@ -159,5 +177,133 @@ describe("changePasswordAction", () => {
       where: { id: "portal-user" },
       data: { mustChangePassword: false },
     });
+  });
+});
+
+describe("forgotPasswordAction", () => {
+  const formFor = (email: string) => {
+    const form = new FormData();
+    form.set("email", email);
+    return form;
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.NEXT_PUBLIC_APP_URL = "https://portal.example.test";
+    process.env.NEON_AUTH_COOKIE_SECRET = "a-test-secret-that-is-at-least-thirty-two-characters";
+    mocks.requestPasswordReset.mockResolvedValue({ error: null });
+  });
+
+  it("requests a reset only for an active User and signs the return Email", async () => {
+    mocks.findUnique.mockResolvedValue({ isDeleted: false });
+
+    await expect(
+      forgotPasswordAction({ error: null }, formFor("PERSON@EXAMPLE.TEST")),
+    ).resolves.toEqual({
+      error: null,
+      message:
+        "If a User exists for that Email, a reset link is on its way. It expires in 15 minutes.",
+    });
+
+    const expected = resetLinkParams("person@example.test");
+    expect(mocks.findUnique).toHaveBeenCalledWith({
+      where: { email: "person@example.test" },
+      select: { isDeleted: true },
+    });
+    expect(mocks.requestPasswordReset).toHaveBeenCalledWith({
+      email: "person@example.test",
+      redirectTo: `https://portal.example.test/reset-password?e=person%40example.test&s=${expected.s}`,
+    });
+  });
+
+  it.each([null, { isDeleted: true }])(
+    "returns the same confirmation without requesting a link for an unknown or Deleted Email",
+    async (user) => {
+      mocks.findUnique.mockResolvedValue(user);
+
+      await expect(
+        forgotPasswordAction({ error: null }, formFor("person@example.test")),
+      ).resolves.toEqual({
+        error: null,
+        message:
+          "If a User exists for that Email, a reset link is on its way. It expires in 15 minutes.",
+      });
+
+      expect(mocks.requestPasswordReset).not.toHaveBeenCalled();
+    },
+  );
+});
+
+describe("resetPasswordAction", () => {
+  const validReset = (overrides: Record<string, string> = {}) => {
+    const form = new FormData();
+    form.set("token", "valid-reset-token");
+    form.set("password", "new-password");
+    form.set("confirmation", "new-password");
+    for (const [name, value] of Object.entries(overrides)) form.set(name, value);
+    return form;
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.NEON_AUTH_COOKIE_SECRET = "a-test-secret-that-is-at-least-thirty-two-characters";
+    mocks.resetPassword.mockResolvedValue({ error: null });
+    mocks.updateMany.mockResolvedValue({ count: 1 });
+  });
+
+  it("shows a clear error when Neon Auth rejects an expired or invalid token", async () => {
+    mocks.resetPassword.mockResolvedValue({ error: { message: "expired" } });
+
+    await expect(
+      resetPasswordAction({ error: null }, validReset()),
+    ).resolves.toEqual({
+      error: "This reset link is invalid or has expired. Request a new one.",
+    });
+
+    expect(mocks.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("shows the same clear error for a missing token", async () => {
+    const form = validReset();
+    form.delete("token");
+
+    await expect(resetPasswordAction({ error: null }, form)).resolves.toEqual({
+      error: "This reset link is invalid or has expired. Request a new one.",
+    });
+
+    expect(mocks.resetPassword).not.toHaveBeenCalled();
+    expect(mocks.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("sets a new password, activates the signed User, and returns to login", async () => {
+    const email = "person@example.test";
+    const { e, s } = resetLinkParams(email);
+
+    await expect(
+      resetPasswordAction({ error: null }, validReset({ e, s })),
+    ).rejects.toThrow("redirect:/login?reset=1");
+
+    expect(mocks.resetPassword).toHaveBeenCalledWith({
+      newPassword: "new-password",
+      token: "valid-reset-token",
+    });
+    expect(mocks.updateMany).toHaveBeenCalledWith({
+      where: { email },
+      data: { mustChangePassword: false },
+    });
+  });
+
+  it.each([
+    ["a tampered signature", { e: "person@example.test", s: "tampered" }],
+    ["a missing signature", {}],
+  ])("resets the password but does not change User status for %s", async (_case, fields) => {
+    await expect(
+      resetPasswordAction(
+        { error: null },
+        validReset(fields),
+      ),
+    ).rejects.toThrow("redirect:/login?reset=1");
+
+    expect(mocks.updateMany).not.toHaveBeenCalled();
   });
 });

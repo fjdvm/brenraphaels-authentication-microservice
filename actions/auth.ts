@@ -132,6 +132,10 @@ export async function resetPasswordAction(
   _previous: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  if (!formData.get("token")) {
+    return { error: "This reset link is invalid or has expired. Request a new one." };
+  }
+
   const parsed = resetPasswordSchema.safeParse({
     token: formData.get("token"),
     password: formData.get("password"),
