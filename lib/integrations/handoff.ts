@@ -72,12 +72,15 @@ export function handoffFailure(error: HandoffErrorCode): HandoffFailure {
   return { ok: false, error, status: STATUS[error] };
 }
 
-export type AuthorizeRequest = {
+export type AuthorizeParams = {
   system: string | null;
   redirectUri: string | null;
   state: string | null;
   codeChallenge: string | null;
   codeChallengeMethod: string | null;
+};
+
+export type AuthorizeRequest = AuthorizeParams & {
   /** The signed-in browser session, already freshly validated by the caller. */
   subject: { userId: string; neonSessionId: string };
 };
@@ -86,12 +89,20 @@ export type AuthorizeResult =
   | { ok: true; redirectTo: string; system: RegisteredSystem }
   | (HandoffFailure & { system?: RegisteredSystem });
 
-/** Issues a short-lived single-use code for a registered System, or refuses. */
-export async function authorizeHandoff(
+export type ValidatedAuthorizeParams =
+  | { ok: true; system: RegisteredSystem; redirectUri: string; state: string; codeChallenge: string }
+  | (HandoffFailure & { system?: RegisteredSystem });
+
+/**
+ * Checks everything about an authorize request that does not depend on who the User is:
+ * a registered System, an exactly registered callback, a well-formed state and PKCE
+ * challenge. Needs no session, so a request can be vetted before login and kept.
+ */
+export async function validateAuthorizeParams(
   ports: HandoffPorts,
-  request: AuthorizeRequest,
-): Promise<AuthorizeResult> {
-  const { system: systemName, redirectUri, state, codeChallenge, codeChallengeMethod, subject } = request;
+  params: AuthorizeParams,
+): Promise<ValidatedAuthorizeParams> {
+  const { system: systemName, redirectUri, state, codeChallenge, codeChallengeMethod } = params;
 
   if (!systemName || !redirectUri || !state || !codeChallenge) {
     return handoffFailure("invalid_request");
@@ -112,6 +123,23 @@ export async function authorizeHandoff(
   ) {
     return { ...handoffFailure("invalid_request"), system };
   }
+
+  return { ok: true, system, redirectUri, state, codeChallenge };
+}
+
+/** Issues a short-lived single-use code for a registered System, or refuses. */
+export async function authorizeHandoff(
+  ports: HandoffPorts,
+  request: AuthorizeRequest,
+): Promise<AuthorizeResult> {
+  const { subject, ...params } = request;
+  const validated = await validateAuthorizeParams(ports, params);
+
+  if (!validated.ok) {
+    return validated;
+  }
+
+  const { system, redirectUri, state, codeChallenge } = validated;
 
   if (
     !(await ports.isUserEligible(subject.userId)) ||

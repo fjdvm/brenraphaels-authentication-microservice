@@ -64,3 +64,29 @@ export const authCardClass =
 
 export const authInputClass =
   "h-12 rounded-lg border border-outline-variant bg-surface-container-low px-3 text-base font-normal outline-none transition-colors focus:border-primary";
+
+/**
+ * The System request a login or password change will resume, or why it can't be
+ * resumed. Plain login and password change render nothing here.
+ */
+export function ReturnRequestNotice({
+  systemName,
+  problem,
+}: {
+  systemName: string | null;
+  problem: "expired" | "invalid" | null;
+}) {
+  if (problem) {
+    return (
+      <FormAlert tone="error">
+        {problem === "expired"
+          ? "That System sign-in request expired. Return to the System and start again, or continue to the portal."
+          : "That System sign-in request isn't valid. Return to the System and start again, or continue to the portal."}
+      </FormAlert>
+    );
+  }
+
+  return systemName ? (
+    <FormAlert tone="success">You will continue to {systemName} once you are signed in.</FormAlert>
+  ) : null;
+}

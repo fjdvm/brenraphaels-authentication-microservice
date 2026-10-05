@@ -55,6 +55,11 @@ import {
 } from "./auth";
 import { getPortalUser, requirePasswordChangeUser } from "@/lib/auth/session";
 import { resetLinkParams } from "@/lib/auth/reset-link";
+import {
+  RETURN_INTENT_TTL_MS,
+  checkReturnIntent,
+  issueReturnIntent,
+} from "@/lib/integrations/return-intent";
 
 const validForm = (username = "2026-admin-001", password = "password") => {
   const form = new FormData();
@@ -434,5 +439,125 @@ describe("resetPasswordAction", () => {
     ).rejects.toThrow("redirect:/login?reset=1");
 
     expect(mocks.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("returning to a System after central login", () => {
+  const request = {
+    system: "CRMS",
+    redirectUri: "https://crms.example.com/auth/callback",
+    state: "correlation-state-0123456789",
+    codeChallenge: "a".repeat(43),
+  };
+  const redirectsTo = (destination: string) => new Error(`redirect:${destination}`);
+  const authorizePath = (token: string) => {
+    const check = checkReturnIntent(token);
+    if (check.status !== "valid") throw new Error("test token should be valid");
+    return check.authorizePath;
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.NEON_AUTH_COOKIE_SECRET = "a-test-secret-that-is-at-least-thirty-two-characters";
+    mocks.findUnique.mockResolvedValue({
+      id: "admin-id",
+      email: "admin@example.com",
+      isDeleted: false,
+      mustChangePassword: false,
+    });
+    mocks.signInEmail.mockResolvedValue({ error: null });
+    mocks.changePassword.mockResolvedValue({ error: null });
+    mocks.update.mockResolvedValue({});
+    vi.mocked(requirePasswordChangeUser).mockResolvedValue({
+      id: "portal-user",
+      username: "2026-ADMIN-001",
+      firstName: "Jude",
+      lastName: "Nitram",
+      email: "admin@example.com",
+      mustChangePassword: true,
+      isAdministrator: false,
+    });
+  });
+
+  const loginWith = (token?: string) => {
+    const form = validForm();
+    if (token !== undefined) form.set("ri", token);
+    return loginAction({ error: null }, form);
+  };
+
+  const changeWith = (token?: string) => {
+    const form = new FormData();
+    form.set("currentPassword", "temporary-password");
+    form.set("password", "new-password");
+    form.set("confirmation", "new-password");
+    if (token !== undefined) form.set("ri", token);
+    return changePasswordAction({ error: null }, form);
+  };
+
+  it("resumes the original System request after a successful login", async () => {
+    const token = issueReturnIntent(request);
+
+    await expect(loginWith(token)).rejects.toThrow(redirectsTo(authorizePath(token)));
+  });
+
+  it("carries the request through the mandatory password change, then resumes it", async () => {
+    const token = issueReturnIntent(request);
+    mocks.findUnique.mockResolvedValue({
+      id: "new-id",
+      email: "new.user@example.com",
+      isDeleted: false,
+      mustChangePassword: true,
+    });
+
+    await expect(loginWith(token)).rejects.toThrow(
+      redirectsTo(`/change-password?ri=${encodeURIComponent(token)}`),
+    );
+    await expect(changeWith(token)).rejects.toThrow(redirectsTo(authorizePath(token)));
+    expect(mocks.update).toHaveBeenCalledWith({
+      where: { id: "portal-user" },
+      data: { mustChangePassword: false },
+    });
+  });
+
+  it("does not resume before the password change has actually succeeded", async () => {
+    mocks.changePassword.mockResolvedValue({ error: { message: "invalid" } });
+
+    await expect(changeWith(issueReturnIntent(request))).resolves.toEqual({
+      error: "Your current password is incorrect.",
+    });
+  });
+
+  it("falls back to the ordinary portal when there is no System request", async () => {
+    await expect(loginWith()).rejects.toThrow(redirectsTo("/"));
+    await expect(changeWith()).rejects.toThrow(redirectsTo("/"));
+  });
+
+  it.each([
+    ["a tampered token", () => `${issueReturnIntent(request).split(".")[0]}.AAAA`],
+    ["an arbitrary URL", () => "https://evil.example.com/phish"],
+    ["a protocol-relative URL", () => "//evil.example.com"],
+    ["an expired token", () => issueReturnIntent(request, new Date(Date.now() - RETURN_INTENT_TTL_MS - 1000))],
+  ])("never follows %s: login still succeeds and lands on the portal", async (_name, token) => {
+    await expect(loginWith(token())).rejects.toThrow(redirectsTo("/"));
+    await expect(changeWith(token())).rejects.toThrow(redirectsTo("/"));
+  });
+
+  it("drops an unusable request but still sends a User awaiting first login to change their password", async () => {
+    mocks.findUnique.mockResolvedValue({
+      id: "new-id",
+      email: "new.user@example.com",
+      isDeleted: false,
+      mustChangePassword: true,
+    });
+
+    await expect(loginWith("//evil.example.com")).rejects.toThrow(redirectsTo("/change-password"));
+  });
+
+  it("keeps rejecting wrong credentials without leaking the request", async () => {
+    mocks.signInEmail.mockResolvedValue({ error: { message: "bad" } });
+
+    await expect(loginWith(issueReturnIntent(request))).resolves.toEqual({
+      error: "Invalid credentials",
+    });
   });
 });
