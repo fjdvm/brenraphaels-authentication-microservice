@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createProductionProvisioningPorts } from "@/lib/admin/user-provisioning.server";
+import { createProductionResendPorts } from "@/lib/admin/credential-resend.server";
+import { resendCredentials } from "@/lib/admin/credential-resend";
 import { provisionUser } from "@/lib/admin/user-provisioning";
 import type { CreateUserFormState } from "@/lib/admin/user-form-state";
 import { requireAdministrator } from "@/lib/auth/session";
@@ -39,4 +41,23 @@ export async function createUserAction(
 
   revalidatePath("/admin/users");
   redirect(`/admin/users?created=${encodeURIComponent(result.user.username)}`);
+}
+
+export type ResendCredentialsState = { status: "success" | "error"; message: string } | null;
+
+export async function resendCredentialsAction(
+  userId: string,
+): Promise<NonNullable<ResendCredentialsState>> {
+  // Authority is checked here, in the portal, on every submission.
+  const administrator = await requireAdministrator();
+  const result = await resendCredentials(userId, administrator, createProductionResendPorts());
+
+  revalidatePath("/admin/users");
+
+  return result.ok
+    ? {
+        status: "success",
+        message: `New credentials were emailed to ${result.username}. They must change their password at next login.`,
+      }
+    : { status: "error", message: result.error };
 }

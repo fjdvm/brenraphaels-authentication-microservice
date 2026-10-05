@@ -47,6 +47,8 @@ export type CredentialsMailer = {
     firstName: string;
     username: string;
     temporaryPassword: string;
+    /** Defaults to a new-account welcome. */
+    kind?: "new-account" | "resend";
   }): Promise<void>;
 };
 

@@ -14,12 +14,16 @@ function escapeHtml(value: string): string {
 
 /** The message a new User receives: their Username, Temporary password and where to sign in. */
 export function buildCredentialsEmail(message: CredentialsMessage, loginUrl: string) {
-  const { firstName, username, temporaryPassword } = message;
+  const { firstName, username, temporaryPassword, kind } = message;
+  const intro =
+    kind === "resend"
+      ? "New sign-in details have been issued for your Bren Raphael's portal account. Your previous password no longer works."
+      : "An account has been created for you on the Bren Raphael's portal.";
 
   const text = [
     `Hello ${firstName},`,
     "",
-    "An account has been created for you on the Bren Raphael's portal.",
+    intro,
     "",
     `Username: ${username}`,
     `Temporary password: ${temporaryPassword}`,
@@ -29,13 +33,18 @@ export function buildCredentialsEmail(message: CredentialsMessage, loginUrl: str
   ].join("\n");
 
   const html = `<p>Hello ${escapeHtml(firstName)},</p>
-<p>An account has been created for you on the Bren Raphael's portal.</p>
+<p>${escapeHtml(intro)}</p>
 <p>Username: <strong>${escapeHtml(username)}</strong><br>
 Temporary password: <strong>${escapeHtml(temporaryPassword)}</strong></p>
 <p><a href="${escapeHtml(loginUrl)}">Sign in</a> with your Username (not your email address).
 You will be asked to choose a new password straight after you sign in. The temporary password stops working once you have.</p>`;
 
-  return { subject: "Your Bren Raphael's portal sign-in details", text, html };
+  const subject =
+    kind === "resend"
+      ? "Your new Bren Raphael's portal sign-in details"
+      : "Your Bren Raphael's portal sign-in details";
+
+  return { subject, text, html };
 }
 
 export function createCredentialsMailer(options: {
