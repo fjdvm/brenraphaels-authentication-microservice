@@ -42,9 +42,7 @@ export function SystemLaunchCards({ systems }: { systems: AccessibleSystem[] }) 
             >
               <Card className="flex h-full min-h-56 flex-col justify-between gap-6 p-8 transition-colors group-hover:border-primary group-hover:shadow-md">
                 <div className="flex flex-col gap-4">
-                  <span className="flex size-14 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <Icon aria-hidden="true" className="size-8" />
-                  </span>
+                  <Icon aria-hidden="true" className="size-9 text-primary" strokeWidth={1.5} />
                   <div className="flex flex-col gap-2">
                     <h3 className="text-2xl font-semibold tracking-tight text-foreground">{system.name}</h3>
                     {system.description ? (
