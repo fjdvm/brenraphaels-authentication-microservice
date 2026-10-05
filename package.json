@@ -9,6 +9,7 @@
     "lint": "eslint",
     "db:seed": "prisma db seed",
     "system:register": "tsx scripts/register-system.ts",
+    "system:simulate": "tsx reference/system-consumer/server.ts",
     "test": "vitest run"
   },
   "dependencies": {
