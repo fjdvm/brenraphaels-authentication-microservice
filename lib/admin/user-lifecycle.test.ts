@@ -133,6 +133,8 @@ describe("changeUserLifecycle", () => {
     expect((await changeUserLifecycle("delete", "u2", "admin", ports)).ok).toBe(false);
     expect((await changeUserLifecycle("restore", "u1", "admin", ports)).ok).toBe(false);
     expect(events.map((event) => event.outcome)).toEqual(["FAILURE", "FAILURE", "FAILURE"]);
+    expect(events[0].targetUserId).toBeNull();
+    expect(events[1].targetUserId).toBe("u2");
   });
 
   it("reports failure when a concurrent request already changed the state", async () => {

@@ -34,12 +34,14 @@ export async function changeUserLifecycle(
   { store, audit }: LifecyclePorts,
 ): Promise<LifecycleResult> {
   const copy = COPY[action];
+  // Ids come from a form field: only reference a User in the log once it is known to exist.
+  let targetExists = false;
   const fail = async (error: string, detail: string, known = true): Promise<LifecycleResult> => {
     await audit({
       action: copy.audit,
       outcome: "FAILURE",
       actorId: known ? administratorId : null,
-      targetUserId: targetId,
+      targetUserId: targetExists ? targetId : null,
       detail,
     });
     return { ok: false, error };
@@ -61,11 +63,12 @@ export async function changeUserLifecycle(
     return fail("That User no longer exists.", "Target User not found");
   }
 
+  targetExists = true;
   const wantsDeleted = action === "delete";
 
   if (target.isDeleted === wantsDeleted || !(await store.setDeleted(targetId, wantsDeleted))) {
     return fail(
-      `${target.username} is already ${wantsDeleted ? "deleted" : "active"}.`,
+      `${target.username} is ${wantsDeleted ? "already deleted" : "not deleted"}.`,
       `${target.username} was already ${wantsDeleted ? "Deleted" : "not Deleted"}`,
     );
   }

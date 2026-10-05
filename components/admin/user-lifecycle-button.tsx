@@ -3,7 +3,7 @@
 import { RotateCcw, Trash2 } from "lucide-react";
 import { useActionState, useState } from "react";
 
-import type { LifecycleFormState } from "@/actions/users";
+import type { LifecycleFormState } from "@/lib/admin/user-lifecycle-state";
 import { Button } from "@/components/ui/button";
 
 type Props = {

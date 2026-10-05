@@ -4,7 +4,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { LifecycleFormState } from "@/actions/users";
+import type { LifecycleFormState } from "@/lib/admin/user-lifecycle-state";
 
 import { UserLifecycleButton } from "./user-lifecycle-button";
 

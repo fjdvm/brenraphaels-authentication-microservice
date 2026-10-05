@@ -7,6 +7,7 @@ import { createProductionProvisioningPorts } from "@/lib/admin/user-provisioning
 import { createProductionLifecyclePorts } from "@/lib/admin/user-lifecycle.server";
 import { changeUserLifecycle, type LifecycleAction } from "@/lib/admin/user-lifecycle";
 import { provisionUser } from "@/lib/admin/user-provisioning";
+import type { LifecycleFormState } from "@/lib/admin/user-lifecycle-state";
 import type { CreateUserFormState } from "@/lib/admin/user-form-state";
 import { requireAdministrator } from "@/lib/auth/session";
 
@@ -42,8 +43,6 @@ export async function createUserAction(
   revalidatePath("/admin/users");
   redirect(`/admin/users?created=${encodeURIComponent(result.user.username)}`);
 }
-
-export type LifecycleFormState = { error: string | null };
 
 async function changeLifecycle(action: LifecycleAction, formData: FormData): Promise<LifecycleFormState> {
   // Authority is checked here, in the portal, on every submission.

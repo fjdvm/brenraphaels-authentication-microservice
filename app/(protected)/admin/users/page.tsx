@@ -44,7 +44,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
               Users
             </h2>
             <p className="mt-1 text-sm text-on-surface-variant">
-              All Users in the portal, including Deleted Users.
+              All Users in the portal, including Deleted Users. Restoring a User keeps their password and access unchanged, so review their Module access afterwards.
             </p>
           </div>
 
