@@ -74,7 +74,7 @@ export function AdminShell({ children }: AdminShellProps) {
               <span className="truncate text-2xl font-bold tracking-tight text-sidebar-foreground">
                 Bren Raphael&apos;s
               </span>
-              <span className="rounded-md bg-purple-600 px-2 py-1 text-xs font-semibold text-white">
+              <span className="rounded-md bg-[#8e51ff] px-2 py-1 text-xs font-semibold text-white">
                 Enterprise Suite
               </span>
             </div>
