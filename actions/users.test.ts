@@ -1,50 +1,59 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({
+const { requireAdministrator, apply } = vi.hoisted(() => ({
   requireAdministrator: vi.fn(),
-  resendCredentials: vi.fn(),
-  revalidatePath: vi.fn(),
+  apply: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
-vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
-vi.mock("@/lib/auth/session", () => ({ requireAdministrator: mocks.requireAdministrator }));
-vi.mock("@/lib/admin/credential-resend", () => ({ resendCredentials: mocks.resendCredentials }));
-vi.mock("@/lib/admin/credential-resend.server", () => ({ createProductionResendPorts: () => ({}) }));
-vi.mock("@/lib/admin/user-provisioning.server", () => ({ createProductionProvisioningPorts: () => ({}) }));
-vi.mock("@/lib/admin/user-provisioning", () => ({ provisionUser: vi.fn() }));
+vi.mock("@/lib/auth/session", () => ({ requireAdministrator }));
+vi.mock("@/lib/admin/credential-resend.server", () => ({ createProductionResendPorts: vi.fn() }));
+vi.mock("@/lib/admin/user-provisioning.server", () => ({ createProductionProvisioningPorts: vi.fn() }));
+vi.mock("@/lib/admin/user-access.server", () => ({
+  createProductionAccessPorts: () => ({
+    store: {
+      findUser: async () => ({ id: "u-1", roleId: "r-1", isDeleted: false }),
+      roleExists: async () => true,
+      countModules: async () => 0,
+      apply,
+    },
+    audit: vi.fn(),
+  }),
+}));
 
-import { resendCredentialsAction } from "./users";
+import { updateUserAccessAction } from "./users";
 
-beforeEach(() => vi.clearAllMocks());
+const initial = { error: null, saved: false, fieldErrors: {} };
 
-describe("resendCredentialsAction", () => {
-  it("does nothing for a requester who is not an Administrator", async () => {
-    mocks.requireAdministrator.mockRejectedValue(new Error("redirect:/"));
+function form() {
+  const data = new FormData();
+  data.set("userId", "u-1");
+  data.set("roleId", "r-1");
+  return data;
+}
 
-    await expect(resendCredentialsAction("user-1")).rejects.toThrow("redirect:/");
-    expect(mocks.resendCredentials).not.toHaveBeenCalled();
+describe("updateUserAccessAction", () => {
+  beforeEach(() => {
+    apply.mockReset();
+    apply.mockResolvedValue({ roleChange: null, granted: 0, revoked: 0 });
+    requireAdministrator.mockReset();
   });
 
-  it("reports success without any password", async () => {
-    mocks.requireAdministrator.mockResolvedValue({ id: "admin-1" });
-    mocks.resendCredentials.mockResolvedValue({ ok: true, username: "2026-JD-001" });
+  it("changes nothing when the caller is not a current Administrator", async () => {
+    requireAdministrator.mockRejectedValue(new Error("NEXT_REDIRECT"));
 
-    const result = await resendCredentialsAction("user-1");
-
-    expect(mocks.resendCredentials).toHaveBeenCalledWith("user-1", { id: "admin-1" }, {});
-    expect(result.status).toBe("success");
-    expect(result.message).toContain("2026-JD-001");
+    await expect(updateUserAccessAction(initial, form())).rejects.toThrow("NEXT_REDIRECT");
+    expect(apply).not.toHaveBeenCalled();
   });
 
-  it("passes a failure through as an error", async () => {
-    mocks.requireAdministrator.mockResolvedValue({ id: "admin-1" });
-    mocks.resendCredentials.mockResolvedValue({ ok: false, error: "Credentials cannot be sent to a Deleted User." });
+  it("saves for a current Administrator, attributing the change to them", async () => {
+    requireAdministrator.mockResolvedValue({ id: "admin-1" });
 
-    expect(await resendCredentialsAction("user-1")).toEqual({
-      status: "error",
-      message: "Credentials cannot be sent to a Deleted User.",
-    });
+    const state = await updateUserAccessAction(initial, form());
+
+    expect(state).toEqual({ error: null, saved: true, fieldErrors: {} });
+    expect(apply).toHaveBeenCalledWith(expect.objectContaining({ actorId: "admin-1", userId: "u-1" }));
   });
 });

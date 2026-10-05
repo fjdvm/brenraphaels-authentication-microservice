@@ -15,6 +15,9 @@ export const SYSTEM_LOG_ACTIONS = {
   "user.create": "Created User",
   "access.grant": "Granted Module access",
   "user.resend_credentials": "Resent credentials",
+  "access.revoke": "Revoked Module access",
+  "user.role_change": "Changed User Role",
+  "user.access_update": "Updated User access",
 } as const;
 
 export type SystemLogAction = keyof typeof SYSTEM_LOG_ACTIONS;
