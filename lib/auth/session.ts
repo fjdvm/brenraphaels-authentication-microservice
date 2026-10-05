@@ -99,3 +99,38 @@ export async function requireAdministrator(): Promise<PortalUser> {
 
   return user;
 }
+
+export type FreshCentralSession =
+  | { status: "signed_out" }
+  | { status: "ineligible" }
+  | { status: "must_change_password" }
+  | { status: "ok"; userId: string; neonSessionId: string };
+
+/**
+ * The browser's central session, validated against Neon Auth with the SDK's local
+ * session cache bypassed. The default getSession() may answer from a signed
+ * session_data cookie for minutes after the session was revoked; the handoff must
+ * not issue a code on that basis.
+ */
+export async function getFreshCentralSession(): Promise<FreshCentralSession> {
+  const { data: session } = await auth.getSession({ query: { disableCookieCache: "true" } });
+
+  if (!session?.user || !session.session) {
+    return { status: "signed_out" };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { neonAuthUserId: session.user.id },
+    select: { id: true, isDeleted: true, mustChangePassword: true },
+  });
+
+  if (!user || user.isDeleted) {
+    return { status: "ineligible" };
+  }
+
+  if (user.mustChangePassword) {
+    return { status: "must_change_password" };
+  }
+
+  return { status: "ok", userId: user.id, neonSessionId: session.session.id };
+}

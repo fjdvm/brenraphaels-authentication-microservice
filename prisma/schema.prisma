@@ -7,12 +7,20 @@ datasource db {
 }
 
 model System {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  url         String
-  iconName    String?
-  description String?
-  modules     Module[]
+  id                  String               @id @default(cuid())
+  name                String               @unique
+  url                 String
+  iconName            String?
+  description         String?
+  // Exact callback URLs a System's backend has registered; nothing else is ever
+  // redirected to. Empty until an Administrator registers the System.
+  callbackUrls        String[]             @default([])
+  // SHA-256 of the System backend's secret. The secret itself is shown once at
+  // registration and never stored.
+  backendSecretHash   String?
+  modules             Module[]
+  handoffCodes        HandoffCode[]
+  integrationSessions IntegrationSession[]
 }
 
 model Module {
@@ -45,23 +53,25 @@ model AccessTemplate {
 }
 
 model User {
-  id                 String           @id @default(cuid())
-  username           String           @unique
-  email              String           @unique
-  firstName          String
-  lastName           String
-  roleId             String
+  id                  String               @id @default(cuid())
+  username            String               @unique
+  email               String               @unique
+  firstName           String
+  lastName            String
+  roleId              String
   // Id of the matching Neon Auth user (neon_auth."user".id). Neon Auth owns the
   // credentials and sessions; this table owns everything portal-specific.
-  neonAuthUserId     String           @unique
-  mustChangePassword Boolean          @default(true)
-  isDeleted          Boolean          @default(false)
-  deletedAt          DateTime?
-  role               Role             @relation(fields: [roleId], references: [id])
-  accessGrants       AccessGrant[]    @relation("AccessGrantUser")
-  accessGrantsMade   AccessGrant[]    @relation("AccessGrantGrantedBy")
-  systemLogsActed    SystemLogEvent[] @relation("SystemLogActor")
-  systemLogsTargeted SystemLogEvent[] @relation("SystemLogTarget")
+  neonAuthUserId      String               @unique
+  mustChangePassword  Boolean              @default(true)
+  isDeleted           Boolean              @default(false)
+  deletedAt           DateTime?
+  role                Role                 @relation(fields: [roleId], references: [id])
+  accessGrants        AccessGrant[]        @relation("AccessGrantUser")
+  accessGrantsMade    AccessGrant[]        @relation("AccessGrantGrantedBy")
+  systemLogsActed     SystemLogEvent[]     @relation("SystemLogActor")
+  systemLogsTargeted  SystemLogEvent[]     @relation("SystemLogTarget")
+  handoffCodes        HandoffCode[]
+  integrationSessions IntegrationSession[]
 }
 
 model UsernameSequence {
@@ -102,4 +112,41 @@ model SystemLogEvent {
   targetUser   User?            @relation("SystemLogTarget", fields: [targetUserId], references: [id])
 
   @@index([occurredAt])
+}
+
+// Single-use sign-in code, bound to one System, one exact callback, the original
+// central (Neon) session and the request's state. Only a hash of the code is stored.
+model HandoffCode {
+  id            String    @id @default(cuid())
+  codeHash      String    @unique
+  systemId      String
+  userId        String
+  neonSessionId String
+  redirectUri   String
+  state         String
+  codeChallenge String
+  expiresAt     DateTime
+  consumedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  system        System    @relation(fields: [systemId], references: [id])
+  user          User      @relation(fields: [userId], references: [id])
+
+  @@index([expiresAt])
+}
+
+// Opaque System-bound handle a System backend receives for a successful exchange.
+// Linked to the original central session; only a hash of the handle is stored.
+model IntegrationSession {
+  id            String    @id @default(cuid())
+  handleHash    String    @unique
+  systemId      String
+  userId        String
+  neonSessionId String
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  system        System    @relation(fields: [systemId], references: [id])
+  user          User      @relation(fields: [userId], references: [id])
+
+  @@index([neonSessionId])
 }
