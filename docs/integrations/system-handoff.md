@@ -2,7 +2,7 @@
 
 How a registered System lets a User who is already signed in to the portal enter it, without the System ever seeing the User's password or the portal's session cookies.
 
-**Status.** This is the portal side of the contract only, exercised by a simulated System backend in `lib/integrations/handoff.test.ts`. It is **not** a complete OIDC provider, and **no real System (CRMS, HRMS, POS, IMS) is integrated yet**. Seeded System URLs, including the placeholders, are never trusted as callbacks. Per-request live validation and logout revocation are documented below.
+**Status.** This is the portal side of the contract only, exercised by a simulated System backend in `lib/integrations/handoff.test.ts`. It is **not** a complete OIDC provider, and **no real System (CRMS, HRMS, POS, IMS) is integrated yet**. Seeded System URLs, including the placeholders, are never trusted as callbacks. Per-request live validation and logout revocation are documented below. For a walkthrough and a runnable reference consumer see [system-integration-guide.md](./system-integration-guide.md); for what is verified and what is outstanding see [verification.md](./verification.md).
 
 ## Registering a System
 
