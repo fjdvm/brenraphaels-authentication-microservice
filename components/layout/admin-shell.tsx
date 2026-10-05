@@ -100,7 +100,7 @@ function AdministrativeHeader() {
 
   return (
     <header className="flex h-16 items-center border-b border-border bg-surface">
-      <div className="flex h-full w-16 shrink-0 items-center justify-center border-r border-border">
+      <div className="relative flex h-full w-16 shrink-0 items-center justify-center">
         <Button
           aria-expanded={openMobile}
           aria-label={openMobile ? "Close navigation" : "Open navigation"}
@@ -122,8 +122,9 @@ function AdministrativeHeader() {
           type="button"
           variant="ghost"
         >
-          <PanelLeft aria-hidden="true" className="size-5 text-foreground" strokeWidth={2.25} />
+          <PanelLeft aria-hidden="true" className="size-4 text-foreground" strokeWidth={2} />
         </Button>
+        <span aria-hidden="true" className="absolute right-0 top-1/2 h-6 w-px -translate-y-1/2 bg-border" />
       </div>
       <NotificationButton className="ml-auto mr-4" />
     </header>
