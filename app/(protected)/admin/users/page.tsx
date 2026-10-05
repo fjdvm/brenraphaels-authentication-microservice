@@ -55,6 +55,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                   <th className="px-6 py-3 font-medium" scope="col">Email</th>
                   <th className="px-6 py-3 font-medium" scope="col">Role</th>
                   <th className="px-6 py-3 font-medium" scope="col">Status</th>
+                  <th className="px-6 py-3 font-medium" scope="col"><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -70,6 +71,13 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                     <td className="whitespace-nowrap px-6 py-4 text-on-surface-variant">{user.roleName}</td>
                     <td className="whitespace-nowrap px-6 py-4">
                       <Badge variant={statusVariant[user.status]}>{user.status}</Badge>
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-right">
+                      <Button asChild size="sm" variant="outline">
+                        <Link aria-label={`Manage access for ${user.username}`} href={`/admin/users/${user.id}`}>
+                          Access
+                        </Link>
+                      </Button>
                     </td>
                   </tr>
                 ))}
