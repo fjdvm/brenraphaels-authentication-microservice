@@ -13,6 +13,7 @@ vi.mock("@/lib/auth/session", () => ({ requireAdministrator: mocks.requireAdmini
 vi.mock("@/lib/admin/credential-resend", () => ({ resendCredentials: mocks.resendCredentials }));
 vi.mock("@/lib/admin/credential-resend.server", () => ({ createProductionResendPorts: () => ({}) }));
 vi.mock("@/lib/admin/user-provisioning.server", () => ({ createProductionProvisioningPorts: () => ({}) }));
+vi.mock("@/lib/admin/user-lifecycle.server", () => ({ createProductionLifecyclePorts: vi.fn() }));
 vi.mock("@/lib/admin/user-provisioning", () => ({ provisionUser: vi.fn() }));
 vi.mock("@/lib/admin/user-access", () => ({ updateUserAccess: vi.fn() }));
 vi.mock("@/lib/admin/user-access.server", () => ({ createProductionAccessPorts: vi.fn() }));

@@ -5,7 +5,8 @@ import { connection } from "next/server";
 import { Badge } from "@/components/ui/badge";
 import { ResendCredentialsButton } from "@/components/admin/resend-credentials-button";
 import { Button } from "@/components/ui/button";
-import { resendCredentialsAction } from "@/actions/users";
+import { UserLifecycleButton } from "@/components/admin/user-lifecycle-button";
+import { deleteUserAction, restoreUserAction, resendCredentialsAction } from "@/actions/users";
 import { requireAdministrator } from "@/lib/auth/session";
 import { listUsers, type UserStatus } from "@/lib/admin/users";
 
@@ -17,7 +18,7 @@ const statusVariant: Record<UserStatus, "default" | "secondary" | "destructive">
 
 export default async function UsersPage({ searchParams }: { searchParams: Promise<{ created?: string }> }) {
   await connection();
-  await requireAdministrator();
+  const administrator = await requireAdministrator();
   const [users, { created }] = await Promise.all([listUsers(), searchParams]);
 
   return (
@@ -44,7 +45,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
               Users
             </h2>
             <p className="mt-1 text-sm text-on-surface-variant">
-              All Users in the portal, including Deleted Users.
+              All Users in the portal, including Deleted Users. Restoring a User keeps their password and access unchanged, so review their Module access afterwards.
             </p>
           </div>
 
@@ -86,6 +87,11 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                             action={resendCredentialsAction.bind(null, user.id)}
                             username={user.username}
                           />
+                        )}
+                        {user.status === "Deleted" ? (
+                          <UserLifecycleButton action={restoreUserAction} mode="restore" userId={user.id} username={user.username} />
+                        ) : user.id === administrator.id ? null : (
+                          <UserLifecycleButton action={deleteUserAction} mode="delete" userId={user.id} username={user.username} />
                         )}
                       </div>
                     </td>
