@@ -31,6 +31,13 @@ export function createProductionResendPorts(): ResendPorts {
     },
     credentials: createNeonAuthCredentialIssuer(),
     mailer: createSmtpCredentialsMailer(),
+    deliveryProblem() {
+      const missing = ["SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD", "EMAIL_FROM", "NEXT_PUBLIC_APP_URL"].filter(
+        (name) => !process.env[name],
+      );
+
+      return missing.length > 0 ? `Missing ${missing.join(", ")}` : null;
+    },
     audit: recordSystemLogEvent,
     generatePassword: generateTemporaryPassword,
   };

@@ -9,7 +9,7 @@ const ADMIN = { id: "admin-1" };
 
 function createWorld(
   initial: Partial<ResendTarget> = {},
-  options: { sendFails?: boolean; passwordFails?: boolean; flagFails?: boolean } = {},
+  options: { unconfigured?: boolean; sendFails?: boolean; passwordFails?: boolean; flagFails?: boolean } = {},
 ) {
   const user: ResendTarget = {
     id: "user-1",
@@ -48,6 +48,7 @@ function createWorld(
         sent.push(message);
       },
     },
+    deliveryProblem: () => (options.unconfigured ? "Missing SMTP_HOST" : null),
     audit: async (event) => {
       events.push(event);
     },
@@ -128,6 +129,17 @@ describe("resendCredentials", () => {
       expect.objectContaining({ action: "user.resend_credentials", outcome: "FAILURE" }),
     ]);
     expect(JSON.stringify(world.events)).not.toContain("Fresh-Temp-1");
+  });
+
+  it("reports missing email configuration before touching the password", async () => {
+    const world = createWorld({}, { unconfigured: true });
+
+    const result = await resendCredentials("user-1", ADMIN, world.ports);
+
+    expect(result).toEqual({ ok: false, error: expect.stringContaining("not configured") });
+    expect(world.state.password).toBe("old-password");
+    expect(world.sent).toHaveLength(0);
+    expect(world.events).toEqual([expect.objectContaining({ outcome: "FAILURE" })]);
   });
 
   it("reports a provider failure without claiming anything was sent", async () => {

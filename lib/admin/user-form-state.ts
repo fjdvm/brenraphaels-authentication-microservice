@@ -6,3 +6,5 @@ export type CreateUserFormState = {
 };
 
 export const initialCreateUserFormState: CreateUserFormState = { error: null, fieldErrors: {} };
+
+export type ResendOutcome = { status: "success" | "error"; message: string };

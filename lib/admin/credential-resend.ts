@@ -22,6 +22,8 @@ export type ResendPorts = {
     replacePassword(neonAuthUserId: string, password: string): Promise<void>;
   };
   mailer: CredentialsMailer;
+  /** Null when email can be sent; otherwise why not. Checked before any password is replaced. */
+  deliveryProblem(): string | null;
   audit(event: SystemLogEventInput): Promise<void>;
   generatePassword(): string;
 };
@@ -55,6 +57,25 @@ export async function resendCredentials(
     return { ok: false, error: "Credentials cannot be sent to a Deleted User." };
   }
 
+  const problem = ports.deliveryProblem();
+
+  if (problem) {
+    console.error("Credential delivery is not configured", problem);
+    await record("FAILURE", "Email delivery is not configured", user.id);
+    return {
+      ok: false,
+      error: `Email delivery is not configured, so nothing was changed or sent to ${user.username}. Fix the email configuration and try again.`,
+    };
+  }
+
+  try {
+    await store.markAwaitingFirstLogin(user.id);
+  } catch (error) {
+    console.error("Could not flag a User for a password change", error);
+    await record("FAILURE", `Could not require a password change for ${user.username}`, user.id);
+    return { ok: false, error: `Nothing was changed or sent to ${user.username}. Try again shortly.` };
+  }
+
   const temporaryPassword = ports.generatePassword();
 
   try {
@@ -69,14 +90,6 @@ export async function resendCredentials(
   }
 
   const recoverable = `${user.username}'s password was replaced but could not be emailed, so they cannot sign in yet. Resend credentials again once the problem is fixed.`;
-
-  try {
-    await store.markAwaitingFirstLogin(user.id);
-  } catch (error) {
-    console.error("Could not flag a User for a password change", error);
-    await record("FAILURE", `Could not require a password change for ${user.username}`, user.id);
-    return { ok: false, error: recoverable };
-  }
 
   try {
     await mailer.sendCredentials({

@@ -7,7 +7,7 @@ import { createProductionProvisioningPorts } from "@/lib/admin/user-provisioning
 import { createProductionResendPorts } from "@/lib/admin/credential-resend.server";
 import { resendCredentials } from "@/lib/admin/credential-resend";
 import { provisionUser } from "@/lib/admin/user-provisioning";
-import type { CreateUserFormState } from "@/lib/admin/user-form-state";
+import type { CreateUserFormState, ResendOutcome } from "@/lib/admin/user-form-state";
 import { requireAdministrator } from "@/lib/auth/session";
 
 function text(formData: FormData, name: string): string {
@@ -43,14 +43,17 @@ export async function createUserAction(
   redirect(`/admin/users?created=${encodeURIComponent(result.user.username)}`);
 }
 
-export type ResendCredentialsState = { status: "success" | "error"; message: string } | null;
-
-export async function resendCredentialsAction(
-  userId: string,
-): Promise<NonNullable<ResendCredentialsState>> {
+export async function resendCredentialsAction(userId: string): Promise<ResendOutcome> {
   // Authority is checked here, in the portal, on every submission.
   const administrator = await requireAdministrator();
-  const result = await resendCredentials(userId, administrator, createProductionResendPorts());
+  let result: Awaited<ReturnType<typeof resendCredentials>>;
+
+  try {
+    result = await resendCredentials(userId, administrator, createProductionResendPorts());
+  } catch (error) {
+    console.error("Resend credentials failed unexpectedly", error);
+    return { status: "error", message: "Credentials could not be sent. Nothing was confirmed as delivered; try again shortly." };
+  }
 
   revalidatePath("/admin/users");
 

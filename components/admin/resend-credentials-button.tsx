@@ -5,29 +5,28 @@ import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-
-type Outcome = { status: "success" | "error"; message: string };
+import type { ResendOutcome } from "@/lib/admin/user-form-state";
 
 type ResendCredentialsButtonProps = {
   username: string;
-  action: () => Promise<Outcome>;
+  action: () => Promise<ResendOutcome>;
 };
 
 export function ResendCredentialsButton({ username, action }: ResendCredentialsButtonProps) {
   const [isPending, startTransition] = useTransition();
-  const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [outcome, setResendOutcome] = useState<ResendOutcome | null>(null);
 
   function resend() {
     if (!window.confirm(`Issue a new Temporary password to ${username}? Their current password will stop working.`)) {
       return;
     }
 
-    setOutcome(null);
+    setResendOutcome(null);
     startTransition(async () => {
       try {
-        setOutcome(await action());
+        setResendOutcome(await action());
       } catch {
-        setOutcome({ status: "error", message: "Credentials could not be sent. Try again shortly." });
+        setResendOutcome({ status: "error", message: "Credentials could not be sent. Try again shortly." });
       }
     });
   }
