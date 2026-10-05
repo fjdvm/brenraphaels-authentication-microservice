@@ -7,6 +7,7 @@ import { resetLinkParams, verifyResetLinkEmail } from "@/lib/auth/reset-link";
 import { auth } from "@/lib/auth/server";
 import { getPortalUser, requirePasswordChangeUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
+import { currentCentralSessionId, revokeIntegrationHandles } from "@/lib/integrations/revocation.server";
 import {
   RETURN_INTENT_PARAM,
   checkReturnIntent,
@@ -102,7 +103,12 @@ export async function loginAction(
 
 export async function logoutAction(): Promise<void> {
   const user = await getPortalUser();
+  const centralSessionId = await currentCentralSessionId();
   const { error } = (await auth.signOut()) ?? {};
+
+  if (!error) {
+    await revokeIntegrationHandles(centralSessionId);
+  }
 
   if (user) {
     await recordSystemLogEvent({

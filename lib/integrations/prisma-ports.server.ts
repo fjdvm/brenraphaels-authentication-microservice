@@ -3,8 +3,9 @@ import "server-only";
 import { prisma } from "@/lib/db/prisma";
 
 import type { HandoffPorts } from "./handoff";
+import type { ValidationPorts } from "./validation";
 
-export const prismaHandoffPorts: HandoffPorts = {
+export const prismaHandoffPorts: HandoffPorts & ValidationPorts = {
   findSystemByName: (name) =>
     prisma.system.findUnique({
       where: { name },
@@ -75,6 +76,28 @@ export const prismaHandoffPorts: HandoffPorts = {
 
   async saveSession(record) {
     await prisma.integrationSession.create({ data: record });
+  },
+
+  findIntegrationSession: (handleHash) =>
+    prisma.integrationSession.findUnique({
+      where: { handleHash },
+      select: {
+        handleHash: true,
+        systemId: true,
+        userId: true,
+        neonSessionId: true,
+        expiresAt: true,
+        revokedAt: true,
+      },
+    }),
+
+  async hasActiveGrantInModule(userId, systemId, moduleName) {
+    const grant = await prisma.accessGrant.findFirst({
+      where: { userId, revokedAt: null, module: { systemId, name: moduleName } },
+      select: { id: true },
+    });
+
+    return grant !== null;
   },
 
   now: () => new Date(),

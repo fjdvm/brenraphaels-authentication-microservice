@@ -1,6 +1,6 @@
 # Central session authority across the four Systems
 
-Status: accepted design; implementation pending.
+Status: accepted; implemented. See `docs/integrations/system-handoff.md` for the handoff and live-validation contract.
 
 The portal is the authentication and session authority for POS, CRMS, IMS, and HRMS. Logging out centrally ends the same browser session across all four Systems, rather than letting each System retain an independently valid session, so a signed-out User cannot continue using an external System through that session. Each integration must enforce this lifecycle; a portal card redirect alone does not establish or revoke an external System's session.
 
