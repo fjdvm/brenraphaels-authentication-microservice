@@ -12,6 +12,8 @@ export const SYSTEM_LOG_ACTIONS = {
   "auth.password_change": "Changed password",
   "auth.password_reset_request": "Requested Forgot password link",
   "auth.password_reset": "Completed Forgot password",
+  "user.create": "Created User",
+  "access.grant": "Granted Module access",
 } as const;
 
 export type SystemLogAction = keyof typeof SYSTEM_LOG_ACTIONS;

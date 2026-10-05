@@ -1,6 +1,9 @@
+import { UserPlus } from "lucide-react";
+import Link from "next/link";
 import { connection } from "next/server";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { requireAdministrator } from "@/lib/auth/session";
 import { listUsers, type UserStatus } from "@/lib/admin/users";
 
@@ -10,16 +13,28 @@ const statusVariant: Record<UserStatus, "default" | "secondary" | "destructive">
   Deleted: "destructive",
 };
 
-export default async function UsersPage() {
+export default async function UsersPage({ searchParams }: { searchParams: Promise<{ created?: string }> }) {
   await connection();
   await requireAdministrator();
-  const users = await listUsers();
+  const [users, { created }] = await Promise.all([listUsers(), searchParams]);
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 p-6 md:p-8">
-        <div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold tracking-tight text-primary">User management</h1>
+          <Button asChild>
+            <Link href="/admin/users/new">
+              <UserPlus aria-hidden="true" />
+              Add new user
+            </Link>
+          </Button>
         </div>
+
+        {created && /^\d{4}-[A-Z]{2}-\d{3,}$/.test(created) ? (
+          <p className="rounded-lg bg-primary/10 px-4 py-3 text-sm text-primary" role="status">
+            User {created} was created. Their Username and Temporary password have been emailed to them.
+          </p>
+        ) : null}
 
         <section aria-labelledby="users-heading" className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
           <div className="border-b border-border px-6 py-5">
