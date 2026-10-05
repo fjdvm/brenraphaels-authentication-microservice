@@ -122,7 +122,7 @@ function AdministrativeHeader() {
           type="button"
           variant="ghost"
         >
-          <PanelLeft aria-hidden="true" className="size-4" />
+          <PanelLeft aria-hidden="true" className="size-5 text-foreground" strokeWidth={2.25} />
         </Button>
       </div>
       <NotificationButton className="ml-auto mr-4" />
