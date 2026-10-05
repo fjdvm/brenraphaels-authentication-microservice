@@ -60,7 +60,8 @@ export async function updateUserAccess(
 ): Promise<UpdateAccessResult> {
   const { store, audit } = ports;
   const actorId = administrator.id;
-  const targetUserId = input.userId || null;
+  // Only a User that exists may be the log target; an unknown id would break the audit foreign key.
+  let targetUserId: string | null = null;
   const fail = async (
     detail: string,
     error: string,
@@ -80,6 +81,7 @@ export async function updateUserAccess(
 
   const { userId, roleId, moduleIds } = parsed.data;
   const user = await store.findUser(userId);
+  targetUserId = user ? user.id : null;
 
   if (!user) {
     return fail("User not found", "That User no longer exists.");
