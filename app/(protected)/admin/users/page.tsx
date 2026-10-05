@@ -3,7 +3,10 @@ import Link from "next/link";
 import { connection } from "next/server";
 
 import { Badge } from "@/components/ui/badge";
+import { ResendCredentialsButton } from "@/components/admin/resend-credentials-button";
 import { Button } from "@/components/ui/button";
+import { UserLifecycleButton } from "@/components/admin/user-lifecycle-button";
+import { deleteUserAction, restoreUserAction, resendCredentialsAction } from "@/actions/users";
 import { requireAdministrator } from "@/lib/auth/session";
 import { listUsers, type UserStatus } from "@/lib/admin/users";
 
@@ -15,7 +18,7 @@ const statusVariant: Record<UserStatus, "default" | "secondary" | "destructive">
 
 export default async function UsersPage({ searchParams }: { searchParams: Promise<{ created?: string }> }) {
   await connection();
-  await requireAdministrator();
+  const administrator = await requireAdministrator();
   const [users, { created }] = await Promise.all([listUsers(), searchParams]);
 
   return (
@@ -42,7 +45,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
               Users
             </h2>
             <p className="mt-1 text-sm text-on-surface-variant">
-              All Users in the portal, including Deleted Users.
+              All Users in the portal, including Deleted Users. Restoring a User keeps their password and access unchanged, so review their Module access afterwards.
             </p>
           </div>
 
@@ -55,6 +58,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                   <th className="px-6 py-3 font-medium" scope="col">Email</th>
                   <th className="px-6 py-3 font-medium" scope="col">Role</th>
                   <th className="px-6 py-3 font-medium" scope="col">Status</th>
+                  <th className="px-6 py-3 font-medium" scope="col"><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -70,6 +74,26 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                     <td className="whitespace-nowrap px-6 py-4 text-on-surface-variant">{user.roleName}</td>
                     <td className="whitespace-nowrap px-6 py-4">
                       <Badge variant={statusVariant[user.status]}>{user.status}</Badge>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-start justify-end gap-2">
+                        <Button asChild size="sm" variant="outline">
+                          <Link aria-label={`Manage access for ${user.username}`} href={`/admin/users/${user.id}`}>
+                            Access
+                          </Link>
+                        </Button>
+                        {user.status === "Deleted" ? null : (
+                          <ResendCredentialsButton
+                            action={resendCredentialsAction.bind(null, user.id)}
+                            username={user.username}
+                          />
+                        )}
+                        {user.status === "Deleted" ? (
+                          <UserLifecycleButton action={restoreUserAction} mode="restore" userId={user.id} username={user.username} />
+                        ) : user.id === administrator.id ? null : (
+                          <UserLifecycleButton action={deleteUserAction} mode="delete" userId={user.id} username={user.username} />
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

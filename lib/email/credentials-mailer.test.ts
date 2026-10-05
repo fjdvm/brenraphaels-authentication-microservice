@@ -39,6 +39,21 @@ describe("credentials mailer", () => {
     expect(message.html).toContain("Juan &lt;b&gt;");
   });
 
+  it("tells a resend recipient their previous password no longer works", async () => {
+    const { buildCredentialsEmail } = await import("./credentials-mailer");
+
+    const email = buildCredentialsEmail(
+      { to: "a@b.co", firstName: "Ana", username: "2026-AB-001", temporaryPassword: "Zz9!pass", kind: "resend" },
+      "https://portal.example.com/login",
+    );
+
+    expect(email.subject).toContain("new");
+    expect(email.text).toContain("Username: 2026-AB-001");
+    expect(email.text).toContain("Temporary password: Zz9!pass");
+    expect(email.text).toContain("previous password no longer works");
+    expect(email.text).toContain("choose a new password");
+  });
+
   it("surfaces transport failures instead of swallowing them", async () => {
     const mailer = createCredentialsMailer({
       transport: { sendMail: () => Promise.reject(new Error("connection refused")) },
