@@ -9,6 +9,6 @@ export default auth.middleware({ loginUrl: "/login" });
 
 export const config = {
   matcher: [
-    "/((?!login|forgot-password|reset-password|api/auth|api/integrations/authorize|api/integrations/exchange|_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|logo-mark.png|logo.png).*)",
+    "/((?!login|forgot-password|reset-password|api/auth|api/integrations/authorize$|api/integrations/exchange|_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|logo-mark.png|logo.png).*)",
   ],
 };

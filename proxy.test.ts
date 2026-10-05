@@ -14,6 +14,11 @@ describe("proxy matcher", () => {
     expect(runsProxyFor("/api/integrations/authorize")).toBe(false);
   });
 
+  it("does not exempt other paths that merely start with the authorize path", () => {
+    expect(runsProxyFor("/api/integrations/authorize-anything")).toBe(true);
+    expect(runsProxyFor("/api/integrations/authorize/extra")).toBe(true);
+  });
+
   it("still leaves login and the server-to-server exchange public", () => {
     expect(runsProxyFor("/login")).toBe(false);
     expect(runsProxyFor("/api/integrations/exchange")).toBe(false);

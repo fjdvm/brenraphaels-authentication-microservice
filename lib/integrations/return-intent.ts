@@ -124,13 +124,15 @@ export function withReturnIntent(path: string, token: string | null | undefined)
   return token ? `${path}?${RETURN_INTENT_PARAM}=${encodeURIComponent(token)}` : path;
 }
 
+export type ReturnIntentProblem = "expired" | "invalid";
+
 export type ReturnIntentView = {
   /** The token to carry forward; null unless it verified. */
   token: string | null;
   authorizePath: string | null;
   systemName: string | null;
   /** Set when a request was presented but can't be resumed, so the page can say so. */
-  problem: "expired" | "invalid" | null;
+  problem: ReturnIntentProblem | null;
 };
 
 /** What a login or password-change page needs from its `ri` search parameter. */

@@ -65,6 +65,29 @@ export const authCardClass =
 export const authInputClass =
   "h-12 rounded-lg border border-outline-variant bg-surface-container-low px-3 text-base font-normal outline-none transition-colors focus:border-primary";
 
+export type ReturnRequestProblem = "expired" | "invalid";
+
+export type ReturnRequestProps = {
+  /** Signed token to carry through the form; null when there is nothing to resume. */
+  returnIntent?: string | null;
+  systemName?: string | null;
+  requestProblem?: ReturnRequestProblem | null;
+};
+
+/** Carries a pending System request through a form and tells the User about it. */
+export function ReturnRequestFields({
+  returnIntent = null,
+  systemName = null,
+  requestProblem = null,
+}: ReturnRequestProps) {
+  return (
+    <>
+      {returnIntent ? <input name="ri" type="hidden" value={returnIntent} /> : null}
+      <ReturnRequestNotice problem={requestProblem} systemName={systemName} />
+    </>
+  );
+}
+
 /**
  * The System request a login or password change will resume, or why it can't be
  * resumed. Plain login and password change render nothing here.
@@ -74,7 +97,7 @@ export function ReturnRequestNotice({
   problem,
 }: {
   systemName: string | null;
-  problem: "expired" | "invalid" | null;
+  problem: ReturnRequestProblem | null;
 }) {
   if (problem) {
     return (
