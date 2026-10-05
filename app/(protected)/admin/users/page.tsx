@@ -1,11 +1,10 @@
 import Link from "next/link";
+import { connection } from "next/server";
 
-import { PortalShell } from "@/components/layout/portal-shell";
+import { AdminShell } from "@/components/layout/admin-shell";
 import { Badge } from "@/components/ui/badge";
-import { requireSuperAdmin } from "@/lib/auth/session";
+import { requireAdministrator } from "@/lib/auth/session";
 import { listUsers, type UserStatus } from "@/lib/admin/users";
-
-export const dynamic = "force-dynamic";
 
 const statusVariant: Record<UserStatus, "default" | "secondary" | "destructive"> = {
   Active: "default",
@@ -14,11 +13,12 @@ const statusVariant: Record<UserStatus, "default" | "secondary" | "destructive">
 };
 
 export default async function UsersPage() {
-  const admin = await requireSuperAdmin();
+  await connection();
+  const admin = await requireAdministrator();
   const users = await listUsers();
 
   return (
-    <PortalShell firstName={admin.firstName}>
+    <AdminShell firstName={admin.firstName}>
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 p-6">
         <div>
           <p className="text-sm font-medium text-on-surface-variant">Administration</p>
@@ -77,6 +77,6 @@ export default async function UsersPage() {
           </div>
         </section>
       </main>
-    </PortalShell>
+    </AdminShell>
   );
 }

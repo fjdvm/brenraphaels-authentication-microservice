@@ -5,6 +5,7 @@ import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "@prisma/client";
 
 import {
+  ADMINISTRATOR_ROLE_NAMES,
   SEED_ROLES,
   SEED_SYSTEMS,
   SUPER_ADMIN_ROLE_NAME,
@@ -25,7 +26,7 @@ type SeedSuperAdmin = {
 type SeededRecord = { id: string };
 
 export type SeedPortalStore = {
-  upsertRole(name: string, isSuperAdmin: boolean): Promise<SeededRecord>;
+  upsertRole(name: string, isAdministrator: boolean): Promise<SeededRecord>;
   upsertSystem(system: SeedSystem): Promise<SeededRecord>;
   upsertModule(systemId: string, name: string): Promise<SeededRecord>;
   upsertAccessTemplate(roleId: string, moduleId: string): Promise<void>;
@@ -61,7 +62,10 @@ export async function seedPortal(
   for (const roleName of SEED_ROLES) {
     roles.set(
       roleName,
-      await portal.upsertRole(roleName, roleName === SUPER_ADMIN_ROLE_NAME),
+      await portal.upsertRole(
+        roleName,
+        ADMINISTRATOR_ROLE_NAMES.includes(roleName),
+      ),
     );
   }
 
@@ -127,11 +131,11 @@ function superAdminFromEnvironment(): SeedSuperAdmin {
 
 function createPortalStore(prisma: PrismaClient): SeedPortalStore {
   return {
-    async upsertRole(name, isSuperAdmin) {
+    async upsertRole(name, isAdministrator) {
       return prisma.role.upsert({
         where: { name },
-        update: { isSuperAdmin },
-        create: { name, isSuperAdmin },
+        update: { isAdministrator },
+        create: { name, isAdministrator },
       });
     },
     async upsertSystem(system) {
