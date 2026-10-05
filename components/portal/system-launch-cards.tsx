@@ -2,6 +2,7 @@ import { ArrowUpRight, Contact, LayoutGrid, Package, Store, Users, type LucideIc
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AccessibleSystem } from "@/lib/portal/accessible-systems";
+import { cn } from "@/lib/utils/cn";
 
 // Keys match SeedSystem.iconName; unknown keys fall back to a generic icon.
 const SYSTEM_ICONS: Record<string, LucideIcon> = {
@@ -37,7 +38,7 @@ export function SystemLaunchCards({ systems }: { systems: AccessibleSystem[] }) 
   }
 
   return (
-    <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <ul className={cn("grid gap-4", systems.length > 1 && "sm:grid-cols-2")}>
       {systems.map((system) => {
         const Icon = (system.iconName && SYSTEM_ICONS[system.iconName]) || LayoutGrid;
 

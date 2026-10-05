@@ -34,6 +34,17 @@ describe("SystemLaunchCards", () => {
     expect(screen.getAllByRole("link")).toHaveLength(2);
   });
 
+  it("lays out at most two columns, and a single column for a single card", () => {
+    const { container, rerender } = render(<SystemLaunchCards systems={[ims, pos]} />);
+    const list = () => container.querySelector("ul")!;
+
+    expect(list().className).toContain("sm:grid-cols-2");
+    expect(list().className).not.toContain("grid-cols-3");
+
+    rerender(<SystemLaunchCards systems={[pos]} />);
+    expect(list().className).not.toContain("grid-cols");
+  });
+
   it("shows no card for a System the User cannot access", () => {
     render(<SystemLaunchCards systems={[pos]} />);
 
