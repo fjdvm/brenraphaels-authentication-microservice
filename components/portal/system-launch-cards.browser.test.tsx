@@ -23,13 +23,13 @@ const pos = {
 describe("SystemLaunchCards", () => {
   afterEach(cleanup);
 
-  it("renders one launch card per accessible System with its identity and destination", () => {
+  it("renders one launch card per accessible System with its identity and open its destination", () => {
     render(<SystemLaunchCards systems={[ims, pos]} />);
 
     const imsLink = screen.getByRole("link", { name: /IMS/ });
     expect(imsLink.getAttribute("href")).toBe("https://ims.example.com/app");
     expect(screen.getByText(ims.description)).toBeTruthy();
-    expect(screen.getByText("ims.example.com")).toBeTruthy();
+    expect(screen.queryByText("ims.example.com")).toBeNull();
     expect(screen.getByRole("link", { name: /POS/ }).getAttribute("href")).toBe("https://pos.example.com");
     expect(screen.getAllByRole("link")).toHaveLength(2);
   });

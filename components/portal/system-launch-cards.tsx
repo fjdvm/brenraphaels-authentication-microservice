@@ -1,6 +1,6 @@
 import { ArrowUpRight, Contact, LayoutGrid, Package, Store, Users, type LucideIcon } from "lucide-react";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AccessibleSystem } from "@/lib/portal/accessible-systems";
 import { cn } from "@/lib/utils/cn";
 
@@ -11,14 +11,6 @@ const SYSTEM_ICONS: Record<string, LucideIcon> = {
   store: Store,
   package: Package,
 };
-
-function destinationHost(url: string): string {
-  try {
-    return new URL(url).host;
-  } catch {
-    return url;
-  }
-}
 
 /**
  * One launch card per Accessible System. A card only opens the System's configured
@@ -57,11 +49,6 @@ export function SystemLaunchCards({ systems }: { systems: AccessibleSystem[] }) 
                   <CardTitle className="pt-2 text-lg">{system.name}</CardTitle>
                   {system.description ? <CardDescription>{system.description}</CardDescription> : null}
                 </CardHeader>
-                <CardContent>
-                  <p className="truncate font-mono text-xs text-on-surface-variant">
-                    {destinationHost(system.url)}
-                  </p>
-                </CardContent>
               </Card>
             </a>
           </li>
