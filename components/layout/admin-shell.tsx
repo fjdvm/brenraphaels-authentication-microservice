@@ -65,13 +65,16 @@ export function AdminShell({ children }: AdminShellProps) {
     <SidebarProvider>
       <Sidebar collapsible="offcanvas">
         <SidebarHeader className="items-start gap-2 px-4 py-5">
-          <div className="flex items-center gap-3">
-            <BrandLogo className="rounded-lg" size={36} />
-            <div className="flex min-w-0 flex-col items-start gap-1 group-data-[collapsible=icon]:hidden">
-              <span className="truncate text-2xl font-extrabold tracking-tight text-sidebar-foreground">
+          <div className="flex items-stretch gap-3">
+            <BrandLogo
+              className="aspect-square h-auto w-auto shrink-0 self-stretch rounded-lg object-contain"
+              size={60}
+            />
+            <div className="flex min-w-0 flex-col items-start justify-center gap-1 group-data-[collapsible=icon]:hidden">
+              <span className="truncate text-2xl font-bold tracking-tight text-sidebar-foreground">
                 Bren Raphael&apos;s
               </span>
-              <span className="rounded-md bg-violet-600 px-2 py-1 text-xs font-semibold text-white">
+              <span className="rounded-md bg-[#8e51ff] px-2 py-1 text-xs font-semibold text-white">
                 Enterprise Suite
               </span>
             </div>
@@ -100,7 +103,7 @@ function AdministrativeHeader() {
 
   return (
     <header className="flex h-16 items-center border-b border-border bg-surface">
-      <div className="flex h-full w-16 shrink-0 items-center justify-center border-r border-border">
+      <div className="relative flex h-full w-16 shrink-0 items-center justify-center">
         <Button
           aria-expanded={openMobile}
           aria-label={openMobile ? "Close navigation" : "Open navigation"}
@@ -122,8 +125,9 @@ function AdministrativeHeader() {
           type="button"
           variant="ghost"
         >
-          <PanelLeft aria-hidden="true" className="size-4" />
+          <PanelLeft aria-hidden="true" className="size-4 text-foreground" strokeWidth={2} />
         </Button>
+        <span aria-hidden="true" className="absolute right-0 top-1/2 h-6 w-px -translate-y-1/2 bg-border" />
       </div>
       <NotificationButton className="ml-auto mr-4" />
     </header>
