@@ -139,6 +139,18 @@ function createPortalStore(prisma: PrismaClient): SeedPortalStore {
       });
     },
     async upsertSystem(system) {
+      if (system.formerName) {
+        // Rename in place (keeping id, Modules and grant history) rather than
+        // letting the upsert below create a second System beside the legacy one.
+        const current = await prisma.system.findUnique({ where: { name: system.name } });
+        const legacy = current
+          ? null
+          : await prisma.system.findUnique({ where: { name: system.formerName } });
+        if (legacy) {
+          await prisma.system.update({ where: { id: legacy.id }, data: { name: system.name } });
+        }
+      }
+
       return prisma.system.upsert({
         where: { name: system.name },
         update: {

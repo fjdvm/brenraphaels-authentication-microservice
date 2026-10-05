@@ -4,10 +4,12 @@ export type SeedSystem = {
   /** Plain lookup key the UI maps to an icon; not an icon-library component name. */
   iconName: string;
   description: string;
+  /** Previous name; an existing System under it is renamed in place, never duplicated. */
+  formerName?: string;
   modules: string[];
 };
 
-// CRMS is deployed; HRMS/POS/SCMS URLs are placeholders pending real deployment.
+// CRMS is deployed; HRMS/POS/IMS URLs are placeholders pending real deployment.
 export const SEED_SYSTEMS: SeedSystem[] = [
   {
     name: "CRMS",
@@ -52,8 +54,9 @@ export const SEED_SYSTEMS: SeedSystem[] = [
     ],
   },
   {
-    name: "SCMS",
-    url: "https://br-scms.jude-nitram08.workers.dev", // placeholder, pending real deployment
+    name: "IMS",
+    formerName: "SCMS",
+    url: "https://br-ims.jude-nitram08.workers.dev", // placeholder, pending real deployment
     iconName: "package",
     description: "Suppliers, procurement, inventory, production and distribution.",
     modules: [
@@ -74,7 +77,7 @@ export const SEED_ROLES = [
   "CEO",
   "VP",
   "CRMS Manager",
-  "SCMS Manager",
+  "IMS Manager",
   "HRMS Manager",
   "POS Manager",
   "Staff/Employee",
