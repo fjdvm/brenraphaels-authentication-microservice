@@ -13,6 +13,8 @@ export const SYSTEM_LOG_ACTIONS = {
   "auth.password_reset_request": "Requested Forgot password link",
   "auth.password_reset": "Completed Forgot password",
   "user.create": "Created User",
+  "user.delete": "Deleted User",
+  "user.restore": "Restored User",
   "access.grant": "Granted Module access",
 } as const;
 
