@@ -9,7 +9,9 @@ export async function currentCentralSessionId(): Promise<string | null> {
     const { data } = await auth.getSession({ query: { disableCookieCache: "true" } });
 
     return data?.session?.id ?? null;
-  } catch {
+  } catch (error) {
+    console.error("Failed to read the central session id:", error instanceof Error ? error.name : "unknown");
+
     return null;
   }
 }

@@ -328,6 +328,16 @@ describe("live session and Module validation", () => {
       await expectDenied(await validate(handle), 403, "access_denied");
     });
 
+    it("still answers access_denied when the audit write itself fails", async () => {
+      const handle = await signInTo("CRMS");
+      ctx.world.grants.delete("user-1:sys-CRMS:Dashboard");
+      ctx.deps.audit = async () => {
+        throw new Error("audit down");
+      };
+
+      await expectDenied(await validate(handle), 403, "access_denied");
+    });
+
     it("records a denial against the identified User without leaking the handle or secret", async () => {
       const handle = await signInTo("CRMS");
       ctx.world.audit.length = 0;

@@ -236,13 +236,16 @@ export async function handleValidate(
     // Only an identified User losing access is worth an audit row; invalid handles and
     // bad credentials are routine noise on a per-request endpoint.
     if (result.error === "access_denied") {
-      await deps.audit({
-        action: "integration.validate",
-        outcome: "FAILURE",
-        actorId: null,
-        targetUserId: result.userId ?? null,
-        detail: `${result.system?.name ?? "unknown System"}: access denied`,
-      });
+      // A failed audit write must not change the structured denial.
+      await deps
+        .audit({
+          action: "integration.validate",
+          outcome: "FAILURE",
+          actorId: null,
+          targetUserId: result.userId ?? null,
+          detail: `${result.system?.name ?? "unknown System"}: access denied`,
+        })
+        .catch(() => undefined);
     }
 
     return errorResponse(
