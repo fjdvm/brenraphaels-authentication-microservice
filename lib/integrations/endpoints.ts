@@ -5,6 +5,12 @@ import {
   type HandoffErrorCode,
   type HandoffPorts,
 } from "./handoff";
+import {
+  validateAccess,
+  validationFailure,
+  type ValidationErrorCode,
+  type ValidationPorts,
+} from "./validation";
 
 export type AuthorizeSubject =
   | { status: "signed_out" }
@@ -13,7 +19,7 @@ export type AuthorizeSubject =
   | { status: "ok"; userId: string; neonSessionId: string };
 
 export type EndpointAudit = (event: {
-  action: "integration.authorize" | "integration.exchange";
+  action: "integration.authorize" | "integration.exchange" | "integration.validate";
   outcome: "SUCCESS" | "FAILURE";
   actorId?: string | null;
   targetUserId?: string | null;
@@ -29,7 +35,7 @@ export type EndpointDeps = {
 
 const NO_STORE = { "Cache-Control": "no-store", Pragma: "no-cache" };
 
-function errorResponse(error: HandoffErrorCode, status: number, extra: HeadersInit = {}): Response {
+function errorResponse(error: HandoffErrorCode | ValidationErrorCode, status: number, extra: HeadersInit = {}): Response {
   return Response.json({ error }, { status, headers: { ...NO_STORE, ...extra } });
 }
 
@@ -187,6 +193,67 @@ export async function handleExchange(
 
   return Response.json(
     { handle: result.handle, token_type: "opaque", expires_in: result.expiresIn },
+    { headers: NO_STORE },
+  );
+}
+
+/**
+ * POST /api/integrations/validate — server-to-server, called by a System backend
+ * before every protected request. Basic backend credentials plus `{ handle, module }`.
+ * `200 { active: true }` is the only positive decision; every other status denies.
+ * 401 `invalid_handle` / 403 `access_denied` mean invalid access; 503
+ * `temporarily_unavailable` means validation could not run. All of them deny.
+ */
+export async function handleValidate(
+  request: Request,
+  deps: { ports: ValidationPorts; audit: EndpointAudit },
+): Promise<Response> {
+  const credentials = parseBasicCredentials(request.headers.get("authorization"));
+
+  let body: unknown = null;
+  try {
+    body = await request.json();
+  } catch {
+    body = null;
+  }
+
+  let result;
+  try {
+    result = await validateAccess(deps.ports, {
+      systemName: credentials?.name ?? null,
+      secret: credentials?.secret ?? null,
+      handle: stringField(body, "handle"),
+      moduleName: stringField(body, "module"),
+    });
+  } catch (error) {
+    console.error("Integration validation unavailable:", error instanceof Error ? error.name : "unknown");
+    const unavailable = validationFailure("temporarily_unavailable");
+
+    return errorResponse(unavailable.error, unavailable.status, { "Retry-After": "5" });
+  }
+
+  if (!result.ok) {
+    // Only an identified User losing access is worth an audit row; invalid handles and
+    // bad credentials are routine noise on a per-request endpoint.
+    if (result.error === "access_denied") {
+      await deps.audit({
+        action: "integration.validate",
+        outcome: "FAILURE",
+        actorId: null,
+        targetUserId: result.userId ?? null,
+        detail: `${result.system?.name ?? "unknown System"}: access denied`,
+      });
+    }
+
+    return errorResponse(
+      result.error,
+      result.status,
+      result.error === "invalid_client" ? { "WWW-Authenticate": 'Basic realm="integrations"' } : {},
+    );
+  }
+
+  return Response.json(
+    { active: true, user_id: result.userId, system: result.system, module: result.module },
     { headers: NO_STORE },
   );
 }

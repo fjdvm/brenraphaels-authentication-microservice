@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   resetPassword: vi.fn(),
   signOut: vi.fn(),
   record: vi.fn(),
+  currentSessionId: vi.fn(),
+  revokeHandles: vi.fn(),
   redirect: vi.fn((destination: string) => {
     throw new Error(`redirect:${destination}`);
   }),
@@ -43,6 +45,11 @@ vi.mock("@/lib/auth/session", () => ({
 }));
 
 vi.mock("@/lib/audit/system-log", () => ({ recordSystemLogEvent: mocks.record }));
+
+vi.mock("@/lib/integrations/revocation.server", () => ({
+  currentCentralSessionId: mocks.currentSessionId,
+  revokeIntegrationHandles: mocks.revokeHandles,
+}));
 
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 
@@ -160,6 +167,18 @@ describe("loginAction", () => {
     await expect(logoutAction()).rejects.toThrow("redirect:/login");
 
     expect(mocks.signOut).toHaveBeenCalledOnce();
+  });
+
+  it("revokes the integration handles of the session it signs out, only when sign-out worked", async () => {
+    mocks.currentSessionId.mockResolvedValue("neon-session-1");
+
+    await expect(logoutAction()).rejects.toThrow("redirect:/login");
+    expect(mocks.revokeHandles).toHaveBeenCalledWith("neon-session-1");
+
+    mocks.revokeHandles.mockClear();
+    mocks.signOut.mockResolvedValue({ error: { message: "boom" } });
+    await expect(logoutAction()).rejects.toThrow("redirect:/login");
+    expect(mocks.revokeHandles).not.toHaveBeenCalled();
   });
 
   it("records the logout outcome against the signed-in User", async () => {

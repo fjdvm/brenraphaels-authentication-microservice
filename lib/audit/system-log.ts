@@ -18,6 +18,7 @@ export const SYSTEM_LOG_ACTIONS = {
   "access.grant": "Granted Module access",
   "integration.authorize": "Authorized a System sign-in",
   "integration.exchange": "Exchanged a System sign-in code",
+  "integration.validate": "Denied a System request",
   "user.resend_credentials": "Resent credentials",
   "access.revoke": "Revoked Module access",
   "user.role_change": "Changed User Role",
