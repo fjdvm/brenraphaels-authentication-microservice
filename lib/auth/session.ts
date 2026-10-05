@@ -13,14 +13,15 @@ export type PortalUser = {
   lastName: string;
   email: string;
   mustChangePassword: boolean;
-  isSuperAdmin: boolean;
+  isAdministrator: boolean;
 };
 
 /**
  * The signed-in User, read from our database on every call (deduplicated per
  * request). The Neon Auth session only proves who someone is; whether they may
- * proceed, and whether they are a Super Admin, is always decided here, so a Deleted
- * or demoted User loses access immediately (ADR-0001, ADR-0002).
+ * proceed, and whether they are an Administrator, is always decided here, so a Deleted
+ * or demoted User loses access immediately. A Role confers administrative
+ * authority only when its current isAdministrator flag is set.
  */
 export const getPortalUser = cache(async (): Promise<PortalUser | null> => {
   const { data: session } = await auth.getSession();
@@ -31,7 +32,7 @@ export const getPortalUser = cache(async (): Promise<PortalUser | null> => {
 
   const user = await prisma.user.findUnique({
     where: { neonAuthUserId: session.user.id },
-    include: { role: { select: { isSuperAdmin: true } } },
+    include: { role: { select: { isAdministrator: true } } },
   });
 
   if (!user || user.isDeleted) {
@@ -45,7 +46,7 @@ export const getPortalUser = cache(async (): Promise<PortalUser | null> => {
     lastName: user.lastName,
     email: user.email,
     mustChangePassword: user.mustChangePassword,
-    isSuperAdmin: user.role.isSuperAdmin,
+    isAdministrator: user.role.isAdministrator,
   };
 });
 
@@ -85,10 +86,10 @@ export async function requirePasswordChangeUser(): Promise<PortalUser> {
   return user;
 }
 
-export async function requireSuperAdmin(): Promise<PortalUser> {
+export async function requireAdministrator(): Promise<PortalUser> {
   const user = await requirePortalUser({ allowMustChangePassword: true });
 
-  if (!user.isSuperAdmin) {
+  if (!user.isAdministrator) {
     redirect("/");
   }
 

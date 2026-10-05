@@ -1,13 +1,19 @@
 "use client";
 
-import { Bell } from "lucide-react";
+import { Bell, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { logoutAction } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 
-export function PortalActions() {
+export function PortalActions({
+  compact = false,
+  showNotifications = true,
+}: {
+  compact?: boolean;
+  showNotifications?: boolean;
+}) {
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -23,11 +29,13 @@ export function PortalActions() {
 
   return (
     <>
-      <Button aria-label="Notifications" size="icon" title="Notifications" variant="outline">
-        <Bell aria-hidden="true" />
-      </Button>
-      <Button onClick={() => setIsLogoutDialogOpen(true)} type="button" variant="outline">
-        Log out
+      {showNotifications ? (
+        <Button aria-label="Notifications" size="icon" title="Notifications" variant="outline">
+          <Bell aria-hidden="true" />
+        </Button>
+      ) : null}
+      <Button aria-label={compact ? "Log out" : undefined} onClick={() => setIsLogoutDialogOpen(true)} size={compact ? "icon" : "default"} type="button" variant="outline">
+        {compact ? <LogOut aria-hidden="true" /> : "Log out"}
       </Button>
 
       {isLogoutDialogOpen

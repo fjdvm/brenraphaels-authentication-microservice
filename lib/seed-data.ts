@@ -82,3 +82,5 @@ export const SEED_ROLES = [
 ] as const;
 
 export const SUPER_ADMIN_ROLE_NAME = "Super Admin" satisfies (typeof SEED_ROLES)[number];
+
+export const ADMINISTRATOR_ROLE_NAMES: readonly string[] = [SUPER_ADMIN_ROLE_NAME, "CEO"];

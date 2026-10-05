@@ -1,13 +1,16 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { PortalShell } from "@/components/layout/portal-shell";
-import { Button } from "@/components/ui/button";
 import { requirePortalUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function PortalPage() {
   const user = await requirePortalUser();
+
+  if (user.isAdministrator) {
+    redirect("/admin/access");
+  }
 
   return (
     <PortalShell firstName={user.firstName}>
@@ -18,11 +21,6 @@ export default async function PortalPage() {
         <p className="text-sm text-on-surface-variant">
           You&apos;re logged in. Portal content is coming soon.
         </p>
-        {user.isSuperAdmin ? (
-          <Button asChild className="mt-4">
-            <Link href="/admin/users">Manage users</Link>
-          </Button>
-        ) : null}
       </main>
     </PortalShell>
   );

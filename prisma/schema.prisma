@@ -29,7 +29,7 @@ model Module {
 model Role {
   id              String           @id @default(cuid())
   name            String           @unique
-  isSuperAdmin    Boolean          @default(false)
+  isAdministrator Boolean          @default(false)
   accessTemplates AccessTemplate[]
   users           User[]
 }

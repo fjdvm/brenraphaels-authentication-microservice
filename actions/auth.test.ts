@@ -137,7 +137,7 @@ describe("changePasswordAction", () => {
       lastName: "Nitram",
       email: "admin@example.com",
       mustChangePassword: true,
-      isSuperAdmin: true,
+      isAdministrator: true,
     });
     mocks.changePassword.mockResolvedValue({ error: null });
     mocks.update.mockResolvedValue({});

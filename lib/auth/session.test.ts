@@ -28,7 +28,7 @@ const activeUser = {
   email: "admin@example.com",
   mustChangePassword: false,
   isDeleted: false,
-  role: { isSuperAdmin: true },
+  role: { isAdministrator: true },
 };
 
 describe("requirePortalUser", () => {
@@ -66,7 +66,7 @@ describe("requirePortalUser", () => {
     await expect(requirePortalUser()).resolves.toMatchObject({
       id: "portal-user",
       username: "2026-ADMIN-001",
-      isSuperAdmin: true,
+      isAdministrator: true,
     });
   });
 
@@ -94,37 +94,63 @@ describe("requirePortalUser", () => {
     });
   });
 
-  it("redirects a non-Super-Admin away from the admin area", async () => {
+  it("redirects a non-Administrator away from the admin area", async () => {
     mocks.findUnique.mockResolvedValue({
       ...activeUser,
-      role: { isSuperAdmin: false },
+      role: { isAdministrator: false },
     });
-    const { requireSuperAdmin } = await import("./session");
+    const { requireAdministrator } = await import("./session");
 
-    await expect(requireSuperAdmin()).rejects.toThrow(/^redirect:\/$/);
+    await expect(requireAdministrator()).rejects.toThrow(/^redirect:\/$/);
   });
 
   it("redirects an awaiting non-Super-Admin to the portal before password change", async () => {
     mocks.findUnique.mockResolvedValue({
       ...activeUser,
       mustChangePassword: true,
-      role: { isSuperAdmin: false },
+      role: { isAdministrator: false },
     });
-    const { requireSuperAdmin } = await import("./session");
+    const { requireAdministrator } = await import("./session");
 
-    await expect(requireSuperAdmin()).rejects.toThrow(/^redirect:\/$/);
+    await expect(requireAdministrator()).rejects.toThrow(/^redirect:\/$/);
   });
 
-  it("rechecks a Super Admin's role on every request", async () => {
-    const { requireSuperAdmin } = await import("./session");
+  it("rechecks an Administrator's role on every request", async () => {
+    const { requireAdministrator } = await import("./session");
 
-    await expect(requireSuperAdmin()).resolves.toMatchObject({ isSuperAdmin: true });
+    await expect(requireAdministrator()).resolves.toMatchObject({ isAdministrator: true });
 
     mocks.findUnique.mockResolvedValue({
       ...activeUser,
-      role: { isSuperAdmin: false },
+      role: { isAdministrator: false },
     });
 
-    await expect(requireSuperAdmin()).rejects.toThrow("redirect:/");
+    await expect(requireAdministrator()).rejects.toThrow("redirect:/");
+  });
+
+  it("allows a CEO because the current Role grants administrative authority", async () => {
+    mocks.findUnique.mockResolvedValue({
+      ...activeUser,
+      role: { isAdministrator: true },
+    });
+    const { requireAdministrator } = await import("./session");
+
+    await expect(requireAdministrator()).resolves.toMatchObject({
+      isAdministrator: true,
+    });
+  });
+
+  it("denies a Deleted Administrator on the next administrative request", async () => {
+    mocks.findUnique.mockResolvedValue({ ...activeUser, isDeleted: true });
+    const { requireAdministrator } = await import("./session");
+
+    await expect(requireAdministrator()).rejects.toThrow("redirect:/login");
+  });
+
+  it("sends an Administrator Awaiting first login to password change", async () => {
+    mocks.findUnique.mockResolvedValue({ ...activeUser, mustChangePassword: true });
+    const { requireAdministrator } = await import("./session");
+
+    await expect(requireAdministrator()).rejects.toThrow("redirect:/change-password");
   });
 });

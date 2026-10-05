@@ -18,7 +18,7 @@ type StoredUser = {
 };
 
 function createStores() {
-  const roles = new Map<string, { id: string; isSuperAdmin: boolean }>();
+  const roles = new Map<string, { id: string; isAdministrator: boolean }>();
   const systems = new Map<string, string>();
   const modules = new Map<string, string>();
   const accessTemplates = new Set<string>();
@@ -28,10 +28,10 @@ function createStores() {
   const authUsers = new Map<string, { id: string; password: string }>();
 
   const portal: SeedPortalStore = {
-    async upsertRole(name, isSuperAdmin) {
+    async upsertRole(name, isAdministrator) {
       const existing = roles.get(name);
       if (existing) return existing;
-      const role = { id: `role-${roles.size + 1}`, isSuperAdmin };
+      const role = { id: `role-${roles.size + 1}`, isAdministrator };
       roles.set(name, role);
       return role;
     },
@@ -103,6 +103,8 @@ describe("seedPortal", () => {
     const storedUser = stores.users.get(superAdmin.username);
 
     expect(stores.roles).toHaveLength(SEED_ROLES.length);
+    expect(stores.roles.get("Super Admin")?.isAdministrator).toBe(true);
+    expect(stores.roles.get("CEO")?.isAdministrator).toBe(true);
     expect(stores.systems).toHaveLength(SEED_SYSTEMS.length);
     expect(stores.modules).toHaveLength(moduleCount);
     expect(stores.accessTemplates).toHaveLength(moduleCount);
