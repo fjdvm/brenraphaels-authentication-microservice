@@ -3,15 +3,11 @@
 import Link from "next/link";
 import { startTransition, useActionState, useState, type SyntheticEvent } from "react";
 
+import { ModuleAccessMatrix } from "@/components/admin/module-access-matrix";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  isSystemFullySelected,
-  toggleModule,
-  toggleSystem,
-  type SelectableSystem,
-} from "@/lib/admin/module-selection";
+import type { SelectableSystem } from "@/lib/admin/module-selection";
 import {
   initialCreateUserFormState,
   type CreateUserFormState,
@@ -155,37 +151,7 @@ export function CreateUserForm({ action, roles, systems }: CreateUserFormProps) 
           Choosing a Role pre-checks its usual Modules. Adjust any box before creating the User.
         </p>
         <FieldError id="moduleIds-error" message={fieldErrors.moduleIds} />
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          {systems.map((system) => (
-            <fieldset className="rounded-md border border-border p-4" key={system.id}>
-              <legend className="px-1 text-sm font-semibold text-primary">{system.name}</legend>
-              <label className="flex items-center gap-2 pb-2 text-sm font-medium">
-                <input
-                  checked={isSystemFullySelected(system, moduleIds)}
-                  className="size-4 accent-primary"
-                  onChange={() => setModuleIds((current) => toggleSystem(system, current))}
-                  type="checkbox"
-                />
-                Select all
-              </label>
-              <div className="flex flex-col gap-2 border-t border-border pt-2">
-                {system.modules.map((module) => (
-                  <label className="flex items-center gap-2 text-sm" key={module.id}>
-                    <input
-                      checked={moduleIds.includes(module.id)}
-                      className="size-4 accent-primary"
-                      name="moduleIds"
-                      onChange={() => setModuleIds((current) => toggleModule(current, module.id))}
-                      type="checkbox"
-                      value={module.id}
-                    />
-                    {module.name}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          ))}
-        </div>
+        <ModuleAccessMatrix setSelected={setModuleIds} selected={moduleIds} systems={systems} />
       </section>
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">

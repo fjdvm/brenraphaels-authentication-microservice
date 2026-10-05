@@ -3,9 +3,10 @@ import Link from "next/link";
 import { connection } from "next/server";
 
 import { Badge } from "@/components/ui/badge";
+import { ResendCredentialsButton } from "@/components/admin/resend-credentials-button";
 import { Button } from "@/components/ui/button";
-import { deleteUserAction, restoreUserAction } from "@/actions/users";
 import { UserLifecycleButton } from "@/components/admin/user-lifecycle-button";
+import { deleteUserAction, restoreUserAction, resendCredentialsAction } from "@/actions/users";
 import { requireAdministrator } from "@/lib/auth/session";
 import { listUsers, type UserStatus } from "@/lib/admin/users";
 
@@ -57,7 +58,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                   <th className="px-6 py-3 font-medium" scope="col">Email</th>
                   <th className="px-6 py-3 font-medium" scope="col">Role</th>
                   <th className="px-6 py-3 font-medium" scope="col">Status</th>
-                  <th className="px-6 py-3 font-medium" scope="col">Actions</th>
+                  <th className="px-6 py-3 font-medium" scope="col"><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -75,11 +76,24 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                       <Badge variant={statusVariant[user.status]}>{user.status}</Badge>
                     </td>
                     <td className="px-6 py-4">
-                      {user.status === "Deleted" ? (
-                        <UserLifecycleButton action={restoreUserAction} mode="restore" userId={user.id} username={user.username} />
-                      ) : user.id === administrator.id ? null : (
-                        <UserLifecycleButton action={deleteUserAction} mode="delete" userId={user.id} username={user.username} />
-                      )}
+                      <div className="flex items-start justify-end gap-2">
+                        <Button asChild size="sm" variant="outline">
+                          <Link aria-label={`Manage access for ${user.username}`} href={`/admin/users/${user.id}`}>
+                            Access
+                          </Link>
+                        </Button>
+                        {user.status === "Deleted" ? null : (
+                          <ResendCredentialsButton
+                            action={resendCredentialsAction.bind(null, user.id)}
+                            username={user.username}
+                          />
+                        )}
+                        {user.status === "Deleted" ? (
+                          <UserLifecycleButton action={restoreUserAction} mode="restore" userId={user.id} username={user.username} />
+                        ) : user.id === administrator.id ? null : (
+                          <UserLifecycleButton action={deleteUserAction} mode="delete" userId={user.id} username={user.username} />
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
