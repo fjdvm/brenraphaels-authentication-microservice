@@ -1,11 +1,55 @@
 "use client";
 
-import { Bell, LogOut } from "lucide-react";
+import { Bell, CheckCheck, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { logoutAction } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
+
+export function NotificationButton({ className }: { className?: string }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className={`relative ${className ?? ""}`}>
+      <Button
+        aria-expanded={isOpen}
+        aria-haspopup="dialog"
+        aria-label="Notifications"
+        className="relative"
+        onClick={() => setIsOpen((open) => !open)}
+        size="icon"
+        title="Notifications"
+        type="button"
+        variant="ghost"
+      >
+        <Bell aria-hidden="true" />
+        <span aria-hidden="true" className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-destructive" />
+      </Button>
+      {isOpen ? (
+        <section
+          aria-labelledby="notifications-title"
+          className="absolute right-0 top-11 z-20 w-80 overflow-hidden rounded-lg border border-border bg-surface shadow-lg"
+          role="dialog"
+        >
+          <div className="flex items-center justify-between px-5 py-3">
+            <h2 className="text-sm font-semibold text-foreground" id="notifications-title">Notifications</h2>
+            <Button className="h-auto gap-1.5 px-0 py-0 text-xs text-on-surface-variant hover:bg-transparent hover:text-foreground" type="button" variant="ghost">
+              <CheckCheck aria-hidden="true" className="size-4" />
+              Mark all read
+            </Button>
+          </div>
+          <p className="border-y border-border px-5 py-4 text-center text-xs text-on-surface-variant">
+            No notifications yet.
+          </p>
+          <Button className="h-auto w-full rounded-none px-5 py-3 text-sm font-semibold hover:bg-accent" type="button" variant="ghost">
+            View all notifications
+          </Button>
+        </section>
+      ) : null}
+    </div>
+  );
+}
 
 export function PortalActions({
   compact = false,
@@ -30,9 +74,7 @@ export function PortalActions({
   return (
     <>
       {showNotifications ? (
-        <Button aria-label="Notifications" size="icon" title="Notifications" variant="outline">
-          <Bell aria-hidden="true" />
-        </Button>
+        <NotificationButton />
       ) : null}
       <Button aria-label={compact ? "Log out" : undefined} onClick={() => setIsLogoutDialogOpen(true)} size={compact ? "icon" : "default"} type="button" variant="outline">
         {compact ? <LogOut aria-hidden="true" /> : "Log out"}

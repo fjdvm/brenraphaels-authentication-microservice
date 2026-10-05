@@ -1,7 +1,5 @@
-import Link from "next/link";
 import { connection } from "next/server";
 
-import { AdminShell } from "@/components/layout/admin-shell";
 import { Badge } from "@/components/ui/badge";
 import { requireAdministrator } from "@/lib/auth/session";
 import { listUsers, type UserStatus } from "@/lib/admin/users";
@@ -14,26 +12,14 @@ const statusVariant: Record<UserStatus, "default" | "secondary" | "destructive">
 
 export default async function UsersPage() {
   await connection();
-  const admin = await requireAdministrator();
+  await requireAdministrator();
   const users = await listUsers();
 
   return (
-    <AdminShell firstName={admin.firstName}>
-      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 p-6">
+    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 p-6 md:p-8">
         <div>
-          <p className="text-sm font-medium text-on-surface-variant">Administration</p>
           <h1 className="text-2xl font-semibold tracking-tight text-primary">User management</h1>
         </div>
-
-        <nav aria-label="User management" className="border-b border-border">
-          <Link
-            aria-current="page"
-            className="inline-flex border-b-2 border-primary px-4 py-3 text-sm font-medium text-primary"
-            href="/admin/users"
-          >
-            Users
-          </Link>
-        </nav>
 
         <section aria-labelledby="users-heading" className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
           <div className="border-b border-border px-6 py-5">
@@ -76,7 +62,6 @@ export default async function UsersPage() {
             </table>
           </div>
         </section>
-      </main>
-    </AdminShell>
+    </main>
   );
 }
