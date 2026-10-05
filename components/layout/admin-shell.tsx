@@ -65,10 +65,13 @@ export function AdminShell({ children }: AdminShellProps) {
     <SidebarProvider>
       <Sidebar collapsible="offcanvas">
         <SidebarHeader className="items-start gap-2 px-4 py-5">
-          <div className="flex items-center gap-3">
-            <BrandLogo className="rounded-lg" size={36} />
-            <div className="flex min-w-0 flex-col items-start gap-1 group-data-[collapsible=icon]:hidden">
-              <span className="truncate text-2xl font-extrabold tracking-tight text-sidebar-foreground">
+          <div className="flex items-stretch gap-3">
+            <BrandLogo
+              className="aspect-square h-auto w-auto shrink-0 self-stretch rounded-lg object-contain"
+              size={60}
+            />
+            <div className="flex min-w-0 flex-col items-start justify-center gap-1 group-data-[collapsible=icon]:hidden">
+              <span className="truncate text-2xl font-bold tracking-tight text-sidebar-foreground">
                 Bren Raphael&apos;s
               </span>
               <span className="rounded-md bg-violet-600 px-2 py-1 text-xs font-semibold text-white">
