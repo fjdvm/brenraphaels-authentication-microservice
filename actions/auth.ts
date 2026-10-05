@@ -9,6 +9,11 @@ import { getPortalUser, requirePasswordChangeUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { currentCentralSessionId, revokeIntegrationHandles } from "@/lib/integrations/revocation.server";
 import {
+  RETURN_INTENT_PARAM,
+  checkReturnIntent,
+  withReturnIntent,
+} from "@/lib/integrations/return-intent";
+import {
   changePasswordSchema,
   firstError,
   forgotPasswordSchema,
@@ -19,6 +24,20 @@ import {
 export type FormState = { error: string | null; message?: string | null };
 
 const INVALID_CREDENTIALS: FormState = { error: "Invalid credentials" };
+
+/**
+ * Where a System's pending sign-in request resumes, if the form still carries a good
+ * one. An absent, tampered or expired intent is ignored: login and password change keep
+ * working and land on the portal, and the System simply starts its request again.
+ */
+function resumeTarget(formData: FormData): { token: string | null; authorizePath: string | null } {
+  const token = formData.get(RETURN_INTENT_PARAM)?.toString() ?? null;
+  const check = checkReturnIntent(token);
+
+  return check.status === "valid"
+    ? { token, authorizePath: check.authorizePath }
+    : { token: null, authorizePath: null };
+}
 
 export async function loginAction(
   _previous: FormState,
@@ -73,7 +92,13 @@ export async function loginAction(
     targetUserId: user.id,
   });
 
-  redirect(user.mustChangePassword ? "/change-password" : "/");
+  const resume = resumeTarget(formData);
+
+  redirect(
+    user.mustChangePassword
+      ? withReturnIntent("/change-password", resume.token)
+      : (resume.authorizePath ?? "/"),
+  );
 }
 
 export async function logoutAction(): Promise<void> {
@@ -142,7 +167,9 @@ export async function changePasswordAction(
     targetUserId: user.id,
   });
 
-  redirect("/");
+  // The System's request resumes at the authorize endpoint, which rechecks the User's
+  // eligibility and System access before any code is issued.
+  redirect(resumeTarget(formData).authorizePath ?? "/");
 }
 
 export async function forgotPasswordAction(

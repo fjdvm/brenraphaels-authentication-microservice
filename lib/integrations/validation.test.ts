@@ -1,6 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
 
 import { handleAuthorize, handleExchange, handleValidate, type EndpointDeps } from "./endpoints";
 import type {

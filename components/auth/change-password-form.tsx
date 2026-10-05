@@ -11,18 +11,21 @@ import {
   AuthCardHeader,
   AuthHeading,
   FormAlert,
+  ReturnRequestFields,
+  type ReturnRequestProps,
   authCardClass,
 } from "./auth-card";
 
 const initialState: FormState = { error: null };
 
-export function ChangePasswordForm() {
+export function ChangePasswordForm(returnRequest: ReturnRequestProps) {
   const [state, formAction] = useActionState(changePasswordAction, initialState);
 
   return (
     <form action={formAction} className={authCardClass}>
       <AuthCardHeader />
       <div className="space-y-5">
+        <ReturnRequestFields {...returnRequest} />
         <AuthHeading
           title="Change your password"
           description="Enter the temporary password you were emailed, then choose a new one before continuing."

@@ -32,8 +32,20 @@ npm run system:register -- CRMS https://crms.example.com/auth/callback [more cal
 The portal validates the browser's central session **uncached** against Neon Auth, then checks that the User is not Deleted, is not awaiting their first password change, and holds at least one active Module AccessGrant in that System.
 
 - Success: `302` to `redirect_uri?code=…&state=…`. The code is single-use and valid for **60 seconds**. Only its hash is stored, bound to the System, exact callback, state, PKCE challenge and the original central session.
-- No session: `302` to `/login`. Awaiting first login: `302` to `/change-password`. (Returning to the original request afterwards is #27.)
-- Failures are JSON, never a redirect to an unregistered callback: `400 invalid_request` (unknown System, unregistered callback, missing/invalid parameters), `403 access_denied` (ineligible or no grant in that System).
+- No session: `302` to `/login?ri=…`. Awaiting first login: `302` to `/change-password?ri=…`. The request is validated first (see below), so an invalid one is refused instead of being sent through login.
+- Failures are never a redirect to an unregistered callback: `400 invalid_request` (unknown System, unregistered callback, missing/invalid parameters), `403 access_denied` (ineligible or no grant in that System). They are JSON, except that a browser navigation (`Accept: text/html`) gets a readable HTML page with the same status.
+
+### Direct entry through central login
+
+A User who opens a System directly has no portal session, so the System redirects them to authorize and the portal takes them through login:
+
+1. Authorize validates the request exactly as above (registered System, exact callback, `state`, PKCE) and only then redirects to `/login?ri=<token>`. `ri` is an HMAC-signed (`NEON_AUTH_COOKIE_SECRET`) copy of the validated request, valid for **15 minutes**.
+2. The login page and form carry `ri` in a hidden field. After a successful login the browser goes to `/api/integrations/authorize?…` rebuilt from the verified token, or first to `/change-password?ri=…` for a User awaiting first login, and to the same authorize path after the password is changed.
+3. Authorize runs again as an ordinary request, re-checking the central session, that the User is not Deleted or still awaiting a password change, and that they still hold a Module grant in the System, before any code is issued. A User who lost access meanwhile gets the denial, never a code.
+
+`ri` can never choose a destination: the only place it can send the browser is the portal's own authorize path, and a tampered, foreign-signed, malformed or expired token is ignored. Login and password change then behave as ordinary portal use, the pages say the System request expired or is invalid, and the System restarts its request by redirecting to authorize again (or the User opens it from the portal). Completing **Forgot password** does not resume a System request; the System starts a fresh one.
+
+`/api/integrations/authorize` is excluded from the `proxy.ts` session redirect so that a signed-out request reaches this logic instead of being sent to a bare `/login`.
 
 ## 2. Exchange (System backend → portal)
 

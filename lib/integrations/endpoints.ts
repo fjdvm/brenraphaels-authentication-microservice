@@ -2,9 +2,11 @@ import {
   authorizeHandoff,
   exchangeCode,
   handoffFailure,
+  validateAuthorizeParams,
   type HandoffErrorCode,
   type HandoffPorts,
 } from "./handoff";
+import { RETURN_INTENT_PARAM, issueReturnIntent } from "./return-intent";
 import {
   validateAccess,
   validationFailure,
@@ -39,6 +41,58 @@ function errorResponse(error: HandoffErrorCode | ValidationErrorCode, status: nu
   return Response.json({ error }, { status, headers: { ...NO_STORE, ...extra } });
 }
 
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
+}
+
+const BROWSER_MESSAGES: Partial<Record<HandoffErrorCode, { title: string; message: (system?: string) => string }>> = {
+  invalid_request: {
+    title: "This sign-in request can't be used",
+    message: () =>
+      "The request is invalid or has expired. Return to the System and start again.",
+  },
+  access_denied: {
+    title: "You don't have access",
+    message: (system) =>
+      `You don't have access to ${system ? escapeHtml(system) : "this System"}. Ask an Administrator to grant you a Module in it.`,
+  },
+  temporarily_unavailable: {
+    title: "Sign-in is temporarily unavailable",
+    message: () => "Please try again in a moment.",
+  },
+};
+
+/**
+ * What a person sees when the authorize endpoint refuses their browser: a readable
+ * page, never JSON and never a redirect, so a failed entry cannot land in a System.
+ * API clients that don't ask for HTML keep getting the JSON error.
+ */
+function authorizeErrorResponse(
+  request: Request,
+  error: HandoffErrorCode,
+  status: number,
+  systemName?: string,
+  extra: HeadersInit = {},
+): Response {
+  const copy = BROWSER_MESSAGES[error];
+
+  if (!copy || !request.headers.get("accept")?.includes("text/html")) {
+    return errorResponse(error, status, extra);
+  }
+
+  const body = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${copy.title}</title></head><body style="font-family:system-ui,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1.5rem;line-height:1.5"><h1>${copy.title}</h1><p>${copy.message(systemName)}</p><p><a href="/">Go to the portal</a></p></body></html>`;
+
+  return new Response(body, {
+    status,
+    headers: {
+      ...NO_STORE,
+      ...extra,
+      "Content-Type": "text/html; charset=utf-8",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+}
+
 /**
  * GET /api/integrations/authorize — browser entry point. Redirects back to the
  * registered callback with a single-use code, or answers with a JSON error. It never
@@ -51,32 +105,58 @@ export async function handleAuthorize(request: Request, deps: EndpointDeps): Pro
     // Name only: provider errors can carry connection details.
     console.error("Integration authorize unavailable:", error instanceof Error ? error.name : "unknown");
 
-    return errorResponse("temporarily_unavailable", 503, { "Retry-After": "5" });
+    return authorizeErrorResponse(request, "temporarily_unavailable", 503, undefined, {
+      "Retry-After": "5",
+    });
   }
 }
 
 async function authorize(request: Request, deps: EndpointDeps): Promise<Response> {
   const subject = await deps.resolveSubject();
-
-  if (subject.status === "signed_out") {
-    return Response.redirect(new URL("/login", request.url), 302);
-  }
-
-  if (subject.status === "must_change_password") {
-    return Response.redirect(new URL("/change-password", request.url), 302);
-  }
-
-  if (subject.status === "ineligible") {
-    return errorResponse("access_denied", 403);
-  }
-
   const params = new URL(request.url).searchParams;
-  const result = await authorizeHandoff(deps.ports, {
+  const authorizeParams = {
     system: params.get("system"),
     redirectUri: params.get("redirect_uri"),
     state: params.get("state"),
     codeChallenge: params.get("code_challenge"),
     codeChallengeMethod: params.get("code_challenge_method"),
+  };
+
+  if (subject.status === "signed_out" || subject.status === "must_change_password") {
+    // Vet the request before sending anyone through login, so an invalid one is refused
+    // here rather than carried along, and keep the vetted request for the way back.
+    const validated = await validateAuthorizeParams(deps.ports, authorizeParams);
+
+    if (!validated.ok) {
+      return authorizeErrorResponse(request, validated.error, validated.status);
+    }
+
+    const destination = new URL(
+      subject.status === "signed_out" ? "/login" : "/change-password",
+      request.url,
+    );
+    destination.searchParams.set(
+      RETURN_INTENT_PARAM,
+      issueReturnIntent(
+        {
+          system: validated.system.name,
+          redirectUri: validated.redirectUri,
+          state: validated.state,
+          codeChallenge: validated.codeChallenge,
+        },
+        deps.ports.now(),
+      ),
+    );
+
+    return Response.redirect(destination, 302);
+  }
+
+  if (subject.status === "ineligible") {
+    return authorizeErrorResponse(request, "access_denied", 403);
+  }
+
+  const result = await authorizeHandoff(deps.ports, {
+    ...authorizeParams,
     subject: { userId: subject.userId, neonSessionId: subject.neonSessionId },
   });
 
@@ -91,7 +171,7 @@ async function authorize(request: Request, deps: EndpointDeps): Promise<Response
       detail: `${systemName}: ${result.error}`,
     });
 
-    return errorResponse(result.error, result.status);
+    return authorizeErrorResponse(request, result.error, result.status, result.system?.name);
   }
 
   await deps.audit({

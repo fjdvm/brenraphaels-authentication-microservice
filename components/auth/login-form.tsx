@@ -10,6 +10,8 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import {
   AuthCardHeader,
   FormAlert,
+  ReturnRequestFields,
+  type ReturnRequestProps,
   authCardClass,
   authInputClass,
 } from "./auth-card";
@@ -19,7 +21,10 @@ const initialState: FormState = { error: null };
 // YYYY-XX-NNN, or the bootstrap Super Admin's YYYY-ADMIN-NNN.
 const usernamePattern = /^\d{4}-([A-Za-z]{2}|ADMIN)-\d{3}$/i;
 
-export function LoginForm({ passwordWasReset }: { passwordWasReset: boolean }) {
+export function LoginForm({
+  passwordWasReset,
+  ...returnRequest
+}: { passwordWasReset: boolean } & ReturnRequestProps) {
   const [state, formAction] = useActionState(loginAction, initialState);
   const [username, setUsername] = useState("");
 
@@ -27,6 +32,7 @@ export function LoginForm({ passwordWasReset }: { passwordWasReset: boolean }) {
     <form action={formAction} className={authCardClass}>
       <AuthCardHeader />
       <div className="space-y-5">
+        <ReturnRequestFields {...returnRequest} />
         {passwordWasReset ? (
           <FormAlert tone="success">
             Your password was updated. Log in with your new password.
