@@ -7,6 +7,7 @@ import { PrismaClient } from "@prisma/client";
 import {
   ADMINISTRATOR_ROLE_NAMES,
   SEED_ROLES,
+  SEED_ROLE_FORMER_NAMES,
   SEED_SYSTEMS,
   SUPER_ADMIN_ROLE_NAME,
   type SeedSystem,
@@ -132,6 +133,12 @@ function superAdminFromEnvironment(): SeedSuperAdmin {
 function createPortalStore(prisma: PrismaClient): SeedPortalStore {
   return {
     async upsertRole(name, isAdministrator) {
+      const formerName = SEED_ROLE_FORMER_NAMES[name];
+      if (formerName && !(await prisma.role.findUnique({ where: { name } }))) {
+        // Keep the Role's id so existing User assignments and templates carry over.
+        await prisma.role.updateMany({ where: { name: formerName }, data: { name } });
+      }
+
       return prisma.role.upsert({
         where: { name },
         update: { isAdministrator },
@@ -139,6 +146,18 @@ function createPortalStore(prisma: PrismaClient): SeedPortalStore {
       });
     },
     async upsertSystem(system) {
+      if (system.formerName) {
+        // Rename in place (keeping id, Modules and grant history) rather than
+        // letting the upsert below create a second System beside the legacy one.
+        const current = await prisma.system.findUnique({ where: { name: system.name } });
+        const legacy = current
+          ? null
+          : await prisma.system.findUnique({ where: { name: system.formerName } });
+        if (legacy) {
+          await prisma.system.update({ where: { id: legacy.id }, data: { name: system.name } });
+        }
+      }
+
       return prisma.system.upsert({
         where: { name: system.name },
         update: {
