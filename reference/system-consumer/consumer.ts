@@ -85,6 +85,13 @@ export function createSystemConsumer(config: ConsumerConfig) {
       const state = randomBytes(24).toString("base64url");
       const url = new URL(`${portal}/api/integrations/authorize`);
 
+      // Abandoned sign-ins would otherwise accumulate.
+      for (const [key, value] of pending) {
+        if (now() - value.createdAt > PENDING_TTL_MS) {
+          pending.delete(key);
+        }
+      }
+
       pending.set(state, { verifier, createdAt: now() });
       url.searchParams.set("system", config.systemName);
       url.searchParams.set("redirect_uri", config.callbackUrl);
