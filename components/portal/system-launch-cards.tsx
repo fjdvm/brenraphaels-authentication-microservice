@@ -1,6 +1,6 @@
 import { ArrowUpRight, Contact, LayoutGrid, Package, Store, Users, type LucideIcon } from "lucide-react";
 
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import type { AccessibleSystem } from "@/lib/portal/accessible-systems";
 import { cn } from "@/lib/utils/cn";
 
@@ -30,7 +30,7 @@ export function SystemLaunchCards({ systems }: { systems: AccessibleSystem[] }) 
   }
 
   return (
-    <ul className={cn("grid gap-4", systems.length > 1 && "sm:grid-cols-2")}>
+    <ul className={cn("grid gap-6", systems.length > 1 && "sm:grid-cols-2")}>
       {systems.map((system) => {
         const Icon = (system.iconName && SYSTEM_ICONS[system.iconName]) || LayoutGrid;
 
@@ -40,15 +40,22 @@ export function SystemLaunchCards({ systems }: { systems: AccessibleSystem[] }) 
               className="group block h-full rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
               href={system.url}
             >
-              <Card className="h-full transition-colors group-hover:border-primary">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <Icon aria-hidden="true" className="size-6 text-primary" />
-                    <ArrowUpRight aria-hidden="true" className="size-4 text-on-surface-variant" />
+              <Card className="flex h-full min-h-56 flex-col justify-between gap-6 p-8 transition-colors group-hover:border-primary group-hover:shadow-md">
+                <div className="flex flex-col gap-4">
+                  <span className="flex size-14 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Icon aria-hidden="true" className="size-8" />
+                  </span>
+                  <div className="flex flex-col gap-2">
+                    <h3 className="text-2xl font-semibold tracking-tight text-foreground">{system.name}</h3>
+                    {system.description ? (
+                      <p className="text-base text-on-surface-variant">{system.description}</p>
+                    ) : null}
                   </div>
-                  <CardTitle className="pt-2 text-lg">{system.name}</CardTitle>
-                  {system.description ? <CardDescription>{system.description}</CardDescription> : null}
-                </CardHeader>
+                </div>
+                <span className="flex items-center gap-1.5 text-sm font-medium text-primary">
+                  Open
+                  <ArrowUpRight aria-hidden="true" className="size-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                </span>
               </Card>
             </a>
           </li>
