@@ -1,9 +1,7 @@
 import type { ReactNode } from "react";
 
-import { logoutAction } from "@/actions/auth";
-import { Button } from "@/components/ui/button";
-
 import { BrandLogo } from "@/components/ui/brand-logo";
+import { PortalActions } from "@/components/layout/portal-actions";
 
 type PortalShellProps = {
   children: ReactNode;
@@ -30,11 +28,7 @@ export function PortalShell({ children, firstName }: PortalShellProps) {
                 {firstName}
               </p>
             ) : null}
-            <form action={logoutAction}>
-              <Button type="submit" variant="outline">
-                Log out
-              </Button>
-            </form>
+            <PortalActions />
           </div>
         </div>
       </header>
