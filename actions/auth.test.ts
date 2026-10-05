@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   requestPasswordReset: vi.fn(),
   resetPassword: vi.fn(),
   signOut: vi.fn(),
+  record: vi.fn(),
   redirect: vi.fn((destination: string) => {
     throw new Error(`redirect:${destination}`);
   }),
@@ -38,7 +39,10 @@ vi.mock("@/lib/auth/server", () => ({
 
 vi.mock("@/lib/auth/session", () => ({
   requirePasswordChangeUser: vi.fn(),
+  getPortalUser: vi.fn(),
 }));
+
+vi.mock("@/lib/audit/system-log", () => ({ recordSystemLogEvent: mocks.record }));
 
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 
@@ -49,7 +53,7 @@ import {
   logoutAction,
   resetPasswordAction,
 } from "./auth";
-import { requirePasswordChangeUser } from "@/lib/auth/session";
+import { getPortalUser, requirePasswordChangeUser } from "@/lib/auth/session";
 import { resetLinkParams } from "@/lib/auth/reset-link";
 
 const validForm = (username = "2026-admin-001", password = "password") => {
@@ -63,6 +67,7 @@ describe("loginAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.findUnique.mockResolvedValue({
+      id: "admin-id",
       email: "admin@example.com",
       isDeleted: false,
       mustChangePassword: false,
@@ -78,7 +83,7 @@ describe("loginAction", () => {
 
     expect(mocks.findUnique).toHaveBeenCalledWith({
       where: { username: "2026-ADMIN-001" },
-      select: { email: true, isDeleted: true, mustChangePassword: true },
+      select: { id: true, email: true, isDeleted: true, mustChangePassword: true },
     });
     expect(mocks.signInEmail).toHaveBeenCalledWith({
       email: "admin@example.com",
@@ -88,8 +93,8 @@ describe("loginAction", () => {
 
   it.each([
     ["unknown Username", null, { error: null }],
-    ["Deleted User", { email: "deleted@example.com", isDeleted: true, mustChangePassword: false }, { error: null }],
-    ["wrong password", { email: "admin@example.com", isDeleted: false, mustChangePassword: false }, { error: { message: "invalid" } }],
+    ["Deleted User", { id: "d", email: "deleted@example.com", isDeleted: true, mustChangePassword: false }, { error: null }],
+    ["wrong password", { id: "w", email: "admin@example.com", isDeleted: false, mustChangePassword: false }, { error: { message: "invalid" } }],
   ])("returns the same error for a %s", async (_case, user, signInResult) => {
     mocks.findUnique.mockResolvedValue(user);
     mocks.signInEmail.mockResolvedValue(signInResult);
@@ -99,8 +104,48 @@ describe("loginAction", () => {
     });
   });
 
+  it("records a successful login with the signed-in User as actor", async () => {
+    await expect(loginAction({ error: null }, validForm())).rejects.toThrow();
+
+    expect(mocks.record).toHaveBeenCalledWith({
+      action: "auth.login",
+      outcome: "SUCCESS",
+      actorId: "admin-id",
+      targetUserId: "admin-id",
+    });
+  });
+
+  it("records a failed login without claiming an actor, and without the password", async () => {
+    mocks.signInEmail.mockResolvedValue({ error: { message: "invalid" } });
+
+    await loginAction({ error: null }, validForm("2026-admin-001", "s3cret-pw"));
+
+    expect(mocks.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "auth.login",
+        outcome: "FAILURE",
+        targetUserId: "admin-id",
+      }),
+    );
+    const event = mocks.record.mock.calls[0][0];
+    expect(event.actorId).toBeUndefined();
+    expect(JSON.stringify(event)).not.toContain("s3cret-pw");
+  });
+
+  it("records a failed login for an unknown Username with no target", async () => {
+    mocks.findUnique.mockResolvedValue(null);
+
+    await loginAction({ error: null }, validForm());
+
+    const event = mocks.record.mock.calls[0][0];
+    expect(event).toMatchObject({ action: "auth.login", outcome: "FAILURE" });
+    expect(event.actorId).toBeUndefined();
+    expect(event.targetUserId).toBeUndefined();
+  });
+
   it("sends a User awaiting first login to change their password", async () => {
     mocks.findUnique.mockResolvedValue({
+      id: "new-id",
       email: "new.user@example.com",
       isDeleted: false,
       mustChangePassword: true,
@@ -115,6 +160,24 @@ describe("loginAction", () => {
     await expect(logoutAction()).rejects.toThrow("redirect:/login");
 
     expect(mocks.signOut).toHaveBeenCalledOnce();
+  });
+
+  it("records the logout outcome against the signed-in User", async () => {
+    vi.mocked(getPortalUser).mockResolvedValue({ id: "admin-id" } as never);
+
+    await expect(logoutAction()).rejects.toThrow("redirect:/login");
+    expect(mocks.record).toHaveBeenCalledWith({
+      action: "auth.logout",
+      outcome: "SUCCESS",
+      actorId: "admin-id",
+      targetUserId: "admin-id",
+    });
+
+    mocks.signOut.mockResolvedValue({ error: { message: "boom" } });
+    await expect(logoutAction()).rejects.toThrow("redirect:/login");
+    expect(mocks.record).toHaveBeenLastCalledWith(
+      expect.objectContaining({ action: "auth.logout", outcome: "FAILURE" }),
+    );
   });
 });
 
@@ -163,6 +226,40 @@ describe("changePasswordAction", () => {
     ).resolves.toEqual({ error: "Your current password is incorrect." });
   });
 
+  it("records password-change success and failure without passwords", async () => {
+    mocks.changePassword.mockResolvedValue({ error: { message: "invalid" } });
+    await changePasswordAction({ error: null }, validPasswordChange());
+    expect(mocks.record).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        action: "auth.password_change",
+        outcome: "FAILURE",
+        actorId: "portal-user",
+      }),
+    );
+
+    mocks.changePassword.mockResolvedValue({ error: null });
+    await expect(
+      changePasswordAction({ error: null }, validPasswordChange()),
+    ).rejects.toThrow("redirect:/");
+    expect(mocks.record).toHaveBeenLastCalledWith({
+      action: "auth.password_change",
+      outcome: "SUCCESS",
+      actorId: "portal-user",
+      targetUserId: "portal-user",
+    });
+    expect(JSON.stringify(mocks.record.mock.calls)).not.toMatch(/temporary-password|new-password/);
+  });
+
+  it("does not record password-change success when the status update fails", async () => {
+    mocks.update.mockRejectedValue(new Error("db down"));
+
+    await expect(
+      changePasswordAction({ error: null }, validPasswordChange()),
+    ).rejects.toThrow("db down");
+
+    expect(mocks.record).not.toHaveBeenCalled();
+  });
+
   it("marks the User Active, revokes other sessions, and opens the portal", async () => {
     await expect(
       changePasswordAction({ error: null }, validPasswordChange()),
@@ -195,7 +292,7 @@ describe("forgotPasswordAction", () => {
   });
 
   it("requests a reset only for an active User and signs the return Email", async () => {
-    mocks.findUnique.mockResolvedValue({ isDeleted: false });
+    mocks.findUnique.mockResolvedValue({ id: "person-id", isDeleted: false });
 
     await expect(
       forgotPasswordAction({ error: null }, formFor("PERSON@EXAMPLE.TEST")),
@@ -208,7 +305,12 @@ describe("forgotPasswordAction", () => {
     const expected = resetLinkParams("person@example.test");
     expect(mocks.findUnique).toHaveBeenCalledWith({
       where: { email: "person@example.test" },
-      select: { isDeleted: true },
+      select: { id: true, isDeleted: true },
+    });
+    expect(mocks.record).toHaveBeenCalledWith({
+      action: "auth.password_reset_request",
+      outcome: "SUCCESS",
+      targetUserId: "person-id",
     });
     expect(mocks.requestPasswordReset).toHaveBeenCalledWith({
       email: "person@example.test",
@@ -230,6 +332,9 @@ describe("forgotPasswordAction", () => {
       });
 
       expect(mocks.requestPasswordReset).not.toHaveBeenCalled();
+      expect(mocks.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: "auth.password_reset_request", outcome: "FAILURE" }),
+      );
     },
   );
 });
@@ -249,6 +354,7 @@ describe("resetPasswordAction", () => {
     process.env.NEON_AUTH_COOKIE_SECRET = "a-test-secret-that-is-at-least-thirty-two-characters";
     mocks.resetPassword.mockResolvedValue({ error: null });
     mocks.updateMany.mockResolvedValue({ count: 1 });
+    mocks.findUnique.mockResolvedValue({ id: "person-id" });
   });
 
   it("shows a clear error when Neon Auth rejects an expired or invalid token", async () => {
@@ -291,6 +397,29 @@ describe("resetPasswordAction", () => {
       where: { email },
       data: { mustChangePassword: false },
     });
+    expect(mocks.record).toHaveBeenCalledWith({
+      action: "auth.password_reset",
+      outcome: "SUCCESS",
+      actorId: "person-id",
+      targetUserId: "person-id",
+    });
+    expect(JSON.stringify(mocks.record.mock.calls)).not.toMatch(/valid-reset-token|new-password/);
+  });
+
+  it("records a failed reset against the signed User without an actor", async () => {
+    mocks.resetPassword.mockResolvedValue({ error: { message: "expired" } });
+    const { e, s } = resetLinkParams("person@example.test");
+
+    await resetPasswordAction({ error: null }, validReset({ e, s }));
+
+    const event = mocks.record.mock.calls[0][0];
+    expect(event).toMatchObject({
+      action: "auth.password_reset",
+      outcome: "FAILURE",
+      targetUserId: "person-id",
+    });
+    expect(event.actorId).toBeUndefined();
+    expect(JSON.stringify(event)).not.toContain("valid-reset-token");
   });
 
   it.each([

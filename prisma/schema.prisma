@@ -45,21 +45,23 @@ model AccessTemplate {
 }
 
 model User {
-  id                 String        @id @default(cuid())
-  username           String        @unique
-  email              String        @unique
+  id                 String           @id @default(cuid())
+  username           String           @unique
+  email              String           @unique
   firstName          String
   lastName           String
   roleId             String
   // Id of the matching Neon Auth user (neon_auth."user".id). Neon Auth owns the
   // credentials and sessions; this table owns everything portal-specific.
-  neonAuthUserId     String        @unique
-  mustChangePassword Boolean       @default(true)
-  isDeleted          Boolean       @default(false)
+  neonAuthUserId     String           @unique
+  mustChangePassword Boolean          @default(true)
+  isDeleted          Boolean          @default(false)
   deletedAt          DateTime?
-  role               Role          @relation(fields: [roleId], references: [id])
-  accessGrants       AccessGrant[] @relation("AccessGrantUser")
-  accessGrantsMade   AccessGrant[] @relation("AccessGrantGrantedBy")
+  role               Role             @relation(fields: [roleId], references: [id])
+  accessGrants       AccessGrant[]    @relation("AccessGrantUser")
+  accessGrantsMade   AccessGrant[]    @relation("AccessGrantGrantedBy")
+  systemLogsActed    SystemLogEvent[] @relation("SystemLogActor")
+  systemLogsTargeted SystemLogEvent[] @relation("SystemLogTarget")
 }
 
 model UsernameSequence {
@@ -79,4 +81,25 @@ model AccessGrant {
   grantedByUser User?     @relation("AccessGrantGrantedBy", fields: [grantedBy], references: [id])
 
   @@index([userId, moduleId])
+}
+
+enum SystemLogOutcome {
+  SUCCESS
+  FAILURE
+}
+
+// Append-only audit history. Never stores credentials, tokens, cookies or codes.
+model SystemLogEvent {
+  id           String           @id @default(cuid())
+  occurredAt   DateTime         @default(now())
+  // Null when no identity was authenticated (e.g. a failed login).
+  actorId      String?
+  action       String
+  targetUserId String?
+  outcome      SystemLogOutcome
+  detail       String?
+  actor        User?            @relation("SystemLogActor", fields: [actorId], references: [id])
+  targetUser   User?            @relation("SystemLogTarget", fields: [targetUserId], references: [id])
+
+  @@index([occurredAt])
 }
