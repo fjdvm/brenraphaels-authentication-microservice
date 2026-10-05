@@ -87,6 +87,8 @@ export const prismaProvisioningStore: ProvisioningStore = {
     }
   },
 
+  // Only ever called to roll back a User who never became Active (credentials email
+  // failed), so no real grant history is erased.
   async discardUser(id) {
     await prisma.$transaction([
       prisma.accessGrant.deleteMany({ where: { userId: id } }),

@@ -26,7 +26,6 @@ export const createUserSchema = z.object({
 });
 
 export type CreateUserInput = z.input<typeof createUserSchema>;
-export type ValidCreateUserInput = z.output<typeof createUserSchema>;
 
 export type FieldErrors = Partial<Record<keyof CreateUserInput, string>>;
 

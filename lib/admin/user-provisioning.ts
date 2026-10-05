@@ -87,6 +87,7 @@ export async function provisionUser(
   const parsed = createUserSchema.safeParse(input);
 
   if (!parsed.success) {
+    await logFailure("Invalid User information");
     return failure("Check the highlighted fields and try again.", fieldErrorsFrom(parsed.error));
   }
 
