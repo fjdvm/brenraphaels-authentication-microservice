@@ -124,16 +124,16 @@ export async function changePasswordAction(
     return { error: "Your current password is incorrect." };
   }
 
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { mustChangePassword: false },
+  });
+
   await recordSystemLogEvent({
     action: "auth.password_change",
     outcome: "SUCCESS",
     actorId: user.id,
     targetUserId: user.id,
-  });
-
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { mustChangePassword: false },
   });
 
   redirect("/");

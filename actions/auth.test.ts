@@ -250,6 +250,16 @@ describe("changePasswordAction", () => {
     expect(JSON.stringify(mocks.record.mock.calls)).not.toMatch(/temporary-password|new-password/);
   });
 
+  it("does not record password-change success when the status update fails", async () => {
+    mocks.update.mockRejectedValue(new Error("db down"));
+
+    await expect(
+      changePasswordAction({ error: null }, validPasswordChange()),
+    ).rejects.toThrow("db down");
+
+    expect(mocks.record).not.toHaveBeenCalled();
+  });
+
   it("marks the User Active, revokes other sessions, and opens the portal", async () => {
     await expect(
       changePasswordAction({ error: null }, validPasswordChange()),

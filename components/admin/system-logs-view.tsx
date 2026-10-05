@@ -1,11 +1,16 @@
 import { Badge } from "@/components/ui/badge";
 import type { SystemLogEntry } from "@/lib/audit/system-log";
 
-const timestamp = new Intl.DateTimeFormat("en", {
+const timestampFormat = new Intl.DateTimeFormat("en", {
   dateStyle: "medium",
   timeStyle: "medium",
   timeZone: "UTC",
 });
+
+const outcomeDisplay = {
+  SUCCESS: { label: "Success", variant: "default" },
+  FAILURE: { label: "Failed", variant: "destructive" },
+} as const;
 
 /** `entries` is null when the log could not be read. */
 export function SystemLogsView({ entries }: { entries: SystemLogEntry[] | null }) {
@@ -48,15 +53,15 @@ export function SystemLogsView({ entries }: { entries: SystemLogEntry[] | null }
               <tr key={entry.id}>
                 <td className="whitespace-nowrap px-6 py-4 text-on-surface-variant">
                   <time dateTime={entry.occurredAt.toISOString()}>
-                    {timestamp.format(entry.occurredAt)}
+                    {timestampFormat.format(entry.occurredAt)}
                   </time>
                 </td>
                 <td className="px-6 py-4 text-foreground">{entry.actor ?? "Unknown"}</td>
                 <td className="whitespace-nowrap px-6 py-4 text-foreground">{entry.action}</td>
                 <td className="px-6 py-4 text-on-surface-variant">{entry.target ?? "—"}</td>
                 <td className="whitespace-nowrap px-6 py-4">
-                  <Badge variant={entry.outcome === "SUCCESS" ? "default" : "destructive"}>
-                    {entry.outcome === "SUCCESS" ? "Success" : "Failed"}
+                  <Badge variant={outcomeDisplay[entry.outcome].variant}>
+                    {outcomeDisplay[entry.outcome].label}
                   </Badge>
                 </td>
                 <td className="px-6 py-4 text-on-surface-variant">{entry.detail ?? "—"}</td>

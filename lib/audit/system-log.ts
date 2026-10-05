@@ -10,8 +10,8 @@ export const SYSTEM_LOG_ACTIONS = {
   "auth.login": "Signed in",
   "auth.logout": "Signed out",
   "auth.password_change": "Changed password",
-  "auth.password_reset_request": "Requested password reset",
-  "auth.password_reset": "Reset password",
+  "auth.password_reset_request": "Requested Forgot password link",
+  "auth.password_reset": "Completed Forgot password",
 } as const;
 
 export type SystemLogAction = keyof typeof SYSTEM_LOG_ACTIONS;
@@ -79,7 +79,7 @@ function describeUser(user: NamedUser): string | null {
   return user ? `${user.firstName} ${user.lastName} (${user.username})` : null;
 }
 
-const LIMIT = 200;
+export const SYSTEM_LOG_PAGE_SIZE = 200;
 
 /** Newest first. Checks the live Administrator status itself, so a direct call can't bypass the page guard. */
 export async function listSystemLogEvents(): Promise<SystemLogEntry[]> {
@@ -92,7 +92,7 @@ export async function listSystemLogEvents(): Promise<SystemLogEntry[]> {
   const userSelect = { username: true, firstName: true, lastName: true };
   const events = await prisma.systemLogEvent.findMany({
     orderBy: { occurredAt: "desc" },
-    take: LIMIT,
+    take: SYSTEM_LOG_PAGE_SIZE,
     select: {
       id: true,
       occurredAt: true,
