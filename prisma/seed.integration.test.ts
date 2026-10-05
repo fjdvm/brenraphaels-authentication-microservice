@@ -134,5 +134,8 @@ describe.skipIf(!testEnvironment)("the disposable Neon branch seed", () => {
       SELECT count(*)::int AS revoked FROM "AccessGrant" WHERE "revokedAt" IS NOT NULL
     `;
     expect(revoked.revoked).toBeGreaterThanOrEqual(1);
+
+    // Leave the shared branch as found: re-activate the grant revoked above.
+    await sql`UPDATE "AccessGrant" SET "revokedAt" = NULL WHERE "revokedAt" IS NOT NULL`;
   });
 });

@@ -84,6 +84,11 @@ export const SEED_ROLES = [
   "Cashier",
 ] as const;
 
+/** Roles renamed since first seeded: current name -> former name. Renamed in place. */
+export const SEED_ROLE_FORMER_NAMES: Readonly<Record<string, string>> = {
+  "IMS Manager": "SCMS Manager",
+};
+
 export const SUPER_ADMIN_ROLE_NAME = "Super Admin" satisfies (typeof SEED_ROLES)[number];
 
 export const ADMINISTRATOR_ROLE_NAMES: readonly string[] = [SUPER_ADMIN_ROLE_NAME, "CEO"];

@@ -7,6 +7,7 @@ import { PrismaClient } from "@prisma/client";
 import {
   ADMINISTRATOR_ROLE_NAMES,
   SEED_ROLES,
+  SEED_ROLE_FORMER_NAMES,
   SEED_SYSTEMS,
   SUPER_ADMIN_ROLE_NAME,
   type SeedSystem,
@@ -132,6 +133,12 @@ function superAdminFromEnvironment(): SeedSuperAdmin {
 function createPortalStore(prisma: PrismaClient): SeedPortalStore {
   return {
     async upsertRole(name, isAdministrator) {
+      const formerName = SEED_ROLE_FORMER_NAMES[name];
+      if (formerName && !(await prisma.role.findUnique({ where: { name } }))) {
+        // Keep the Role's id so existing User assignments and templates carry over.
+        await prisma.role.updateMany({ where: { name: formerName }, data: { name } });
+      }
+
       return prisma.role.upsert({
         where: { name },
         update: { isAdministrator },
