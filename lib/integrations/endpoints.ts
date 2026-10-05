@@ -39,6 +39,17 @@ function errorResponse(error: HandoffErrorCode, status: number, extra: HeadersIn
  * redirects to an unregistered callback, not even to report an error.
  */
 export async function handleAuthorize(request: Request, deps: EndpointDeps): Promise<Response> {
+  try {
+    return await authorize(request, deps);
+  } catch (error) {
+    // Name only: provider errors can carry connection details.
+    console.error("Integration authorize unavailable:", error instanceof Error ? error.name : "unknown");
+
+    return errorResponse("temporarily_unavailable", 503, { "Retry-After": "5" });
+  }
+}
+
+async function authorize(request: Request, deps: EndpointDeps): Promise<Response> {
   const subject = await deps.resolveSubject();
 
   if (subject.status === "signed_out") {
@@ -119,7 +130,10 @@ function stringField(body: unknown, key: string): string | null {
  * authenticates with HTTP Basic (System name : backend secret) and trades the code,
  * PKCE verifier, callback and state for an opaque integration handle.
  */
-export async function handleExchange(request: Request, deps: EndpointDeps): Promise<Response> {
+export async function handleExchange(
+  request: Request,
+  deps: Pick<EndpointDeps, "ports" | "audit">,
+): Promise<Response> {
   const credentials = parseBasicCredentials(request.headers.get("authorization"));
 
   let body: unknown = null;
@@ -140,7 +154,7 @@ export async function handleExchange(request: Request, deps: EndpointDeps): Prom
       state: stringField(body, "state"),
     });
   } catch (error) {
-    console.error("Integration exchange unavailable", error);
+    console.error("Integration exchange unavailable:", error instanceof Error ? error.name : "unknown");
     const unavailable = handoffFailure("temporarily_unavailable");
 
     return errorResponse(unavailable.error, unavailable.status, { "Retry-After": "5" });

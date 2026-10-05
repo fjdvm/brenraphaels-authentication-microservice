@@ -6,7 +6,5 @@ export async function POST(request: Request): Promise<Response> {
   return handleExchange(request, {
     ports: prismaHandoffPorts,
     audit: recordSystemLogEvent,
-    // Server-to-server: no browser session is involved.
-    resolveSubject: async () => ({ status: "signed_out" }),
   });
 }

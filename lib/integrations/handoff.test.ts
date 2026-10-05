@@ -304,6 +304,18 @@ describe("secure sign-in handoff", () => {
     });
   });
 
+  it("answers temporarily_unavailable, not a stack trace, when authorization cannot be decided", async () => {
+    ctx.deps.ports.hasActiveGrantInSystem = async () => {
+      throw new Error("db down");
+    };
+
+    const response = await authorize();
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "temporarily_unavailable" });
+    expect(ctx.world.codes).toHaveLength(0);
+  });
+
   describe("code exchange is refused", () => {
     it("for a replayed code", async () => {
       const code = await issueCode();
