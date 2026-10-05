@@ -3,7 +3,9 @@ import Link from "next/link";
 import { connection } from "next/server";
 
 import { Badge } from "@/components/ui/badge";
+import { ResendCredentialsButton } from "@/components/admin/resend-credentials-button";
 import { Button } from "@/components/ui/button";
+import { resendCredentialsAction } from "@/actions/users";
 import { requireAdministrator } from "@/lib/auth/session";
 import { listUsers, type UserStatus } from "@/lib/admin/users";
 
@@ -72,12 +74,20 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                     <td className="whitespace-nowrap px-6 py-4">
                       <Badge variant={statusVariant[user.status]}>{user.status}</Badge>
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-right">
-                      <Button asChild size="sm" variant="outline">
-                        <Link aria-label={`Manage access for ${user.username}`} href={`/admin/users/${user.id}`}>
-                          Access
-                        </Link>
-                      </Button>
+                    <td className="px-6 py-4">
+                      <div className="flex items-start justify-end gap-2">
+                        <Button asChild size="sm" variant="outline">
+                          <Link aria-label={`Manage access for ${user.username}`} href={`/admin/users/${user.id}`}>
+                            Access
+                          </Link>
+                        </Button>
+                        {user.status === "Deleted" ? null : (
+                          <ResendCredentialsButton
+                            action={resendCredentialsAction.bind(null, user.id)}
+                            username={user.username}
+                          />
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -4,7 +4,10 @@ import { promisify } from "node:util";
 
 import { neon } from "@neondatabase/serverless";
 
+import type { ResendPorts } from "@/lib/admin/credential-resend";
 import type { IdentityProvisioner } from "@/lib/admin/user-provisioning";
+
+type CredentialIssuer = ResendPorts["credentials"];
 
 const scryptAsync = promisify(scrypt) as (
   password: string,
@@ -88,6 +91,44 @@ export function createNeonAuthIdentityProvisioner(
         )
         DELETE FROM neon_auth."user" WHERE id = ${id}::uuid
       `;
+    },
+  };
+}
+
+/**
+ * Replaces a credential identity's password and ends its sessions, so the previous
+ * password and any signed-in device stop working the moment fresh credentials are issued.
+ */
+export function createNeonAuthCredentialIssuer(
+  connectionString = process.env.DATABASE_URL,
+): CredentialIssuer {
+  if (!connectionString) {
+    throw new Error("DATABASE_URL must be set to replace Neon Auth passwords.");
+  }
+
+  const sql = neon(connectionString);
+
+  return {
+    async replacePassword(neonAuthUserId, password) {
+      const passwordHash = await hashCredentialPassword(password);
+
+      const updated = (await sql`
+        WITH updated_account AS (
+          UPDATE neon_auth.account
+          SET password = ${passwordHash}, "updatedAt" = now()
+          WHERE "userId" = ${neonAuthUserId}::uuid AND "providerId" = 'credential'
+          RETURNING "userId"
+        ),
+        removed_sessions AS (
+          DELETE FROM neon_auth.session
+          WHERE "userId" IN (SELECT "userId" FROM updated_account)
+        )
+        SELECT "userId"::text AS id FROM updated_account
+      `) as { id: string }[];
+
+      if (!updated[0]) {
+        throw new Error("No Neon Auth credential exists for this User.");
+      }
     },
   };
 }
