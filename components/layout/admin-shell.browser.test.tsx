@@ -10,6 +10,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/components/layout/portal-actions", () => ({
   PortalActions: () => <button type="button">Log out</button>,
+  NotificationButton: () => <button aria-label="Notifications" type="button" />,
 }));
 
 import { AdminShell } from "./admin-shell";
@@ -40,11 +41,12 @@ describe("Administrator navigation journeys", () => {
   it("shows the active administrative destination and collapses on desktop", async () => {
     setViewport(false);
     const user = userEvent.setup();
-    render(<AdminShell firstName="Jude"><div>Page content</div></AdminShell>);
+    render(<AdminShell><div>Page content</div></AdminShell>);
 
     expect(screen.getByRole("link", { name: "Access" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "User management" }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByRole("link", { name: "System logs" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Notifications" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Log out" })).toBeTruthy();
 
     await user.click(screen.getByRole("button", { name: "Collapse sidebar" }));
@@ -55,7 +57,7 @@ describe("Administrator navigation journeys", () => {
   it("opens a phone drawer that closes with Escape and restores focus", async () => {
     setViewport(true);
     const user = userEvent.setup();
-    render(<AdminShell firstName="Jude"><div>Page content</div></AdminShell>);
+    render(<AdminShell><div>Page content</div></AdminShell>);
 
     const trigger = screen.getByRole("button", { name: "Open navigation" });
     await user.click(trigger);

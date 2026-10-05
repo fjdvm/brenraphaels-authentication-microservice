@@ -1,4 +1,4 @@
-import { LayoutGrid, ScrollText, Users, type LucideIcon } from "lucide-react";
+import { FileText, LayoutGrid, type LucideIcon, UsersRound } from "lucide-react";
 
 export type AdministrativeDestination = {
   href: string;
@@ -8,6 +8,6 @@ export type AdministrativeDestination = {
 
 export const ADMIN_NAVIGATION: readonly AdministrativeDestination[] = [
   { href: "/admin/access", label: "Access", icon: LayoutGrid },
-  { href: "/admin/users", label: "User management", icon: Users },
-  { href: "/admin/system-logs", label: "System logs", icon: ScrollText },
+  { href: "/admin/users", label: "User management", icon: UsersRound },
+  { href: "/admin/system-logs", label: "System logs", icon: FileText },
 ];
