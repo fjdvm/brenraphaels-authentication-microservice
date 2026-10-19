@@ -6,6 +6,7 @@ import {
   type SeedPortalStore,
 } from "./seed";
 
+import { mergeCallbackUrls } from "../lib/integrations/callbacks";
 import { SEED_ROLES, SEED_SYSTEMS } from "../lib/seed-data";
 
 type StoredUser = {
@@ -120,5 +121,28 @@ describe("seedPortal", () => {
     });
     expect(stores.accessGrants).toHaveLength(moduleCount);
     expect(stores.sequences.get(2026)).toBe(1);
+  });
+
+  it("registers CRMS at its real origin with exact callbacks and trusts no placeholder System", () => {
+    const crms = SEED_SYSTEMS.find((system) => system.name === "CRMS");
+
+    expect(crms?.url).toBe("https://epic-crms.vercel.app");
+    expect(crms?.callbackUrls).toEqual([
+      "https://epic-crms.vercel.app/api/portal/callback",
+      "http://localhost:3000/api/portal/callback",
+    ]);
+    expect(
+      SEED_SYSTEMS.filter((system) => system.name !== "CRMS").flatMap(
+        (system) => system.callbackUrls ?? [],
+      ),
+    ).toEqual([]);
+  });
+
+  it("merges seeded callbacks without duplicating or dropping registered ones", () => {
+    const seeded = SEED_SYSTEMS.find((system) => system.name === "CRMS")!.callbackUrls!;
+    const once = mergeCallbackUrls(["https://operator.example/cb"], seeded);
+
+    expect(once).toEqual(["https://operator.example/cb", ...seeded]);
+    expect(mergeCallbackUrls(once, seeded)).toEqual(once);
   });
 });

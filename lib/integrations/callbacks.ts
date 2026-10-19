@@ -26,3 +26,21 @@ export function normalizeCallbackUrl(value: string): string | null {
 
   return url.toString();
 }
+
+/** A loopback callback is for local development and is never honoured in production. */
+export function isCallbackAllowed(callback: string, nodeEnv = process.env.NODE_ENV): boolean {
+  if (nodeEnv !== "production") {
+    return true;
+  }
+
+  try {
+    return !LOOPBACK_HOSTS.has(new URL(callback).hostname);
+  } catch {
+    return false;
+  }
+}
+
+/** Adds seeded callbacks to those already registered, never dropping an operator's own. */
+export function mergeCallbackUrls(registered: string[], seeded: string[]): string[] {
+  return [...new Set([...registered, ...seeded])];
+}

@@ -1,3 +1,4 @@
+import { isCallbackAllowed } from "./callbacks";
 import { generateToken, hashToken, isValidCodeChallenge, safeEqual, verifyPkce } from "./tokens";
 
 export const HANDOFF_CODE_TTL_MS = 60_000;
@@ -112,7 +113,7 @@ export async function validateAuthorizeParams(
 
   // An unknown System and an unregistered callback are indistinguishable on purpose,
   // and neither is ever redirected to.
-  if (!system || !system.backendSecretHash || !system.callbackUrls.includes(redirectUri)) {
+  if (!system || !system.backendSecretHash || !system.callbackUrls.includes(redirectUri) || !isCallbackAllowed(redirectUri)) {
     return handoffFailure("invalid_request");
   }
 
