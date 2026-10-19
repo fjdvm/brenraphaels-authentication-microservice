@@ -24,6 +24,10 @@ describe("proxy matcher", () => {
     expect(runsProxyFor("/api/integrations/exchange")).toBe(false);
   });
 
+  it("leaves the server-to-server validate call public, since it carries no browser session", () => {
+    expect(runsProxyFor("/api/integrations/validate")).toBe(false);
+  });
+
   it("keeps guarding the portal and the password-change page", () => {
     expect(runsProxyFor("/")).toBe(true);
     expect(runsProxyFor("/change-password")).toBe(true);
