@@ -1,8 +1,8 @@
 "use client";
 
-import { Bell, CheckCheck, LogOut } from "lucide-react";
+import { Bell, CheckCheck, Loader2, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, useFormStatus } from "react-dom";
 
 import { logoutAction } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,17 @@ export function NotificationButton({ className }: { className?: string }) {
         </section>
       ) : null}
     </div>
+  );
+}
+
+function LogoutSubmitButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button aria-busy={pending} disabled={pending} type="submit">
+      {pending ? <Loader2 aria-hidden="true" className="animate-spin" /> : null}
+      {pending ? "Logging out…" : "Log out"}
+    </Button>
   );
 }
 
@@ -101,7 +112,7 @@ export function PortalActions({
                     Cancel
                   </Button>
                   <form action={logoutAction}>
-                    <Button type="submit">Log out</Button>
+                    <LogoutSubmitButton />
                   </form>
                 </div>
               </div>
