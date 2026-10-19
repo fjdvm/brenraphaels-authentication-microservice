@@ -280,7 +280,7 @@ export async function handleExchange(
 /**
  * POST /api/integrations/validate — server-to-server, called by a System backend
  * before every protected request. Basic backend credentials plus `{ handle, module }`.
- * `200 { active: true }` is the only positive decision; every other status denies.
+ * `200 { active: true, … }` (with the Staff member's `staff` profile) is the only positive decision; every other status denies.
  * 401 `invalid_handle` / 403 `access_denied` mean invalid access; 503
  * `temporarily_unavailable` means validation could not run. All of them deny.
  */
@@ -336,7 +336,13 @@ export async function handleValidate(
   }
 
   return Response.json(
-    { active: true, user_id: result.userId, system: result.system, module: result.module },
+    {
+      active: true,
+      user_id: result.userId,
+      system: result.system,
+      module: result.module,
+      staff: result.staff,
+    },
     { headers: NO_STORE },
   );
 }

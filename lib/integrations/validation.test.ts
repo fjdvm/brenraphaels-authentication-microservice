@@ -87,6 +87,11 @@ function createWorld() {
 
       return world.grants.has(`${userId}:${systemId}:${moduleName}`);
     },
+    async findStaffProfile() {
+      guard();
+
+      return { name: "Ada Okafor", username: "ada.okafor", email: "ada@example.com", role: "Customer Support" };
+    },
     async isCentralSessionActive(id) {
       guard();
 
@@ -219,6 +224,12 @@ describe("live session and Module validation", () => {
       user_id: "user-1",
       system: "CRMS",
       module: "Dashboard",
+      staff: {
+        name: "Ada Okafor",
+        username: "ada.okafor",
+        email: "ada@example.com",
+        role: "Customer Support",
+      },
     });
     expect(response.headers.get("cache-control")).toBe("no-store");
   });
