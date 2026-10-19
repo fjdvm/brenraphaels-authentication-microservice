@@ -123,6 +123,22 @@ describe("secure sign-in handoff", () => {
       }
     });
 
+    it("for a localhost callback in production, though it is accepted in development", async () => {
+      const local = "http://localhost:3000/auth/callback";
+      ctx.world.systems[0] = {
+        ...ctx.world.systems[0],
+        callbackUrls: [...ctx.world.systems[0].callbackUrls, local],
+      };
+
+      expect((await authorize({ redirect_uri: local })).status).toBe(302);
+
+      vi.stubEnv("NODE_ENV", "production");
+      const response = await authorize({ redirect_uri: local });
+
+      expect(response.status).toBe(400);
+      expect(response.headers.get("location")).toBeNull();
+    });
+
     it("for an unknown System", async () => {
       expect((await authorize({ system: "ERP" })).status).toBe(400);
     });

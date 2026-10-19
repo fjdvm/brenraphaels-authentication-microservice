@@ -4,6 +4,7 @@ import { neon } from "@neondatabase/serverless";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "@prisma/client";
 
+import { mergeCallbackUrls } from "../lib/integrations/callbacks";
 import {
   ADMINISTRATOR_ROLE_NAMES,
   SEED_ROLES,
@@ -158,18 +159,31 @@ function createPortalStore(prisma: PrismaClient): SeedPortalStore {
         }
       }
 
+      // Callbacks are only ever added to; the backend secret is never touched, so
+      // re-seeding neither duplicates a System nor resets its registration.
+      const registered = await prisma.system.findUnique({
+        where: { name: system.name },
+        select: { callbackUrls: true },
+      });
+      const callbackUrls = mergeCallbackUrls(
+        registered?.callbackUrls ?? [],
+        system.callbackUrls ?? [],
+      );
+
       return prisma.system.upsert({
         where: { name: system.name },
         update: {
           url: system.url,
           iconName: system.iconName,
           description: system.description,
+          callbackUrls,
         },
         create: {
           name: system.name,
           url: system.url,
           iconName: system.iconName,
           description: system.description,
+          callbackUrls,
         },
       });
     },

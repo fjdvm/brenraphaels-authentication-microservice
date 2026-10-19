@@ -6,14 +6,20 @@ export type SeedSystem = {
   description: string;
   /** Previous name; an existing System under it is renamed in place, never duplicated. */
   formerName?: string;
+  /** Exact callbacks registered for the sign-in handoff; a System with none is untrusted. */
+  callbackUrls?: string[];
   modules: string[];
 };
 
-// CRMS is deployed; HRMS/POS/IMS URLs are placeholders pending real deployment.
+// CRMS (CREOMS) is deployed; HRMS/POS/IMS URLs are placeholders pending real deployment.
 export const SEED_SYSTEMS: SeedSystem[] = [
   {
     name: "CRMS",
-    url: "https://br-crms.jude-nitram08.workers.dev",
+    url: "https://epic-crms.vercel.app",
+    callbackUrls: [
+      "https://epic-crms.vercel.app/api/portal/callback",
+      "http://localhost:3000/api/portal/callback", // ignored in production
+    ],
     iconName: "users",
     description: "Customer profiles, campaigns, conversations and support tickets.",
     modules: [
