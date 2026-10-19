@@ -113,7 +113,7 @@ describe.skipIf(!databaseUrl)("the sign-in handoff", () => {
       system: "CRMS",
       redirect_uri: CRMS_CALLBACK,
       state: "correlation-1",
-      code_challenge: params.challenge ?? "challenge",
+      code_challenge: params.challenge ?? pkce().challenge,
       code_challenge_method: "S256",
     });
     for (const [key, value] of Object.entries(params)) {
@@ -277,6 +277,19 @@ describe.skipIf(!databaseUrl)("the sign-in handoff", () => {
       expect(response.status).toBe(400);
     });
 
+    it("answers 503, not a login redirect, when the session provider is unavailable", async () => {
+      mocks.getSession.mockResolvedValue({ data: null, error: { status: 500 } });
+
+      const response = await authorize();
+
+      expect(response.status).toBe(503);
+      expect(response.headers.get("location")).toBeNull();
+    });
+
+    it("rejects a malformed code challenge", async () => {
+      expect((await authorize({ challenge: "short" })).status).toBe(400);
+    });
+
     it("requires a state and an S256 code challenge", async () => {
       await createUser("ada");
       signedInAs("ada");
@@ -428,6 +441,19 @@ describe.skipIf(!databaseUrl)("the sign-in handoff", () => {
 
       expect((await exchange(exchangeBody(code, verifier))).status).toBe(400);
       expect(await prisma.systemSession.count()).toBe(0);
+    });
+
+    it("rejects a code_verifier shorter than 43 characters", async () => {
+      const { code } = await issuedCode();
+
+      expect((await exchange(exchangeBody(code, "short"))).status).toBe(400);
+    });
+
+    it("rejects the exchange if the Staff member was sent back to first-login password change", async () => {
+      const { code, verifier } = await issuedCode();
+      await prisma.user.updateMany({ data: { mustChangePassword: true } });
+
+      expect((await exchange(exchangeBody(code, verifier))).status).toBe(400);
     });
 
     it("rejects incomplete requests", async () => {

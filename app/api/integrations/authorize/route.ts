@@ -38,9 +38,14 @@ export async function GET(request: Request): Promise<Response> {
   const returnTo = encodeURIComponent(`${url.pathname}${url.search}`);
 
   // The cookie cache could still vouch for a session that has since been revoked.
-  const { data: session } = await auth.getSession({
+  const { data: session, error } = await auth.getSession({
     query: { disableCookieCache: "true" },
   });
+
+  // Distinct from "signed out": when the session provider is down, nobody is sent to log in.
+  if (error && error.status !== 401) {
+    return Response.json({ error: "temporarily_unavailable" }, { status: 503 });
+  }
 
   if (!session?.user) {
     return redirectTo(`/login?returnTo=${returnTo}`, url);

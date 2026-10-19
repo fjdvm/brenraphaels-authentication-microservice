@@ -1,4 +1,4 @@
-import { authenticateSystem, exchangeCode } from "@/lib/integrations/handoff";
+import { PKCE_VERIFIER, authenticateSystem, exchangeCode } from "@/lib/integrations/handoff";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +48,7 @@ export async function POST(request: Request): Promise<Response> {
   const correlation = field("state");
   const codeVerifier = field("code_verifier");
 
-  if (!code || !redirectUri || !correlation || !codeVerifier) {
+  if (!code || !redirectUri || !correlation || !codeVerifier || !PKCE_VERIFIER.test(codeVerifier)) {
     return failure("invalid_request", 400);
   }
 

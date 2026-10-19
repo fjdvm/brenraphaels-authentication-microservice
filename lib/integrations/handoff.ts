@@ -12,6 +12,11 @@ import {
 export const CODE_TTL_MS = 60_000;
 export const SESSION_TTL_MS = 12 * 60 * 60_000;
 
+const MAX_STATE_LENGTH = 512;
+// base64url(SHA-256(...)) is always 43 characters; verifiers are 43-128 (RFC 7636).
+const PKCE_CHALLENGE = /^[A-Za-z0-9_-]{43}$/;
+export const PKCE_VERIFIER = /^[A-Za-z0-9._~-]{43,128}$/;
+
 export type AuthorizeRequest = {
   system: string;
   redirectUri: string;
@@ -27,6 +32,10 @@ export function parseAuthorizeRequest(url: URL): AuthorizeRequest | null {
   const method = url.searchParams.get("code_challenge_method");
 
   if (!system || !redirectUri || !state || !codeChallenge || method !== "S256") {
+    return null;
+  }
+
+  if (state.length > MAX_STATE_LENGTH || !PKCE_CHALLENGE.test(codeChallenge)) {
     return null;
   }
 
@@ -47,14 +56,14 @@ export async function findRegisteredCallback(system: string, redirectUri: string
   return callback ? { callbackUrl: callback.url, system: callback.system } : null;
 }
 
-/** Whether the User is active and holds at least one active Module grant in the System. */
+/** Whether the User is active, not awaiting first login, and holds at least one active Module grant in the System. */
 export async function mayEnterSystem(userId: string, systemId: string): Promise<boolean> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { isDeleted: true },
+    select: { isDeleted: true, mustChangePassword: true },
   });
 
-  if (!user || user.isDeleted) {
+  if (!user || user.isDeleted || user.mustChangePassword) {
     return false;
   }
 

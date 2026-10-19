@@ -84,3 +84,15 @@ _Avoid_: Granted System, System access
 **Restore**:
 Bringing a Deleted User back as the same User — same Username, Email, and AccessGrant history — rather than creating a new one. It changes nothing else: their password and AccessGrants come back exactly as they were, so an Administrator should review both afterwards.
 _Avoid_: Undelete, reactivate, re-create.
+
+**Sign-in code**:
+A short-lived, single-use value the Portal issues to a signed-in User's browser for one System. The System's backend exchanges it for a Session handle. Bound to the registered System, its exact callback, the original central session and the request's correlation.
+_Avoid_: Auth code, token.
+
+**Session handle**:
+The opaque secret a System's backend holds in place of the central session after exchanging a Sign-in code. Bound to one System and one central session; the Portal stores only its hash.
+_Avoid_: Access token, System session cookie.
+
+**Callback**:
+An exact address a System is registered to be sent back to after a handoff. Nothing else is trusted; `localhost` callbacks apply outside production only.
+_Avoid_: Redirect URL, return URL.

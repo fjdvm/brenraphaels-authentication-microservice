@@ -145,12 +145,17 @@ function superAdminFromEnvironment(): SeedSuperAdmin {
 
 // A System's backend secret is read from SYSTEM_SECRET_<NAME> (e.g. SYSTEM_SECRET_CRMS)
 // and only its hash is stored. A System with no secret set keeps whatever it has.
+const MIN_SYSTEM_SECRET_LENGTH = 32;
+
 function systemSecretsFromEnvironment(): Record<string, string> {
   const secrets: Record<string, string> = {};
 
   for (const system of SEED_SYSTEMS) {
     const secret = process.env[`SYSTEM_SECRET_${system.name}`]?.trim();
     if (secret) {
+      if (secret.length < MIN_SYSTEM_SECRET_LENGTH) {
+        throw new Error(`SYSTEM_SECRET_${system.name} must be at least ${MIN_SYSTEM_SECRET_LENGTH} characters.`);
+      }
       secrets[system.name] = secret;
     }
   }
