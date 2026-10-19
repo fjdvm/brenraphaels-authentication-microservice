@@ -1,6 +1,8 @@
 import { hashToken, safeEqual } from "./tokens";
 import type { HandoffPorts, IntegrationSessionRecord } from "./handoff";
 
+export type StaffProfile = { name: string; username: string; email: string; role: string };
+
 export type StoredIntegrationSession = IntegrationSessionRecord & { revokedAt: Date | null };
 
 /** Everything live validation needs; faked at this seam in tests. */
@@ -11,6 +13,8 @@ export type ValidationPorts = Pick<
   findIntegrationSession(handleHash: string): Promise<StoredIntegrationSession | null>;
   /** True when the User holds an unrevoked AccessGrant on the named Module of this System. */
   hasActiveGrantInModule(userId: string, systemId: string, moduleName: string): Promise<boolean>;
+  /** Display details of the User, read fresh so a renamed or re-roled User is shown correctly. */
+  findStaffProfile(userId: string): Promise<StaffProfile | null>;
 };
 
 export type ValidationErrorCode =
@@ -48,7 +52,7 @@ export type ValidationRequest = {
 };
 
 export type ValidationResult =
-  | { ok: true; userId: string; system: string; module: string }
+  | { ok: true; userId: string; system: string; module: string; staff: StaffProfile }
   | ValidationFailure;
 
 /**
@@ -100,5 +104,11 @@ export async function validateAccess(
     return { ...validationFailure("access_denied"), system: identified, userId: session.userId };
   }
 
-  return { ok: true, userId: session.userId, system: system.name, module: request.moduleName };
+  const staff = await ports.findStaffProfile(session.userId);
+
+  if (!staff) {
+    return { ...validationFailure("access_denied"), system: identified, userId: session.userId };
+  }
+
+  return { ok: true, userId: session.userId, system: system.name, module: request.moduleName, staff };
 }

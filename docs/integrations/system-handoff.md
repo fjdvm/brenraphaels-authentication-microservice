@@ -92,8 +92,16 @@ Content-Type: application/json
 `module` is the Module's name within the calling System. Success `200` is the only positive decision:
 
 ```json
-{ "active": true, "user_id": "…", "system": "CRMS", "module": "Customer Profiles" }
+{
+  "active": true,
+  "user_id": "…",
+  "system": "CRMS",
+  "module": "Customer Profiles",
+  "staff": { "name": "Ada Okafor", "username": "ada.okafor", "email": "ada@example.com", "role": "Customer Support" }
+}
 ```
+
+`staff` is the User's current display details, so a System can show who is signed in. The Role is for display only; it never decides access.
 
 Anything else is a denial. Do not serve the request, and do not cache a `200` for later requests: the next request must validate again.
 

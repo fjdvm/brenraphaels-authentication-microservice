@@ -100,5 +100,27 @@ export const prismaHandoffPorts: HandoffPorts & ValidationPorts = {
     return grant !== null;
   },
 
+  async findStaffProfile(userId) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        firstName: true,
+        lastName: true,
+        username: true,
+        email: true,
+        role: { select: { name: true } },
+      },
+    });
+
+    return user
+      ? {
+          name: `${user.firstName} ${user.lastName}`,
+          username: user.username,
+          email: user.email,
+          role: user.role.name,
+        }
+      : null;
+  },
+
   now: () => new Date(),
 };

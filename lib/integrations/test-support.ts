@@ -85,6 +85,11 @@ export function createWorld(): {
 
       return world.moduleGrants.has(`${userId}:${systemId}:${moduleName}`);
     },
+    async findStaffProfile() {
+      guard();
+
+      return { name: "Ada Okafor", username: "ada.okafor", email: "ada@example.com", role: "Customer Support" };
+    },
     async isCentralSessionActive(id) {
       guard();
 
