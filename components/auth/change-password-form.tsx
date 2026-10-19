@@ -16,13 +16,14 @@ import {
 
 const initialState: FormState = { error: null };
 
-export function ChangePasswordForm() {
+export function ChangePasswordForm({ returnTo }: { returnTo: string | null }) {
   const [state, formAction] = useActionState(changePasswordAction, initialState);
 
   return (
     <form action={formAction} className={authCardClass}>
       <AuthCardHeader />
       <div className="space-y-5">
+        {returnTo ? <input name="returnTo" type="hidden" value={returnTo} /> : null}
         <AuthHeading
           title="Change your password"
           description="Enter the temporary password you were emailed, then choose a new one before continuing."

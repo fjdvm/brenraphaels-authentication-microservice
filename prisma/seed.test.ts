@@ -6,6 +6,7 @@ import {
   type SeedPortalStore,
 } from "./seed";
 
+import { hashSecret } from "../lib/integrations/secrets";
 import { SEED_ROLES, SEED_SYSTEMS } from "../lib/seed-data";
 
 type StoredUser = {
@@ -25,6 +26,8 @@ function createStores() {
   const users = new Map<string, StoredUser>();
   const accessGrants = new Set<string>();
   const sequences = new Map<number, number>();
+  const callbacks = new Set<string>();
+  const secretHashes = new Map<string, string>();
   const authUsers = new Map<string, { id: string; password: string }>();
 
   const portal: SeedPortalStore = {
@@ -64,6 +67,12 @@ function createStores() {
     async setUsernameSequence(year, lastNumber) {
       sequences.set(year, lastNumber);
     },
+    async upsertSystemCallback(systemId, callback) {
+      callbacks.add(`${systemId}:${callback.url}:${callback.nonProductionOnly}`);
+    },
+    async setSystemSecretHash(systemId, secretHash) {
+      secretHashes.set(systemId, secretHash);
+    },
   };
 
   const auth: SeedAuthStore = {
@@ -79,7 +88,7 @@ function createStores() {
     async disablePublicSignUpAndGoogleSignIn() {},
   };
 
-  return { portal, auth, roles, systems, modules, accessTemplates, users, accessGrants, sequences, authUsers };
+  return { portal, auth, roles, systems, modules, accessTemplates, users, accessGrants, sequences, authUsers, callbacks, secretHashes };
 }
 
 describe("seedPortal", () => {
@@ -120,5 +129,31 @@ describe("seedPortal", () => {
     });
     expect(stores.accessGrants).toHaveLength(moduleCount);
     expect(stores.sequences.get(2026)).toBe(1);
+  });
+
+  it("registers CRMS at its real origin with exact callbacks, once, and trusts no placeholder System", async () => {
+    const stores = createStores();
+    const superAdmin = {
+      username: "2026-ADMIN-001",
+      firstName: "Jude",
+      lastName: "Nitram",
+      email: "jude.nitram08@gmail.com",
+      password: "not-a-real-password",
+    };
+    const secrets = { CRMS: "a-backend-secret" };
+
+    await seedPortal(stores.portal, stores.auth, superAdmin, secrets);
+    await seedPortal(stores.portal, stores.auth, superAdmin, secrets);
+
+    expect(SEED_SYSTEMS.find((system) => system.name === "CRMS")?.url).toBe(
+      "https://epic-crms.vercel.app",
+    );
+    expect([...stores.callbacks].map((entry) => entry.slice(entry.indexOf(":") + 1))).toEqual([
+      "https://epic-crms.vercel.app/api/portal/callback:false",
+      "http://localhost:3000/api/portal/callback:true",
+    ]);
+    expect(stores.secretHashes.size).toBe(1);
+    expect([...stores.secretHashes.values()][0]).toBe(hashSecret("a-backend-secret"));
+    expect([...stores.secretHashes.values()].join()).not.toContain("a-backend-secret");
   });
 });

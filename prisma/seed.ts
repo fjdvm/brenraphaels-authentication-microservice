@@ -4,11 +4,13 @@ import { neon } from "@neondatabase/serverless";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "@prisma/client";
 
+import { hashSecret } from "../lib/integrations/secrets";
 import {
   ADMINISTRATOR_ROLE_NAMES,
   SEED_ROLES,
   SEED_SYSTEMS,
   SUPER_ADMIN_ROLE_NAME,
+  type SeedCallback,
   type SeedSystem,
 } from "../lib/seed-data";
 
@@ -33,6 +35,8 @@ export type SeedPortalStore = {
   upsertUser(user: Omit<SeedSuperAdmin, "password"> & { roleId: string; neonAuthUserId: string; mustChangePassword: boolean }): Promise<SeededRecord>;
   upsertAccessGrant(userId: string, moduleId: string): Promise<void>;
   setUsernameSequence(year: number, lastNumber: number): Promise<void>;
+  upsertSystemCallback(systemId: string, callback: SeedCallback): Promise<void>;
+  setSystemSecretHash(systemId: string, secretHash: string): Promise<void>;
 };
 
 export type SeedAuthStore = {
@@ -56,6 +60,7 @@ export async function seedPortal(
   portal: SeedPortalStore,
   auth: SeedAuthStore,
   superAdmin: SeedSuperAdmin,
+  systemSecrets: Readonly<Record<string, string>> = {},
 ): Promise<void> {
   const roles = new Map<string, SeededRecord>();
 
@@ -72,6 +77,15 @@ export async function seedPortal(
   const modules: SeededRecord[] = [];
   for (const system of SEED_SYSTEMS) {
     const seededSystem = await portal.upsertSystem(system);
+
+    for (const callback of system.callbacks) {
+      await portal.upsertSystemCallback(seededSystem.id, callback);
+    }
+
+    const secret = systemSecrets[system.name];
+    if (secret) {
+      await portal.setSystemSecretHash(seededSystem.id, hashSecret(secret));
+    }
 
     for (const moduleName of system.modules) {
       modules.push(await portal.upsertModule(seededSystem.id, moduleName));
@@ -127,6 +141,21 @@ function superAdminFromEnvironment(): SeedSuperAdmin {
     email: requiredEnvironment("SEED_SUPERADMIN_EMAIL").toLowerCase(),
     password: requiredEnvironment("SEED_SUPERADMIN_PASSWORD"),
   };
+}
+
+// A System's backend secret is read from SYSTEM_SECRET_<NAME> (e.g. SYSTEM_SECRET_CRMS)
+// and only its hash is stored. A System with no secret set keeps whatever it has.
+function systemSecretsFromEnvironment(): Record<string, string> {
+  const secrets: Record<string, string> = {};
+
+  for (const system of SEED_SYSTEMS) {
+    const secret = process.env[`SYSTEM_SECRET_${system.name}`]?.trim();
+    if (secret) {
+      secrets[system.name] = secret;
+    }
+  }
+
+  return secrets;
 }
 
 function createPortalStore(prisma: PrismaClient): SeedPortalStore {
@@ -193,6 +222,16 @@ function createPortalStore(prisma: PrismaClient): SeedPortalStore {
         VALUES (${randomUUID()}, ${userId}, ${moduleId}, ${userId})
         ON CONFLICT DO NOTHING
       `;
+    },
+    async upsertSystemCallback(systemId, callback) {
+      await prisma.systemCallback.upsert({
+        where: { systemId_url: { systemId, url: callback.url } },
+        update: { nonProductionOnly: callback.nonProductionOnly },
+        create: { systemId, ...callback },
+      });
+    },
+    async setSystemSecretHash(systemId, secretHash) {
+      await prisma.system.update({ where: { id: systemId }, data: { secretHash } });
     },
     async setUsernameSequence(year, lastNumber) {
       await prisma.usernameSequence.upsert({
@@ -290,6 +329,7 @@ async function main(): Promise<void> {
       createPortalStore(prisma),
       createAuthStore(databaseUrl, authBaseUrl),
       superAdminFromEnvironment(),
+      systemSecretsFromEnvironment(),
     );
   } finally {
     await prisma.$disconnect();

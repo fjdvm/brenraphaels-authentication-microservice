@@ -7,12 +7,61 @@ datasource db {
 }
 
 model System {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  url         String
-  iconName    String?
-  description String?
-  modules     Module[]
+  id             String           @id @default(cuid())
+  name           String           @unique
+  url            String
+  iconName       String?
+  description    String?
+  // SHA-256 of the System backend's secret; the secret itself is never stored.
+  secretHash     String?
+  modules        Module[]
+  callbacks      SystemCallback[]
+  handoffCodes   HandoffCode[]
+  systemSessions SystemSession[]
+}
+
+// An exact callback a System may be sent back to after a handoff. Nothing else is trusted.
+model SystemCallback {
+  id                String  @id @default(cuid())
+  systemId          String
+  url               String
+  // Local development callbacks are honoured only outside production.
+  nonProductionOnly Boolean @default(false)
+  system            System  @relation(fields: [systemId], references: [id])
+
+  @@unique([systemId, url])
+}
+
+// Short-lived, single-use sign-in code. Only its hash is stored.
+model HandoffCode {
+  id               String    @id @default(cuid())
+  codeHash         String    @unique
+  systemId         String
+  userId           String
+  callbackUrl      String
+  // The original central (Neon Auth) session this handoff derives from.
+  centralSessionId String
+  // Request correlation (OAuth "state") and PKCE challenge supplied by the System.
+  correlation      String
+  codeChallenge    String
+  expiresAt        DateTime
+  consumedAt       DateTime?
+  system           System    @relation(fields: [systemId], references: [id])
+  user             User      @relation(fields: [userId], references: [id])
+}
+
+// Opaque handle a System backend holds in place of the central session. Only its hash is stored.
+model SystemSession {
+  id               String    @id @default(cuid())
+  handleHash       String    @unique
+  systemId         String
+  userId           String
+  centralSessionId String
+  createdAt        DateTime  @default(now())
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  system           System    @relation(fields: [systemId], references: [id])
+  user             User      @relation(fields: [userId], references: [id])
 }
 
 model Module {
@@ -45,21 +94,23 @@ model AccessTemplate {
 }
 
 model User {
-  id                 String        @id @default(cuid())
-  username           String        @unique
-  email              String        @unique
+  id                 String          @id @default(cuid())
+  username           String          @unique
+  email              String          @unique
   firstName          String
   lastName           String
   roleId             String
   // Id of the matching Neon Auth user (neon_auth."user".id). Neon Auth owns the
   // credentials and sessions; this table owns everything portal-specific.
-  neonAuthUserId     String        @unique
-  mustChangePassword Boolean       @default(true)
-  isDeleted          Boolean       @default(false)
+  neonAuthUserId     String          @unique
+  mustChangePassword Boolean         @default(true)
+  isDeleted          Boolean         @default(false)
   deletedAt          DateTime?
-  role               Role          @relation(fields: [roleId], references: [id])
-  accessGrants       AccessGrant[] @relation("AccessGrantUser")
-  accessGrantsMade   AccessGrant[] @relation("AccessGrantGrantedBy")
+  role               Role            @relation(fields: [roleId], references: [id])
+  accessGrants       AccessGrant[]   @relation("AccessGrantUser")
+  accessGrantsMade   AccessGrant[]   @relation("AccessGrantGrantedBy")
+  handoffCodes       HandoffCode[]
+  systemSessions     SystemSession[]
 }
 
 model UsernameSequence {

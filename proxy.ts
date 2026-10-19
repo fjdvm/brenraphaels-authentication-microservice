@@ -1,5 +1,7 @@
 import { auth } from "@/lib/auth/server";
 
+// The handoff endpoints are outside this check: authorize sends visitors to /login with a
+// return address itself, and token is called by System backends without a browser session.
 // Optimistic check only: sends visitors without a session to /login. Whether a User
 // may actually proceed (Deleted, must change password, Super Admin) is decided from the
 // database inside each page and Server Action, never here.
@@ -7,6 +9,6 @@ export default auth.middleware({ loginUrl: "/login" });
 
 export const config = {
   matcher: [
-    "/((?!login|forgot-password|reset-password|api/auth|_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|logo-mark.png|logo.png).*)",
+    "/((?!login|forgot-password|reset-password|api/auth|api/integrations|_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|logo-mark.png|logo.png).*)",
   ],
 };

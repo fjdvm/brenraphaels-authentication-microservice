@@ -29,6 +29,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@prisma/adapter-pg": "^7.10.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",

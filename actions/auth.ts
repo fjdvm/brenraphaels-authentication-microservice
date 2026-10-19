@@ -6,6 +6,7 @@ import { resetLinkParams, verifyResetLinkEmail } from "@/lib/auth/reset-link";
 import { auth } from "@/lib/auth/server";
 import { requirePasswordChangeUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
+import { safeReturnTo } from "@/lib/integrations/return-to";
 import {
   changePasswordSchema,
   firstError,
@@ -51,7 +52,13 @@ export async function loginAction(
     return INVALID_CREDENTIALS;
   }
 
-  redirect(user.mustChangePassword ? "/change-password" : "/");
+  const returnTo = safeReturnTo(formData.get("returnTo"));
+
+  if (user.mustChangePassword) {
+    redirect(returnTo ? `/change-password?returnTo=${encodeURIComponent(returnTo)}` : "/change-password");
+  }
+
+  redirect(returnTo ?? "/");
 }
 
 export async function logoutAction(): Promise<void> {
@@ -90,7 +97,7 @@ export async function changePasswordAction(
     data: { mustChangePassword: false },
   });
 
-  redirect("/");
+  redirect(safeReturnTo(formData.get("returnTo")) ?? "/");
 }
 
 export async function forgotPasswordAction(

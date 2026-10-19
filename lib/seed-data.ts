@@ -5,13 +5,22 @@ export type SeedSystem = {
   iconName: string;
   description: string;
   modules: string[];
+  /** Exact callbacks the System may be handed back to; a System with none is untrusted. */
+  callbacks: SeedCallback[];
 };
 
-// CRMS is deployed; HRMS/POS/SCMS URLs are placeholders pending real deployment.
+export type SeedCallback = {
+  url: string;
+  /** Honoured only outside production (local development). */
+  nonProductionOnly: boolean;
+};
+
+// CRMS (CREOMS) is deployed and registered for the sign-in handoff; HRMS/POS/SCMS URLs
+// are placeholders pending real deployment and have no registered callbacks.
 export const SEED_SYSTEMS: SeedSystem[] = [
   {
     name: "CRMS",
-    url: "https://br-crms.jude-nitram08.workers.dev",
+    url: "https://epic-crms.vercel.app",
     iconName: "users",
     description: "Customer profiles, campaigns, conversations and support tickets.",
     modules: [
@@ -20,6 +29,10 @@ export const SEED_SYSTEMS: SeedSystem[] = [
       "Campaigns",
       "Conversations",
       "Tickets",
+    ],
+    callbacks: [
+      { url: "https://epic-crms.vercel.app/api/portal/callback", nonProductionOnly: false },
+      { url: "http://localhost:3000/api/portal/callback", nonProductionOnly: true },
     ],
   },
   {
@@ -35,6 +48,7 @@ export const SEED_SYSTEMS: SeedSystem[] = [
       "Attendance Biometrics",
       "User Management",
     ],
+    callbacks: [],
   },
   {
     name: "POS",
@@ -50,6 +64,7 @@ export const SEED_SYSTEMS: SeedSystem[] = [
       "Location/Branch Management",
       "Stock Management",
     ],
+    callbacks: [],
   },
   {
     name: "SCMS",
@@ -64,6 +79,7 @@ export const SEED_SYSTEMS: SeedSystem[] = [
       "Production and Quality",
       "Distribution",
     ],
+    callbacks: [],
   },
 ];
 
