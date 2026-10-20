@@ -145,4 +145,10 @@ describe("seedPortal", () => {
     expect(once).toEqual(["https://operator.example/cb", ...seeded]);
     expect(mergeCallbackUrls(once, seeded)).toEqual(once);
   });
+
+  it("seeds a Tickets Module under CRMS that CREOMS validates sessions against", () => {
+    const crms = SEED_SYSTEMS.find((system) => system.name === "CRMS");
+
+    expect(crms?.modules).toContain("Tickets");
+  });
 });
