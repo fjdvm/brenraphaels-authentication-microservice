@@ -2,17 +2,7 @@ import "server-only";
 
 import { prisma } from "@/lib/db/prisma";
 
-export type UserStatus = "Active" | "Awaiting first login" | "Deleted";
-
-export type ManagedUser = {
-  id: string;
-  username: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  roleName: string;
-  status: UserStatus;
-};
+import type { ManagedUser, UserStatus } from "./user-directory";
 
 function getUserStatus(user: {
   isDeleted: boolean;
@@ -36,7 +26,7 @@ export async function listUsers(): Promise<ManagedUser[]> {
       email: true,
       isDeleted: true,
       mustChangePassword: true,
-      role: { select: { name: true } },
+      role: { select: { name: true, isAdministrator: true } },
     },
     orderBy: [{ lastName: "asc" }, { firstName: "asc" }, { username: "asc" }],
   });
@@ -48,6 +38,7 @@ export async function listUsers(): Promise<ManagedUser[]> {
     lastName: user.lastName,
     email: user.email,
     roleName: user.role.name,
+    isAdministrator: user.role.isAdministrator,
     status: getUserStatus(user),
   }));
 }

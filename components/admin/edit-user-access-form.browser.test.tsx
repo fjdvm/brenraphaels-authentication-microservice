@@ -6,6 +6,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { EditUserAccessFormState } from "@/lib/admin/user-access-form-state";
 
+const push = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+
 import { EditUserAccessForm } from "./edit-user-access-form";
 
 const roles = [
@@ -18,21 +21,80 @@ const systems = [
   { id: "s-crms", name: "CRMS", modules: [{ id: "c-dash", name: "Dashboard" }] },
 ];
 
-const user = { id: "u-1", roleId: "r-cashier", activeModuleIds: ["p-sales"] };
+const user = {
+  id: "u-1",
+  roleId: "r-cashier",
+  activeModuleIds: ["p-sales"],
+  firstName: "Juan",
+  lastName: "Dela Cruz",
+  username: "2026-JD-001",
+  isDeleted: false,
+};
 
-function renderForm(result: EditUserAccessFormState = { error: null, saved: true, fieldErrors: {} }) {
+function renderForm(
+  result: EditUserAccessFormState = { error: null, saved: true, fieldErrors: {} },
+  overrides: Partial<typeof user> = {},
+) {
   const action = vi.fn<(previous: EditUserAccessFormState, data: FormData) => Promise<EditUserAccessFormState>>();
   action.mockResolvedValue(result);
-  render(<EditUserAccessForm action={action} roles={roles} systems={systems} user={user} />);
+  render(<EditUserAccessForm action={action} roles={roles} systems={systems} user={{ ...user, ...overrides }} />);
   return action;
 }
 
 const group = (name: string) => within(screen.getByRole("group", { name }));
 const box = (system: string, name: string) => group(system).getByRole("checkbox", { name }) as HTMLInputElement;
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  push.mockReset();
+});
 
 describe("Edit user access form", () => {
+  it("opens as the Edit access dialog naming the User, their Username and Role", () => {
+    renderForm();
+
+    const dialog = within(screen.getByRole("dialog", { name: "Edit access · Juan Dela Cruz" }));
+    expect(dialog.getByText(/2026-JD-001 · Cashier\. Changes apply the next time they open a system\./)).toBeTruthy();
+    expect(group("POS").getByText("1 of 2")).toBeTruthy();
+  });
+
+  it("returns to User management when cancelled or closed", async () => {
+    const person = userEvent.setup();
+    renderForm();
+
+    await person.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(push).toHaveBeenLastCalledWith("/admin/users", { scroll: false });
+
+    push.mockReset();
+    await person.click(screen.getByRole("button", { name: "Close" }));
+    expect(push).toHaveBeenLastCalledWith("/admin/users", { scroll: false });
+  });
+
+  it("refuses to edit a Deleted User until they are restored", () => {
+    renderForm(undefined, { isDeleted: true });
+
+    expect(screen.getByRole("status").textContent).toContain("restored");
+    expect(screen.queryByRole("button", { name: /save access/i })).toBeNull();
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Close" })).toHaveLength(1);
+  });
+
+  it("stays open while the save is in flight", async () => {
+    const person = userEvent.setup();
+    let finish: (state: EditUserAccessFormState) => void = () => {};
+    const action = vi.fn<(previous: EditUserAccessFormState, data: FormData) => Promise<EditUserAccessFormState>>(
+      () => new Promise((resolve) => (finish = resolve)),
+    );
+    render(<EditUserAccessForm action={action} roles={roles} systems={systems} user={user} />);
+
+    await person.click(screen.getByRole("button", { name: /save access/i }));
+    await person.keyboard("{Escape}");
+
+    expect(push).not.toHaveBeenCalled();
+    finish({ error: null, saved: true, fieldErrors: {} });
+    expect((await screen.findByRole("status")).textContent).toContain("Access saved");
+  });
+
   it("shows the User's current grants grouped by System with Select all", () => {
     renderForm();
 

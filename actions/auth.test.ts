@@ -44,7 +44,7 @@ vi.mock("@/lib/auth/session", () => ({
   getPortalUser: vi.fn(),
 }));
 
-vi.mock("@/lib/audit/system-log", () => ({ recordSystemLogEvent: mocks.record }));
+vi.mock("@/lib/audit/audit-logs.server", () => ({ recordAuditEvent: mocks.record }));
 
 vi.mock("@/lib/integrations/revocation.server", () => ({
   currentCentralSessionId: mocks.currentSessionId,
@@ -225,6 +225,7 @@ describe("changePasswordAction", () => {
       email: "admin@example.com",
       mustChangePassword: true,
       isAdministrator: true,
+      roleName: "Super Admin",
     });
     mocks.changePassword.mockResolvedValue({ error: null });
     mocks.update.mockResolvedValue({});
@@ -495,6 +496,7 @@ describe("returning to a System after central login", () => {
       email: "admin@example.com",
       mustChangePassword: true,
       isAdministrator: false,
+      roleName: "Staff/Employee",
     });
   });
 

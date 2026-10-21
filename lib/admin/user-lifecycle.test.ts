@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { SystemLogEventInput } from "@/lib/audit/system-log";
+import type { AuditEventInput } from "@/lib/audit/events";
 
 import { changeUserLifecycle, type LifecycleStore } from "./user-lifecycle";
 
@@ -9,6 +9,7 @@ type Row = {
   username: string;
   email: string;
   isAdministrator: boolean;
+  roleName?: string;
   isDeleted: boolean;
   deletedAt: Date | null;
   mustChangePassword: boolean;
@@ -35,7 +36,7 @@ function row(id: string, overrides: Partial<Row> = {}): Row {
 }
 
 function world(rows: Row[]) {
-  const events: SystemLogEventInput[] = [];
+  const events: AuditEventInput[] = [];
   const store: LifecycleStore = {
     async findActor(id) {
       const user = rows.find((r) => r.id === id);
@@ -52,13 +53,26 @@ function world(rows: Row[]) {
       return true;
     },
   };
-  const ports = { store, audit: async (event: SystemLogEventInput) => void events.push(event) };
+  const ports = { store, audit: async (event: AuditEventInput) => void events.push(event) };
   return { rows, events, ports };
 }
 
 const admin = () => row("admin", { isAdministrator: true });
 
 describe("changeUserLifecycle", () => {
+  it("never deletes a Super Admin, even for another Administrator, and logs the refusal", async () => {
+    const superAdmin = row("root", { isAdministrator: true, roleName: "Super Admin" });
+    const { ports, events } = world([row("ceo", { isAdministrator: true, roleName: "CEO" }), superAdmin]);
+
+    const result = await changeUserLifecycle("delete", "root", "ceo", ports);
+
+    expect(result).toEqual({ ok: false, error: "A Super Admin cannot be deleted." });
+    expect(superAdmin.isDeleted).toBe(false);
+    expect(events).toEqual([
+      expect.objectContaining({ action: "user.delete", outcome: "FAILURE", actorId: "ceo", targetUserId: "root" }),
+    ]);
+  });
+
   it("deletes a User, keeping identity, password state and every AccessGrant", async () => {
     const target = row("u1", { mustChangePassword: true });
     const before = structuredClone(target);

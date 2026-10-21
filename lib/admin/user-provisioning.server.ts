@@ -2,7 +2,7 @@ import "server-only";
 
 import { Prisma } from "@prisma/client";
 
-import { recordSystemLogEvent } from "@/lib/audit/system-log";
+import { recordAuditEvent } from "@/lib/audit/audit-logs.server";
 import { createNeonAuthIdentityProvisioner } from "@/lib/auth/identity-provisioner";
 import { generateTemporaryPassword } from "@/lib/auth/temporary-password";
 import { prisma } from "@/lib/db/prisma";
@@ -102,7 +102,7 @@ export function createProductionProvisioningPorts(): ProvisioningPorts {
     store: prismaProvisioningStore,
     identity: createNeonAuthIdentityProvisioner(),
     mailer: createSmtpCredentialsMailer(),
-    audit: recordSystemLogEvent,
+    audit: recordAuditEvent,
     generatePassword: generateTemporaryPassword,
   };
 }

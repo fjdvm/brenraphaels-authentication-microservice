@@ -21,13 +21,18 @@ export const SEED_SYSTEMS: SeedSystem[] = [
       "http://localhost:3000/api/portal/callback", // ignored in production
     ],
     iconName: "users",
-    description: "Customer profiles, campaigns, conversations and support tickets.",
+    description: "Customer profiles, orders, campaigns, conversations, support tickets and feedback.",
     modules: [
       "Dashboard",
       "Customer Profiles",
-      "Campaigns",
-      "Conversations",
+      "Orders",
+      "Payments",
+      "Fulfilment",
+      "Returns",
       "Tickets",
+      "Conversations",
+      "Feedback",
+      "Campaigns",
     ],
   },
   {

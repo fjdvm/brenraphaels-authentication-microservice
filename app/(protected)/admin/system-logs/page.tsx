@@ -1,27 +1,48 @@
 import { connection } from "next/server";
 
+import { loadSystemLogsAction } from "@/actions/system-logs";
 import { SystemLogsView } from "@/components/admin/system-logs-view";
-import { listSystemLogEvents, SYSTEM_LOG_PAGE_SIZE } from "@/lib/audit/system-log";
+import { listSystemLogEvents, listSystemLogOptions } from "@/lib/audit/audit-logs.server";
+import { dayRangeBounds, defaultDayRange, type SystemLogsResult } from "@/lib/audit/system-logs-query";
 import { requireAdministrator } from "@/lib/auth/session";
 
 export default async function SystemLogsPage() {
   await connection();
-  await requireAdministrator();
+  const user = await requireAdministrator();
 
-  const entries = await listSystemLogEvents().catch((error) => {
-    console.error("Failed to read System Logs", error);
-    return null;
-  });
+  const defaultRange = defaultDayRange();
+
+  const [initial, options] = await Promise.all([
+    listSystemLogEvents(dayRangeBounds(defaultRange)).then(
+      (page): SystemLogsResult => ({ status: "ok", ...page }),
+      (error): SystemLogsResult => {
+        console.error("Failed to read System Logs", error);
+        return { status: "error" };
+      },
+    ),
+    listSystemLogOptions().catch((error) => {
+      console.error("Failed to read System Logs filter options", error);
+      return null;
+    }),
+  ]);
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 p-6 md:p-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-primary">System logs</h1>
-        <p className="mt-1 text-sm text-on-surface-variant">
-          Portal sign-in, sign-out and password activity. The {SYSTEM_LOG_PAGE_SIZE} most recent events.
-        </p>
-      </div>
-      <SystemLogsView entries={entries} />
+    <main className="flex w-full flex-1 flex-col gap-5 px-6 py-7 md:px-8">
+      <SystemLogsView
+        heading={
+          <>
+            <h1 className="text-2xl font-semibold text-foreground">System logs</h1>
+            <p className="text-sm text-on-surface-variant">
+              Every sign-in, sign-out, password and administrative event, from the Portal and every System. Times are shown in Philippine time (UTC+8).
+            </p>
+          </>
+        }
+        initial={initial}
+        options={options}
+        defaultRange={defaultRange}
+        load={loadSystemLogsAction}
+        canExport={user.isAdministrator}
+      />
     </main>
   );
 }

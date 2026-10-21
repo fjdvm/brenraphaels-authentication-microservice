@@ -166,4 +166,29 @@ describe("seedPortal", () => {
     expect(renames).toEqual(["Attendance Biometrics -> Attendance"]);
     expect(SEED_SYSTEMS.find((system) => system.name === "HRMS")?.modules).toContain("Attendance");
   });
+
+  it("seeds a Tickets Module under CRMS that CREOMS validates sessions against", () => {
+    const crms = SEED_SYSTEMS.find((system) => system.name === "CRMS");
+
+    expect(crms?.modules).toContain("Tickets");
+  });
+
+  it("seeds every CRMS Module the CREOMS sidebar shows, including Feedback", () => {
+    const crms = SEED_SYSTEMS.find((system) => system.name === "CRMS");
+
+    expect(crms?.modules).toEqual(
+      expect.arrayContaining([
+        "Dashboard",
+        "Customer Profiles",
+        "Orders",
+        "Payments",
+        "Fulfilment",
+        "Returns",
+        "Tickets",
+        "Conversations",
+        "Feedback",
+        "Campaigns",
+      ]),
+    );
+  });
 });

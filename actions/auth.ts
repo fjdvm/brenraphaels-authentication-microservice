@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 
-import { recordSystemLogEvent } from "@/lib/audit/system-log";
+import { recordAuditEvent } from "@/lib/audit/audit-logs.server";
 import { resetLinkParams, verifyResetLinkEmail } from "@/lib/auth/reset-link";
 import { auth } from "@/lib/auth/server";
 import { getPortalUser, requirePasswordChangeUser } from "@/lib/auth/session";
@@ -60,7 +60,7 @@ export async function loginAction(
 
   // Same message for unknown, Deleted and wrong-password so a Username can't be probed.
   if (!user || user.isDeleted) {
-    await recordSystemLogEvent({
+    await recordAuditEvent({
       action: "auth.login",
       outcome: "FAILURE",
       targetUserId: user?.id,
@@ -76,7 +76,7 @@ export async function loginAction(
 
   // No actor on failure: the person was never authenticated.
   if (error) {
-    await recordSystemLogEvent({
+    await recordAuditEvent({
       action: "auth.login",
       outcome: "FAILURE",
       targetUserId: user.id,
@@ -85,7 +85,7 @@ export async function loginAction(
     return INVALID_CREDENTIALS;
   }
 
-  await recordSystemLogEvent({
+  await recordAuditEvent({
     action: "auth.login",
     outcome: "SUCCESS",
     actorId: user.id,
@@ -111,7 +111,7 @@ export async function logoutAction(): Promise<void> {
   }
 
   if (user) {
-    await recordSystemLogEvent({
+    await recordAuditEvent({
       action: "auth.logout",
       outcome: error ? "FAILURE" : "SUCCESS",
       actorId: user.id,
@@ -145,7 +145,7 @@ export async function changePasswordAction(
   });
 
   if (error) {
-    await recordSystemLogEvent({
+    await recordAuditEvent({
       action: "auth.password_change",
       outcome: "FAILURE",
       actorId: user.id,
@@ -160,7 +160,7 @@ export async function changePasswordAction(
     data: { mustChangePassword: false },
   });
 
-  await recordSystemLogEvent({
+  await recordAuditEvent({
     action: "auth.password_change",
     outcome: "SUCCESS",
     actorId: user.id,
@@ -200,13 +200,13 @@ export async function forgotPasswordAction(
     const { error } =
       (await auth.requestPasswordReset({ email, redirectTo: redirectTo.toString() })) ?? {};
 
-    await recordSystemLogEvent({
+    await recordAuditEvent({
       action: "auth.password_reset_request",
       outcome: error ? "FAILURE" : "SUCCESS",
       targetUserId: user.id,
     });
   } else {
-    await recordSystemLogEvent({
+    await recordAuditEvent({
       action: "auth.password_reset_request",
       outcome: "FAILURE",
       targetUserId: user?.id,
@@ -254,7 +254,7 @@ export async function resetPasswordAction(
   });
 
   if (error) {
-    await recordSystemLogEvent({
+    await recordAuditEvent({
       action: "auth.password_reset",
       outcome: "FAILURE",
       targetUserId: target?.id,
@@ -272,7 +272,7 @@ export async function resetPasswordAction(
   }
 
   // Holding a valid reset token proves the User, so they are the actor when the link is signed.
-  await recordSystemLogEvent({
+  await recordAuditEvent({
     action: "auth.password_reset",
     outcome: "SUCCESS",
     actorId: target?.id,

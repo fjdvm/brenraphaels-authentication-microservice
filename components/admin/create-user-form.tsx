@@ -1,18 +1,20 @@
 "use client";
 
+import { ArrowRight, ChevronDown, Info } from "lucide-react";
 import Link from "next/link";
-import { startTransition, useActionState, useState, type SyntheticEvent } from "react";
+import { startTransition, useActionState, useState, type ReactNode, type SyntheticEvent } from "react";
 
 import { ModuleAccessMatrix } from "@/components/admin/module-access-matrix";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import type { SelectableSystem } from "@/lib/admin/module-selection";
+import { summarizeSelection, type SelectableSystem } from "@/lib/admin/module-selection";
 import {
   initialCreateUserFormState,
   type CreateUserFormState,
 } from "@/lib/admin/user-form-state";
 import type { RoleOption } from "@/lib/admin/user-form-options";
+import { cn } from "@/lib/utils/cn";
 
 type CreateUserFormProps = {
   action: (previous: CreateUserFormState, formData: FormData) => Promise<CreateUserFormState>;
@@ -22,15 +24,50 @@ type CreateUserFormProps = {
 
 function FieldError({ id, message }: { id: string; message?: string }) {
   return message ? (
-    <p className="text-sm text-danger" id={id} role="alert">
+    <p className="text-xs text-danger-text" id={id} role="alert">
       {message}
     </p>
   ) : null;
 }
 
-const selectClass =
-  "h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive";
+type FieldProps = {
+  id: string;
+  label: string;
+  error?: string;
+  hint?: string;
+  children: ReactNode;
+};
 
+/** Figma form field: label with a red required mark, the control, then a hint or the error. */
+function Field({ id, label, error, hint, children }: FieldProps) {
+  return (
+    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+      <div className="flex gap-0.75 text-[13px] font-medium">
+        <label className="text-field-label" htmlFor={id}>
+          {label}
+        </label>
+        <span aria-hidden="true" className="text-danger-text">
+          *
+        </span>
+      </div>
+      {children}
+      {hint ? (
+        <p className="text-xs text-on-surface-variant" id={`${id}-hint`}>
+          {hint}
+        </p>
+      ) : null}
+      <FieldError id={`${id}-error`} message={error} />
+    </div>
+  );
+}
+
+const fieldClass =
+  "h-auto rounded-lg border-input bg-surface px-3 py-2.5 text-sm leading-[normal] text-foreground shadow-none md:text-sm";
+const panelClass = "flex flex-col gap-3.5 rounded-xl border border-panel-border bg-surface px-5 py-4.5 leading-[normal]";
+
+const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
+
+/** Figma "Portal · Add new user": User information, System access and the action bar. */
 export function CreateUserForm({ action, roles, systems }: CreateUserFormProps) {
   const [state, formAction, isPending] = useActionState(action, initialCreateUserFormState);
   // Controlled, so a failed submission never wipes what the Administrator entered.
@@ -40,6 +77,7 @@ export function CreateUserForm({ action, roles, systems }: CreateUserFormProps) 
   const [roleId, setRoleId] = useState("");
   const [moduleIds, setModuleIds] = useState<string[]>([]);
   const { fieldErrors } = state;
+  const selection = summarizeSelection(systems, moduleIds);
 
   function chooseRole(nextRoleId: string) {
     setRoleId(nextRoleId);
@@ -56,117 +94,134 @@ export function CreateUserForm({ action, roles, systems }: CreateUserFormProps) 
     startTransition(() => formAction(formData));
   }
 
+  const describedBy = (id: string, hasHint = false) =>
+    [hasHint ? `${id}-hint` : null, fieldErrors[id as keyof typeof fieldErrors] ? `${id}-error` : null]
+      .filter(Boolean)
+      .join(" ") || undefined;
+
   return (
-    <form className="flex flex-col gap-8" noValidate onSubmit={handleSubmit}>
-      {state.error ? (
-        <p className="rounded-lg bg-danger/10 px-4 py-3 text-sm text-danger" role="alert">
-          {state.error}
-        </p>
-      ) : null}
+    <form className="flex flex-1 flex-col" noValidate onSubmit={handleSubmit}>
+      <div className="flex flex-1 flex-col gap-4 px-6 pt-4 pb-7 md:px-8">
+        {state.error ? (
+          <p className="rounded-lg bg-badge-danger px-4 py-3 text-sm text-badge-danger-foreground" role="alert">
+            {state.error}
+          </p>
+        ) : null}
 
-      <section aria-labelledby="user-details-heading" className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-primary" id="user-details-heading">
-          User information
-        </h2>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium" htmlFor="firstName">
-              First name
-            </label>
-            <Input
-              aria-describedby="firstName-error"
-              aria-invalid={fieldErrors.firstName ? true : undefined}
-              autoComplete="off"
-              id="firstName"
-              name="firstName"
-              onChange={(event) => setFirstName(event.target.value)}
-              value={firstName}
-            />
-            <FieldError id="firstName-error" message={fieldErrors.firstName} />
+        <section aria-labelledby="user-details-heading" className={panelClass}>
+          <h2 className="text-[15px] font-semibold text-foreground" id="user-details-heading">
+            User information
+          </h2>
+          <div className="flex flex-col gap-4 md:flex-row">
+            <Field error={fieldErrors.firstName} id="firstName" label="First name">
+              <Input
+                aria-describedby={describedBy("firstName")}
+                aria-invalid={fieldErrors.firstName ? true : undefined}
+                aria-required="true"
+                autoComplete="off"
+                className={fieldClass}
+                id="firstName"
+                name="firstName"
+                onChange={(event) => setFirstName(event.target.value)}
+                value={firstName}
+              />
+            </Field>
+            <Field error={fieldErrors.lastName} id="lastName" label="Last name">
+              <Input
+                aria-describedby={describedBy("lastName")}
+                aria-invalid={fieldErrors.lastName ? true : undefined}
+                aria-required="true"
+                autoComplete="off"
+                className={fieldClass}
+                id="lastName"
+                name="lastName"
+                onChange={(event) => setLastName(event.target.value)}
+                value={lastName}
+              />
+            </Field>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium" htmlFor="lastName">
-              Last name
-            </label>
-            <Input
-              aria-describedby="lastName-error"
-              aria-invalid={fieldErrors.lastName ? true : undefined}
-              autoComplete="off"
-              id="lastName"
-              name="lastName"
-              onChange={(event) => setLastName(event.target.value)}
-              value={lastName}
-            />
-            <FieldError id="lastName-error" message={fieldErrors.lastName} />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium" htmlFor="email">
-              Email
-            </label>
-            <Input
-              aria-describedby="email-error"
-              aria-invalid={fieldErrors.email ? true : undefined}
-              autoComplete="off"
-              id="email"
-              name="email"
-              onChange={(event) => setEmail(event.target.value)}
-              type="email"
-              value={email}
-            />
-            <FieldError id="email-error" message={fieldErrors.email} />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium" htmlFor="roleId">
-              Role
-            </label>
-            <select
-              aria-describedby="roleId-error"
-              aria-invalid={fieldErrors.roleId ? true : undefined}
-              className={selectClass}
+          <div className="flex flex-col gap-4 md:flex-row">
+            <Field error={fieldErrors.email} hint="Their username and temporary password are sent here." id="email" label="Email">
+              <Input
+                aria-describedby={describedBy("email", true)}
+                aria-invalid={fieldErrors.email ? true : undefined}
+                aria-required="true"
+                autoComplete="off"
+                className={fieldClass}
+                id="email"
+                name="email"
+                onChange={(event) => setEmail(event.target.value)}
+                type="email"
+                value={email}
+              />
+            </Field>
+            <Field
+              error={fieldErrors.roleId}
+              hint={`Roles: ${roles.map((role) => role.name).join(", ")}`}
               id="roleId"
-              name="roleId"
-              onChange={(event) => chooseRole(event.target.value)}
-              value={roleId}
+              label="Role"
             >
-              <option value="">Select a Role</option>
-              {roles.map((role) => (
-                <option key={role.id} value={role.id}>
-                  {role.name}
-                </option>
-              ))}
-            </select>
-            <FieldError id="roleId-error" message={fieldErrors.roleId} />
+              <div className="relative">
+                <select
+                  aria-describedby={describedBy("roleId", true)}
+                  aria-invalid={fieldErrors.roleId ? true : undefined}
+                  aria-required="true"
+                  className={cn(
+                    fieldClass,
+                    "w-full appearance-none border pr-9 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive",
+                    roleId ? "text-foreground" : "text-placeholder",
+                  )}
+                  id="roleId"
+                  name="roleId"
+                  onChange={(event) => chooseRole(event.target.value)}
+                  value={roleId}
+                >
+                  <option value="">Select a role</option>
+                  {roles.map((role) => (
+                    <option className="text-foreground" key={role.id} value={role.id}>
+                      {role.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  aria-hidden="true"
+                  className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-on-surface-variant"
+                />
+              </div>
+            </Field>
           </div>
-        </div>
-        <p className="mt-4 text-sm text-on-surface-variant">
-          A Temporary password is generated and emailed to the User with their Username. You will not see it.
-        </p>
-      </section>
+          <p className="flex items-center gap-2.5 rounded-lg bg-callout px-3 py-2.5 text-[13px] text-callout-foreground">
+            <Info aria-hidden="true" className="size-4 shrink-0 text-identity" />
+            A temporary password is generated and emailed; you will not see it.
+          </p>
+        </section>
 
-      <section aria-labelledby="module-access-heading" className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-primary" id="module-access-heading">
-          Module access
-        </h2>
-        <p className="mt-1 text-sm text-on-surface-variant">
-          Choosing a Role pre-checks its usual Modules. Adjust any box before creating the User.
-        </p>
-        <FieldError id="moduleIds-error" message={fieldErrors.moduleIds} />
-        <ModuleAccessMatrix setSelected={setModuleIds} selected={moduleIds} systems={systems} />
-      </section>
+        <section aria-labelledby="module-access-heading" className={panelClass}>
+          <div className="flex flex-col gap-0.5">
+            <h2 className="text-[15px] font-semibold text-foreground" id="module-access-heading">
+              System access
+            </h2>
+            <p className="text-xs text-on-surface-variant">
+              Choosing a role ticks its usual modules. Change any box before creating the user.
+            </p>
+          </div>
+          <FieldError id="moduleIds-error" message={fieldErrors.moduleIds} />
+          <ModuleAccessMatrix setSelected={setModuleIds} selected={moduleIds} systems={systems} />
+          <p aria-live="polite" className="text-[13px] font-medium text-identity">
+            {plural(selection.modules, "module")} selected across {plural(selection.systems, "system")}
+          </p>
+        </section>
+      </div>
 
-      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
-        <Button asChild variant="outline">
+      <div className="sticky bottom-0 flex flex-wrap items-center gap-2 border-t border-border bg-surface px-6 py-3.5 leading-[normal] md:px-8">
+        <p className="min-w-0 flex-1 text-[13px] text-on-surface-variant">Fields marked * are required.</p>
+        <Button asChild size="cta" variant="row-action">
           <Link href="/admin/users">Cancel</Link>
         </Button>
-        <div className="sm:w-56">
-          <button
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-on-primary transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={isPending}
-            type="submit"
-          >
-            {isPending ? "Creating…" : "Create user"} {isPending ? <Spinner /> : <span aria-hidden="true">→</span>}
-          </button>
-        </div>
+        <Button disabled={isPending} size="cta" type="submit" variant="identity">
+          {isPending ? "Creating…" : "Create user"}
+          {isPending ? <Spinner /> : <ArrowRight aria-hidden="true" />}
+        </Button>
       </div>
     </form>
   );
