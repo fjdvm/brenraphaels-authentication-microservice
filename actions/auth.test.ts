@@ -225,6 +225,7 @@ describe("changePasswordAction", () => {
       email: "admin@example.com",
       mustChangePassword: true,
       isAdministrator: true,
+      roleName: "Super Admin",
     });
     mocks.changePassword.mockResolvedValue({ error: null });
     mocks.update.mockResolvedValue({});
@@ -495,6 +496,7 @@ describe("returning to a System after central login", () => {
       email: "admin@example.com",
       mustChangePassword: true,
       isAdministrator: false,
+      roleName: "Staff/Employee",
     });
   });
 

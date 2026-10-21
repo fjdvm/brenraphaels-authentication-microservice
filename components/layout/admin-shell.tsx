@@ -3,16 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, PanelLeft } from "lucide-react";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 
-import { NotificationButton, PortalActions } from "@/components/layout/portal-actions";
-import { BrandLogo } from "@/components/ui/brand-logo";
+import { BrandLockup } from "@/components/layout/brand-lockup";
+import { LogoutButton, NotificationButton } from "@/components/layout/portal-actions";
+import { type ShellUser, UserCard } from "@/components/layout/user-identity";
 import { Button } from "@/components/ui/button";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-  SidebarGroup,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -20,67 +20,58 @@ import {
   SidebarProvider,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { ADMIN_NAVIGATION } from "@/lib/admin/navigation";
+import { SIDEBAR_NAVIGATION } from "@/lib/admin/navigation";
 
 type AdminShellProps = {
   children: ReactNode;
+  user: ShellUser;
 };
 
-function AdministrativeNavigation() {
+// Figma "Portal sidebar" is 256px wide.
+const SIDEBAR_STYLE = { "--sidebar-width": "16rem" } as CSSProperties;
+
+function AdministrativeNavigation({ user }: { user: ShellUser }) {
   const pathname = usePathname();
-  const { setOpenMobile, state } = useSidebar();
+  const { setOpenMobile } = useSidebar();
 
   return (
     <>
-      <SidebarContent className="border-t border-border pt-3">
-        <SidebarGroup className="px-3">
-          <SidebarMenu>
-            {ADMIN_NAVIGATION.map(({ href, icon: Icon, label }) => (
-              <SidebarMenuItem key={href}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === href}
-                  onClick={() => setOpenMobile(false)}
-                  tooltip={label}
-                >
-                  <Link aria-current={pathname === href ? "page" : undefined} href={href}>
-                    <Icon aria-hidden="true" />
-                    <span>{label}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarGroup>
+      <SidebarContent className="px-3 py-4">
+        <SidebarMenu className="gap-0.5">
+          {SIDEBAR_NAVIGATION.map(({ href, icon: Icon, label }) => (
+            <SidebarMenuItem key={href}>
+              <SidebarMenuButton
+                asChild
+                className="h-auto gap-3 rounded-lg px-2.5 py-[9px] text-[15px] leading-[normal] font-medium text-nav-foreground data-[active=true]:font-medium [&>svg]:size-[18px]"
+                isActive={pathname === href}
+                onClick={() => setOpenMobile(false)}
+                tooltip={label}
+              >
+                <Link aria-current={pathname === href ? "page" : undefined} href={href}>
+                  <Icon aria-hidden="true" />
+                  <span>{label}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter className="mt-auto border-t border-border">
-        <PortalActions compact={state === "collapsed"} showNotifications={false} />
+      <SidebarFooter className="gap-2.5 border-t border-border px-3 py-3.5">
+        <UserCard user={user} />
+        <LogoutButton layout="sidebar" />
       </SidebarFooter>
     </>
   );
 }
 
-export function AdminShell({ children }: AdminShellProps) {
+export function AdminShell({ children, user }: AdminShellProps) {
   return (
-    <SidebarProvider>
+    <SidebarProvider style={SIDEBAR_STYLE}>
       <Sidebar collapsible="offcanvas">
-        <SidebarHeader className="items-start gap-2 px-4 py-5">
-          <div className="flex items-stretch gap-3">
-            <BrandLogo
-              className="aspect-square h-auto w-auto shrink-0 self-stretch rounded-lg object-contain"
-              size={60}
-            />
-            <div className="flex min-w-0 flex-col items-start justify-center gap-1 group-data-[collapsible=icon]:hidden">
-              <span className="truncate text-2xl font-bold tracking-tight text-sidebar-foreground">
-                Bren Raphael&apos;s
-              </span>
-              <span className="rounded-md bg-[#8e51ff] px-2 py-1 text-xs font-semibold text-white">
-                Enterprise Suite
-              </span>
-            </div>
-          </div>
+        <SidebarHeader className="border-b border-border py-[18px] pl-3.5 pr-2.5">
+          <BrandLockup size="sidebar" />
         </SidebarHeader>
-        <AdministrativeNavigation />
+        <AdministrativeNavigation user={user} />
       </Sidebar>
 
       <div className="flex min-h-svh min-w-0 flex-1 flex-col bg-surface">
@@ -102,34 +93,31 @@ function AdministrativeHeader() {
   }, [openMobile]);
 
   return (
-    <header className="flex h-16 items-center border-b border-border bg-surface">
-      <div className="relative flex h-full w-16 shrink-0 items-center justify-center">
-        <Button
-          aria-expanded={openMobile}
-          aria-label={openMobile ? "Close navigation" : "Open navigation"}
-          className="md:hidden"
-          onClick={toggleSidebar}
-          ref={mobileTriggerRef}
-          size="icon"
-          type="button"
-          variant="ghost"
-        >
-          <Menu aria-hidden="true" className="size-4" />
-        </Button>
-        <Button
-          aria-expanded={state === "expanded"}
-          aria-label={state === "collapsed" ? "Expand sidebar" : "Collapse sidebar"}
-          className="hidden md:inline-flex"
-          onClick={toggleSidebar}
-          size="icon"
-          type="button"
-          variant="ghost"
-        >
-          <PanelLeft aria-hidden="true" className="size-4 text-foreground" strokeWidth={2} />
-        </Button>
-        <span aria-hidden="true" className="absolute right-0 top-1/2 h-6 w-px -translate-y-1/2 bg-border" />
-      </div>
-      <NotificationButton className="ml-auto mr-4" />
+    <header className="flex h-16 shrink-0 items-center border-b border-border bg-surface px-6">
+      <Button
+        aria-expanded={openMobile}
+        aria-label={openMobile ? "Close navigation" : "Open navigation"}
+        className="size-8 text-foreground md:hidden [&_svg:not([class*='size-'])]:size-[18px]"
+        onClick={toggleSidebar}
+        ref={mobileTriggerRef}
+        size="icon"
+        type="button"
+        variant="ghost"
+      >
+        <Menu aria-hidden="true" />
+      </Button>
+      <Button
+        aria-expanded={state === "expanded"}
+        aria-label={state === "collapsed" ? "Expand sidebar" : "Collapse sidebar"}
+        className="hidden size-8 text-foreground md:inline-flex [&_svg:not([class*='size-'])]:size-[18px]"
+        onClick={toggleSidebar}
+        size="icon"
+        type="button"
+        variant="ghost"
+      >
+        <PanelLeft aria-hidden="true" />
+      </Button>
+      <NotificationButton className="ml-auto" />
     </header>
   );
 }
