@@ -1,35 +1,43 @@
 import type { ReactNode } from "react";
 
-import { BrandLogo } from "@/components/ui/brand-logo";
-import { PortalActions } from "@/components/layout/portal-actions";
+import { BrandLockup } from "@/components/layout/brand-lockup";
+import { LogoutButton, NotificationButton } from "@/components/layout/portal-actions";
+import { type ShellUser, UserAvatar } from "@/components/layout/user-identity";
 
 type PortalShellProps = {
   children: ReactNode;
-  firstName?: string | null;
+  user: Pick<ShellUser, "firstName" | "lastName" | "roleName">;
+  /** The Systems the User can open, named in the log out dialog; omitted where not loaded. */
+  systemNames?: string[];
 };
 
-export function PortalShell({ children, firstName }: PortalShellProps) {
+/** Figma "Staff log out dialog": "You will be signed out of the portal and CRMS." */
+function logoutDescription(systemNames: string[] | undefined) {
+  if (!systemNames) return "You will be signed out of the portal and every system you opened.";
+  const [last, ...others] = ["the portal", ...systemNames].reverse();
+  const signedOutOf = others.length > 0 ? `${others.reverse().join(", ")} and ${last}` : last;
+  return `You will be signed out of ${signedOutOf}.`;
+}
+
+/** Figma "Staff home" top bar: the shell for Users without a sidebar. */
+export function PortalShell({ children, user, systemNames }: PortalShellProps) {
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-surface-container-low">
-      <header className="sticky top-0 z-10 border-b border-border bg-surface/95 backdrop-blur">
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-6">
-          <div className="flex items-center gap-3">
-            <BrandLogo className="rounded-lg" size={40} />
-            <div>
-              <p className="text-lg font-semibold tracking-tight text-primary">
-                Bren Raphael&apos;s
+    <div className="flex min-h-full flex-1 flex-col bg-canvas">
+      <header className="sticky top-0 z-10 border-b border-border bg-surface">
+        <div className="flex h-[72px] w-full items-center gap-4 px-4 sm:px-6 xl:px-[120px]">
+          <BrandLockup className="mr-auto" size="header" />
+          <NotificationButton size="lg" />
+          <span aria-hidden="true" className="hidden h-7 w-px bg-border sm:block" />
+          <div className="hidden min-w-0 items-center gap-2.5 sm:flex">
+            <UserAvatar size="md" user={user} />
+            <div className="flex min-w-0 flex-col gap-px">
+              <p className="truncate text-sm font-semibold leading-[normal] text-foreground">
+                {user.firstName} {user.lastName}
               </p>
-              <p className="text-xs text-on-surface-variant">Enterprise Suite</p>
+              <p className="truncate text-xs leading-[normal] text-on-surface-variant">{user.roleName}</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            {firstName ? (
-              <p className="hidden text-sm text-on-surface-variant sm:block">
-                {firstName}
-              </p>
-            ) : null}
-            <PortalActions />
-          </div>
+          <LogoutButton description={logoutDescription(systemNames)} layout="header" />
         </div>
       </header>
       {children}

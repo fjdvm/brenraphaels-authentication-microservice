@@ -8,7 +8,7 @@ import {
   type ProvisioningStore,
 } from "./user-provisioning";
 
-import type { SystemLogEventInput } from "@/lib/audit/system-log";
+import type { AuditEventInput } from "@/lib/audit/events";
 
 const ADMIN = { id: "admin-1" };
 const ROLE_ID = "role-cashier";
@@ -20,7 +20,7 @@ function createWorld(options: { sendFails?: boolean; identityFails?: boolean; st
   const users: StoredUser[] = [];
   const identities = new Map<string, { id: string; email: string; password: string }>();
   const sent: Parameters<CredentialsMailer["sendCredentials"]>[0][] = [];
-  const events: SystemLogEventInput[] = [];
+  const events: AuditEventInput[] = [];
   let sequence = 0;
   const delay = () => new Promise((resolve) => setTimeout(resolve, options.storeDelayMs ?? 0));
 
@@ -82,7 +82,7 @@ function createWorld(options: { sendFails?: boolean; identityFails?: boolean; st
     store,
     identity,
     mailer,
-    audit: async (event: SystemLogEventInput) => {
+    audit: async (event: AuditEventInput) => {
       events.push(event);
     },
     generatePassword: () => "Temp-Pass-123",

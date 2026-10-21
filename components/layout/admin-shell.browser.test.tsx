@@ -9,12 +9,20 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/components/layout/portal-actions", () => ({
-  PortalActions: () => <button type="button">Log out</button>,
+  LogoutButton: () => <button type="button">Log out</button>,
   NotificationButton: () => <button aria-label="Notifications" type="button" />,
 }));
 
 import { AdminShell } from "./admin-shell";
 import { PortalShell } from "./portal-shell";
+
+const administrator = {
+  firstName: "Jude",
+  lastName: "Nitram",
+  username: "2026-ADMIN-001",
+  email: "jude@example.com",
+  roleName: "Super Admin",
+};
 
 function setViewport(isMobile: boolean) {
   Object.defineProperty(window, "innerWidth", {
@@ -41,11 +49,12 @@ describe("Administrator navigation journeys", () => {
   it("shows the active administrative destination and collapses on desktop", async () => {
     setViewport(false);
     const user = userEvent.setup();
-    render(<AdminShell><div>Page content</div></AdminShell>);
+    render(<AdminShell user={administrator}><div>Page content</div></AdminShell>);
 
     expect(screen.getByRole("link", { name: "Access" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "User management" }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByRole("link", { name: "System logs" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Activity log" }).getAttribute("href")).toBe("/my-logs");
     expect(screen.getByRole("button", { name: "Notifications" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Log out" })).toBeTruthy();
 
@@ -54,10 +63,22 @@ describe("Administrator navigation journeys", () => {
     expect(document.querySelector('[data-slot="sidebar"][data-state="collapsed"]')).toBeTruthy();
   });
 
+  it("shows the signed-in Administrator's card with their Role", () => {
+    setViewport(false);
+    render(<AdminShell user={administrator}><div>Page content</div></AdminShell>);
+
+    const card = screen.getByRole("region", { name: "Signed in as" });
+    expect(card.textContent).toContain("JN");
+    expect(card.textContent).toContain("Jude Nitram");
+    expect(card.textContent).toContain("2026-ADMIN-001");
+    expect(card.textContent).toContain("jude@example.com");
+    expect(card.textContent).toContain("Super Admin");
+  });
+
   it("opens a phone drawer that closes with Escape and restores focus", async () => {
     setViewport(true);
     const user = userEvent.setup();
-    render(<AdminShell><div>Page content</div></AdminShell>);
+    render(<AdminShell user={administrator}><div>Page content</div></AdminShell>);
 
     const trigger = screen.getByRole("button", { name: "Open navigation" });
     await user.click(trigger);
@@ -71,9 +92,19 @@ describe("Administrator navigation journeys", () => {
 
   it("keeps a non-Administrator's logout in the portal header without a sidebar", () => {
     setViewport(false);
-    render(<PortalShell firstName="Ari"><div>Portal content</div></PortalShell>);
+    render(
+      <PortalShell user={{ firstName: "Fitz", lastName: "Martin", roleName: "Staff/Employee" }}>
+        <div>Portal content</div>
+      </PortalShell>,
+    );
 
     expect(screen.getByRole("button", { name: "Log out" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Notifications" })).toBeTruthy();
+    expect(screen.getByText("Fitz Martin")).toBeTruthy();
+    expect(screen.getByText("Staff/Employee")).toBeTruthy();
     expect(document.querySelector('[data-slot="sidebar"]')).toBeNull();
+    for (const label of ["Access", "User management", "System logs"]) {
+      expect(screen.queryByRole("link", { name: label })).toBeNull();
+    }
   });
 });

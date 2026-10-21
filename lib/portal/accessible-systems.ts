@@ -8,6 +8,12 @@ export type AccessibleSystem = {
   url: string;
   iconName: string | null;
   description: string | null;
+  /** Distinct Modules in this System the User holds an active AccessGrant for. */
+  grantedModules: number;
+  /** Their names, alphabetically. */
+  grantedModuleNames: string[];
+  /** Every Module the System has. */
+  totalModules: number;
 };
 
 /**
@@ -23,20 +29,44 @@ export async function listAccessibleSystems(userId: string): Promise<AccessibleS
       user: { select: { isDeleted: true } },
       module: {
         select: {
+          id: true,
+          name: true,
           system: {
-            select: { id: true, name: true, url: true, iconName: true, description: true },
+            select: {
+              id: true,
+              name: true,
+              url: true,
+              iconName: true,
+              description: true,
+              _count: { select: { modules: true } },
+            },
           },
         },
       },
     },
   });
 
-  const systems = new Map<string, AccessibleSystem>();
+  const systems = new Map<string, { system: (typeof grants)[number]["module"]["system"]; modules: Map<string, string> }>();
   for (const { revokedAt, user, module } of grants) {
     if (revokedAt === null && !user.isDeleted) {
-      systems.set(module.system.id, module.system);
+      const entry = systems.get(module.system.id) ?? { system: module.system, modules: new Map<string, string>() };
+      entry.modules.set(module.id, module.name);
+      systems.set(module.system.id, entry);
     }
   }
 
-  return [...systems.values()].sort((a, b) => a.name.localeCompare(b.name));
+  return [...systems.values()]
+    .map(({ system: { _count, ...system }, modules }) => ({
+      ...system,
+      grantedModules: modules.size,
+      grantedModuleNames: [...modules.values()].sort((a, b) => a.localeCompare(b)),
+      totalModules: _count.modules,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Every System's name, alphabetically, whether or not the User can open it. */
+export async function listSystemNames(): Promise<string[]> {
+  const systems = await prisma.system.findMany({ select: { name: true }, orderBy: { name: "asc" } });
+  return systems.map(({ name }) => name);
 }

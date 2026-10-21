@@ -11,7 +11,7 @@ export type SeedSystem = {
   modules: string[];
 };
 
-// CRMS (CREOMS) is deployed; HRMS/POS/IMS URLs are placeholders pending real deployment.
+// CRMS (CREOMS) and HRMS are deployed; POS/IMS URLs are placeholders pending real deployment.
 export const SEED_SYSTEMS: SeedSystem[] = [
   {
     name: "CRMS",
@@ -21,18 +21,27 @@ export const SEED_SYSTEMS: SeedSystem[] = [
       "http://localhost:3000/api/portal/callback", // ignored in production
     ],
     iconName: "users",
-    description: "Customer profiles, marketing, conversations and support tickets.",
+    description: "Customer profiles, orders, marketing, conversations, support tickets and feedback.",
     modules: [
       "Dashboard",
       "Customer Profiles",
-      "Marketing",
-      "Conversations",
+      "Orders",
+      "Payments",
+      "Fulfilment",
+      "Returns",
       "Tickets",
+      "Conversations",
+      "Feedback",
+      "Marketing",
     ],
   },
   {
     name: "HRMS",
-    url: "https://br-hrms.jude-nitram08.workers.dev", // placeholder, pending real deployment
+    url: "https://hrms-arae.vercel.app",
+    callbackUrls: [
+      "https://hrms-arae.vercel.app/api/portal/callback",
+      "http://localhost:3001/api/portal/callback", // ignored in production
+    ],
     iconName: "contact",
     description: "Recruitment, employee records, payroll and attendance.",
     modules: [
@@ -40,7 +49,7 @@ export const SEED_SYSTEMS: SeedSystem[] = [
       "Recruitment and Hiring",
       "Employee Information",
       "Payroll & ESS",
-      "Attendance Biometrics",
+      "Attendance",
       "User Management",
     ],
   },
@@ -95,6 +104,7 @@ export const SEED_MODULE_FORMER_NAMES: Readonly<
   Record<string, Readonly<Record<string, string>>>
 > = {
   CRMS: { Marketing: "Campaigns" },
+  HRMS: { Attendance: "Attendance Biometrics" },
 };
 
 /** Roles renamed since first seeded: current name -> former name. Renamed in place. */

@@ -4,18 +4,18 @@
 
 :root {
   --background: oklch(0.985 0 0);
-  --foreground: oklch(0.145 0 0);
+  --foreground: #18181b;
   --surface: oklch(1 0 0);
   --surface-container-low: oklch(0.97 0 0);
-  --on-surface-variant: oklch(0.556 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
+  --on-surface-variant: #71717a;
+  --border: #ebebeb;
+  --input: #e4e4e7;
   --ring: oklch(0.708 0 0);
   --primary: oklch(0.205 0 0);
   --on-primary: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  --muted-foreground: #71717a;
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --card: oklch(1 0 0);
@@ -24,12 +24,80 @@
   --destructive-foreground: oklch(0.985 0 0);
   --outline-variant: oklch(0.922 0 0);
   --danger: oklch(0.577 0.245 27.325);
-  --sidebar: var(--surface);
+  /* Figma "Portal UI/UX" shell tokens */
+  --nav-foreground: #3f3f46;
+  /* Sidebar section headings, as in CREOMS */
+  --nav-section: #8b8b94;
+  --brand-badge: #f3e8ff;
+  --brand-badge-foreground: #6d28d9;
+  --identity: #5b2a86;
+  --identity-foreground: #ffffff;
+  --identity-badge: #efeaf5;
+  --identity-border: #e6e1ee;
+  --identity-soft: #efe6f8;
+  /* Figma "Portal UI/UX" page tokens: cards, tables, badges and callouts */
+  --panel-border: #e6e1ee;
+  --table-divider: #efebf4;
+  --badge-muted: #f4f4f5;
+  --badge-muted-foreground: #52525b;
+  --badge-success: #e3f4e8;
+  --badge-success-foreground: #1e6b3a;
+  /* Figma "System logs": the Failed outcome pill */
+  --badge-failed: #fbe6e0;
+  --badge-failed-foreground: #9a3412;
+  /* Not in Figma: Awaiting first login and Deleted badges, in the same style */
+  --badge-warning: #fdf3dc;
+  --badge-warning-foreground: #8a5a00;
+  --badge-danger: #fde8e8;
+  --badge-danger-foreground: #b42318;
+  --danger-text: #dc2626;
+  --danger-border: #fbcfcf;
+  /* Figma Access cards: each System's icon tile and "Open" link colour */
+  --system-crms: #f3e8ff;
+  --system-crms-foreground: #5b2a86;
+  --system-hrms: #e3eefb;
+  --system-hrms-foreground: #1d4f91;
+  --system-ims: #e1f5ee;
+  --system-ims-foreground: #0f6e56;
+  --system-pos: #faece7;
+  --system-pos-foreground: #993c1d;
+  /* Figma "Staff home": the page behind the cards, and the Module chips on a System card */
+  --canvas: #fafafa;
+  --chip: #fafafa;
+  --chip-border: #ede9f2;
+  /* Figma dialogs: the dimmed page behind them and the action footer */
+  --scrim: rgb(18 13 26 / 0.45);
+  --dialog-footer: #fafafa;
+  --dialog-divider: #f0f0f2;
+  --callout: #f7f5fa;
+  --callout-foreground: #5a5368;
+  /* Figma "Portal UI/UX" auth screens and loading card */
+  --auth-panel: #2a1540;
+  --auth-panel-circle-top: #452067;
+  --auth-panel-circle-left: #3e1e6b;
+  --auth-panel-circle-right: #472f67;
+  --auth-panel-subtitle: #c9b3e6;
+  --auth-panel-body: #d9cdea;
+  --auth-panel-icon: #e0d2ef;
+  --auth-panel-note: #b9a8d6;
+  --auth-panel-copyright: #8c7aae;
+  --field-label: #27272a;
+  --placeholder: #a1a1aa;
+  --success: #16a34a;
+  --success-soft: #f0fdf4;
+  --loader-border: #ece6f2;
+  --loader-track: #f1ebf8;
+  --loader-overlay: rgb(250 247 252 / 0.55);
+  /* Figma "Portal UI/UX" dialogs and the Module access cards */
+  --danger-soft: #fee2e2;
+  --checkbox: #7c3aed;
+  --checkbox-border: #d4d4d8;
+  --sidebar: #fafafa;
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--on-primary);
-  --sidebar-accent: var(--accent);
-  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-accent: #f4f4f5;
+  --sidebar-accent-foreground: var(--foreground);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
 }
@@ -56,7 +124,65 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --color-outline-variant: var(--outline-variant);
   --color-danger: var(--danger);
-  --font-sans: var(--font-geist-sans);
+  --color-nav-foreground: var(--nav-foreground);
+  --color-nav-section: var(--nav-section);
+  --color-brand-badge: var(--brand-badge);
+  --color-brand-badge-foreground: var(--brand-badge-foreground);
+  --color-identity: var(--identity);
+  --color-identity-foreground: var(--identity-foreground);
+  --color-identity-badge: var(--identity-badge);
+  --color-identity-border: var(--identity-border);
+  --color-identity-soft: var(--identity-soft);
+  --color-panel-border: var(--panel-border);
+  --color-table-divider: var(--table-divider);
+  --color-badge-muted: var(--badge-muted);
+  --color-badge-muted-foreground: var(--badge-muted-foreground);
+  --color-badge-success: var(--badge-success);
+  --color-badge-success-foreground: var(--badge-success-foreground);
+  --color-badge-failed: var(--badge-failed);
+  --color-badge-failed-foreground: var(--badge-failed-foreground);
+  --color-badge-warning: var(--badge-warning);
+  --color-badge-warning-foreground: var(--badge-warning-foreground);
+  --color-badge-danger: var(--badge-danger);
+  --color-badge-danger-foreground: var(--badge-danger-foreground);
+  --color-danger-text: var(--danger-text);
+  --color-danger-border: var(--danger-border);
+  --color-system-crms: var(--system-crms);
+  --color-system-crms-foreground: var(--system-crms-foreground);
+  --color-system-hrms: var(--system-hrms);
+  --color-system-hrms-foreground: var(--system-hrms-foreground);
+  --color-system-ims: var(--system-ims);
+  --color-system-ims-foreground: var(--system-ims-foreground);
+  --color-system-pos: var(--system-pos);
+  --color-system-pos-foreground: var(--system-pos-foreground);
+  --color-canvas: var(--canvas);
+  --color-chip: var(--chip);
+  --color-chip-border: var(--chip-border);
+  --color-scrim: var(--scrim);
+  --color-dialog-footer: var(--dialog-footer);
+  --color-dialog-divider: var(--dialog-divider);
+  --color-callout: var(--callout);
+  --color-callout-foreground: var(--callout-foreground);
+  --color-auth-panel: var(--auth-panel);
+  --color-auth-panel-circle-top: var(--auth-panel-circle-top);
+  --color-auth-panel-circle-left: var(--auth-panel-circle-left);
+  --color-auth-panel-circle-right: var(--auth-panel-circle-right);
+  --color-auth-panel-subtitle: var(--auth-panel-subtitle);
+  --color-auth-panel-body: var(--auth-panel-body);
+  --color-auth-panel-icon: var(--auth-panel-icon);
+  --color-auth-panel-note: var(--auth-panel-note);
+  --color-auth-panel-copyright: var(--auth-panel-copyright);
+  --color-field-label: var(--field-label);
+  --color-placeholder: var(--placeholder);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-loader-border: var(--loader-border);
+  --color-loader-track: var(--loader-track);
+  --color-loader-overlay: var(--loader-overlay);
+  --color-danger-soft: var(--danger-soft);
+  --color-checkbox: var(--checkbox);
+  --color-checkbox-border: var(--checkbox-border);
+  --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -68,8 +194,20 @@
   --color-sidebar: var(--sidebar);
 }
 
+/* LoadingCard: hidden (and out of the accessibility tree) until its delay passes. */
+@keyframes loading-card-in {
+  from {
+    opacity: 0;
+    visibility: hidden;
+  }
+  to {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
 }

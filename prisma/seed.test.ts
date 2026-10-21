@@ -138,9 +138,9 @@ describe("seedPortal", () => {
       "http://localhost:3000/api/portal/callback",
     ]);
     expect(
-      SEED_SYSTEMS.filter((system) => system.name !== "CRMS").flatMap(
-        (system) => system.callbackUrls ?? [],
-      ),
+      SEED_SYSTEMS.filter(
+        (system) => system.name !== "CRMS" && system.name !== "HRMS",
+      ).flatMap((system) => system.callbackUrls ?? []),
     ).toEqual([]);
   });
 
@@ -182,5 +182,51 @@ describe("seedPortal", () => {
     expect(
       [...stores.modules.keys()].filter((key) => key.endsWith(":Marketing")),
     ).toHaveLength(1);
+  });
+
+  it("seeds the HRMS Attendance Module as a rename of Attendance Biometrics", async () => {
+    const stores = createStores();
+    const renames: string[] = [];
+    const upsertModule = stores.portal.upsertModule;
+    stores.portal.upsertModule = async (systemId, name, formerName) => {
+      if (formerName) renames.push(`${formerName} -> ${name}`);
+      return upsertModule(systemId, name, formerName);
+    };
+
+    await seedPortal(stores.portal, stores.auth, {
+      username: "2026-ADMIN-001",
+      firstName: "Jude",
+      lastName: "Nitram",
+      email: "jude.nitram08@gmail.com",
+      password: "not-a-real-password",
+    });
+
+    expect(renames).toEqual(["Campaigns -> Marketing", "Attendance Biometrics -> Attendance"]);
+    expect(SEED_SYSTEMS.find((system) => system.name === "HRMS")?.modules).toContain("Attendance");
+  });
+
+  it("seeds a Tickets Module under CRMS that CREOMS validates sessions against", () => {
+    const crms = SEED_SYSTEMS.find((system) => system.name === "CRMS");
+
+    expect(crms?.modules).toContain("Tickets");
+  });
+
+  it("seeds every CRMS Module the CREOMS sidebar shows, including Feedback", () => {
+    const crms = SEED_SYSTEMS.find((system) => system.name === "CRMS");
+
+    expect(crms?.modules).toEqual(
+      expect.arrayContaining([
+        "Dashboard",
+        "Customer Profiles",
+        "Orders",
+        "Payments",
+        "Fulfilment",
+        "Returns",
+        "Tickets",
+        "Conversations",
+        "Feedback",
+        "Marketing",
+      ]),
+    );
   });
 });

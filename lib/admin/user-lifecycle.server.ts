@@ -1,6 +1,6 @@
 import "server-only";
 
-import { recordSystemLogEvent } from "@/lib/audit/system-log";
+import { recordAuditEvent } from "@/lib/audit/audit-logs.server";
 import { prisma } from "@/lib/db/prisma";
 
 import type { LifecyclePorts, LifecycleStore } from "./user-lifecycle";
@@ -15,8 +15,13 @@ export const prismaLifecycleStore: LifecycleStore = {
     return user && { isDeleted: user.isDeleted, isAdministrator: user.role.isAdministrator };
   },
 
-  findTarget(id) {
-    return prisma.user.findUnique({ where: { id }, select: { username: true, isDeleted: true } });
+  async findTarget(id) {
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { username: true, isDeleted: true, role: { select: { name: true } } },
+    });
+
+    return user && { username: user.username, isDeleted: user.isDeleted, roleName: user.role.name };
   },
 
   async setDeleted(id, deleted) {
@@ -30,5 +35,5 @@ export const prismaLifecycleStore: LifecycleStore = {
 };
 
 export function createProductionLifecyclePorts(): LifecyclePorts {
-  return { store: prismaLifecycleStore, audit: recordSystemLogEvent };
+  return { store: prismaLifecycleStore, audit: recordAuditEvent };
 }

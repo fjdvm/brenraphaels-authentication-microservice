@@ -123,6 +123,8 @@ Denials for a known User are recorded in System Logs as "Denied a System request
 
 Logout is **per browser session**. Signing out in the portal ends the original central session; every handle that was issued from it, in all four Systems, is denied on its next validation (and is also marked revoked). Handles issued from a *different* browser session of the same User are unaffected. Systems hold no independent authoritative session, and there is no all-devices logout.
 
+**Sending a User to log out.** A System's sign-out button answers its own POST with a `303` to `<portal>/logout`. That page runs the portal's sign-out Server Action (so it carries the portal's own Origin and clears the session cookies), ends the central session, revokes the handles issued from it, and lands on `/login`. A bare route handler is not used: a browser navigation from a System carries no Origin, so the sign-out would not clear the session.
+
 ## Example consumer flow
 
 1. Create a random `code_verifier` and `state`; keep both server-side, tied to the browser.
