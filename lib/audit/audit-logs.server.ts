@@ -8,6 +8,7 @@ import { getPortalUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
 import {
+  auditGatewayConfig,
   createAuditClient,
   readMyLogOptions,
   readMyLogs,
@@ -35,16 +36,17 @@ const users: UserDirectory = async (ids) => {
 };
 
 /**
- * The Portal's connection to the audit-logs service: the Source "Authentication" write
- * key and a read key, both server-side only. Through the api-gateway, AUDIT_LOGS_URL is
- * the gateway's `/audit` prefix and the keys are gateway Caller keys whose Callers hold
- * those audit-logs keys. If they are not configured every call fails,
- * writes are dropped (best effort) and the System logs page shows its error state.
+ * The Portal's connection to the audit-logs service, through the api-gateway like every
+ * other shared service. Both Caller keys stay on the server. If they are not configured
+ * every call fails, writes are dropped (best effort) and the System logs page shows its
+ * error state.
  */
 const client = createAuditClient({
-  baseUrl: process.env.AUDIT_LOGS_URL ?? "",
-  writeKey: process.env.AUDIT_LOGS_WRITE_KEY ?? "",
-  readKey: process.env.AUDIT_LOGS_READ_KEY ?? "",
+  ...auditGatewayConfig({
+    API_GATEWAY_URL: process.env.API_GATEWAY_URL,
+    API_GATEWAY_KEY: process.env.API_GATEWAY_KEY,
+    API_GATEWAY_AUDIT_READ_KEY: process.env.API_GATEWAY_AUDIT_READ_KEY,
+  }),
   users,
 });
 
