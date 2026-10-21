@@ -112,6 +112,33 @@ describe("Create user form", () => {
     expect((systemGroup("POS").getByRole("checkbox", { name: "Sales Processing" }) as HTMLInputElement).checked).toBe(true);
   });
 
+  it("counts each System's ticked Modules and marks a partial Select all", async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    expect(screen.getByText("0 modules selected across 0 systems")).toBeTruthy();
+    await user.selectOptions(screen.getByLabelText("Role"), "r-cashier");
+
+    expect(systemGroup("POS").getByText("1 of 2")).toBeTruthy();
+    expect(systemGroup("CRMS").getByText("0 of 1")).toBeTruthy();
+    const posSelectAll = systemGroup("POS").getByRole("checkbox", { name: "Select all" }) as HTMLInputElement;
+    expect(posSelectAll.indeterminate).toBe(true);
+    expect(screen.getByText("1 module selected across 1 system")).toBeTruthy();
+
+    await user.click(systemGroup("CRMS").getByRole("checkbox", { name: "Select all" }));
+    expect(screen.getByText("2 modules selected across 2 systems")).toBeTruthy();
+  });
+
+  it("lists the Roles and marks every field as required", () => {
+    renderForm();
+
+    expect(screen.getByText("Roles: Cashier, VP")).toBeTruthy();
+    for (const label of ["First name", "Last name", "Email", "Role"]) {
+      expect(screen.getByLabelText(label).getAttribute("aria-required")).toBe("true");
+    }
+    expect(screen.getByRole("link", { name: "Cancel" }).getAttribute("href")).toBe("/admin/users");
+  });
+
   it("never offers a password field", () => {
     renderForm();
 

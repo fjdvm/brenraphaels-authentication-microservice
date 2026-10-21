@@ -32,6 +32,12 @@ describe("AccountCard", () => {
     expect(screen.getByRole("link", { name: "Change password" }).getAttribute("href")).toBe("/forgot-password");
   });
 
+  it("links to the User's own Activity log (My Logs)", () => {
+    render(<AccountCard {...account} lastSignIn={null} otherSystemNames={[]} />);
+
+    expect(screen.getByRole("link", { name: "View activity log" }).getAttribute("href")).toBe("/my-logs");
+  });
+
   it("names the Systems the User can't open and who grants them", () => {
     const { rerender } = render(
       <AccountCard {...account} lastSignIn={null} otherSystemNames={["HRMS", "IMS", "POS"]} />,

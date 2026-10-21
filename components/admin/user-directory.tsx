@@ -177,18 +177,30 @@ export function UserDirectory({ users, signedInUserId, actions }: Props) {
                   <td className="py-3.5">
                     <div className="flex items-start justify-end gap-2">
                       <Button asChild size="row" variant="row-action">
-                        <Link aria-label={`Manage access for ${user.username}`} href={`/admin/users/${user.id}`}>
+                        <Link aria-label={`Manage access for ${user.username}`} href={`/admin/users/${user.id}`} scroll={false}>
                           <Key aria-hidden="true" />
                           Access
                         </Link>
                       </Button>
                       {isDeleted ? (
-                        <UserLifecycleButton action={actions.restore} mode="restore" userId={user.id} username={user.username} />
+                        <UserLifecycleButton
+                          action={actions.restore}
+                          mode="restore"
+                          name={`${user.firstName} ${user.lastName}`}
+                          userId={user.id}
+                          username={user.username}
+                        />
                       ) : (
                         <ResendCredentialsButton action={() => actions.resend(user.id)} username={user.username} />
                       )}
                       {canDelete ? (
-                        <UserLifecycleButton action={actions.remove} mode="delete" userId={user.id} username={user.username} />
+                        <UserLifecycleButton
+                          action={actions.remove}
+                          mode="delete"
+                          name={`${user.firstName} ${user.lastName}`}
+                          userId={user.id}
+                          username={user.username}
+                        />
                       ) : null}
                     </div>
                   </td>

@@ -1,12 +1,13 @@
 "use client";
 
-import { Loader2, LogOut, X } from "lucide-react";
-import { useEffect, useState } from "react";
-import { createPortal, useFormStatus } from "react-dom";
+import { Loader2, LogOut } from "lucide-react";
+import { useState, useTransition } from "react";
+import { useFormStatus } from "react-dom";
 
 import { logoutAction } from "@/actions/auth";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils/cn";
 
 export { NotificationBell as NotificationButton };
@@ -36,20 +37,11 @@ type LogoutButtonProps = {
 
 export function LogoutButton({ layout, description }: LogoutButtonProps) {
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
-
-  useEffect(() => {
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setIsLogoutDialogOpen(false);
-      }
-    }
-
-    window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
-  }, []);
+  const [isLoggingOut, startLogout] = useTransition();
 
   return (
-    <>
+    // Signing out in flight keeps the dialog open until the redirect.
+    <Dialog onOpenChange={(open) => isLoggingOut || setIsLogoutDialogOpen(open)} open={isLogoutDialogOpen}>
       <Button
         className={cn("h-auto rounded-lg leading-[normal] text-foreground", LOGOUT_LAYOUTS[layout])}
         onClick={() => setIsLogoutDialogOpen(true)}
@@ -60,57 +52,19 @@ export function LogoutButton({ layout, description }: LogoutButtonProps) {
         Log out
       </Button>
 
-      {isLogoutDialogOpen
-        ? createPortal(
-            <div
-              aria-describedby="logout-dialog-description"
-              aria-labelledby="logout-dialog-title"
-              aria-modal="true"
-              className="fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4"
-              role="dialog"
-            >
-              <div className="w-full max-w-[440px] overflow-hidden rounded-2xl bg-surface leading-[normal] shadow-[0_20px_48px_0_rgba(0,0,0,0.2)]">
-                <div className="flex items-start gap-3 py-5 pl-6 pr-[18px]">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-badge">
-                    <LogOut aria-hidden="true" className="size-5 text-identity" />
-                  </span>
-                  <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <h2 className="text-lg font-semibold text-foreground" id="logout-dialog-title">
-                      Log out?
-                    </h2>
-                    <p className="text-[13px] text-on-surface-variant" id="logout-dialog-description">
-                      {description}
-                    </p>
-                  </div>
-                  <button
-                    aria-label="Close"
-                    className="rounded-md p-1 text-on-surface-variant outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                    onClick={() => setIsLogoutDialogOpen(false)}
-                    type="button"
-                  >
-                    <X aria-hidden="true" className="size-[18px]" />
-                  </button>
-                </div>
-                <div className="flex justify-end gap-2 border-t border-dialog-divider bg-dialog-footer px-6 py-3.5">
-                  <Button
-                    className="text-foreground"
-                    onClick={() => setIsLogoutDialogOpen(false)}
-                    size="cta"
-                    type="button"
-                    variant="row-action"
-                  >
-                    Cancel
-                  </Button>
-                  <form action={logoutAction}>
-                    <LogoutSubmitButton />
-                  </form>
-                </div>
-              </div>
-            </div>
-            ,
-            document.body,
-          )
-        : null}
-    </>
+      <DialogContent className="max-w-110">
+        <DialogHeader description={description} icon={<LogOut aria-hidden="true" />} title="Log out?" />
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button size="cta" type="button" variant="row-action">
+              Cancel
+            </Button>
+          </DialogClose>
+          <form action={() => startLogout(logoutAction)}>
+            <LogoutSubmitButton />
+          </form>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -2,6 +2,7 @@ import { Info, KeyRound } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { MY_LOGS_DESTINATION } from "@/lib/admin/navigation";
 
 type AccountCardProps = {
   username: string;
@@ -17,6 +18,8 @@ type AccountCardProps = {
 function joinWithOr(names: string[]) {
   return names.length > 1 ? `${names.slice(0, -1).join(", ")} or ${names.at(-1)}` : names[0];
 }
+
+const MyLogsIcon = MY_LOGS_DESTINATION.icon;
 
 /** Figma "Staff home" "Your account" card. */
 export function AccountCard({ username, email, roleName, lastSignIn, otherSystemNames }: AccountCardProps) {
@@ -50,6 +53,13 @@ export function AccountCard({ username, email, roleName, lastSignIn, otherSystem
         <Link href="/forgot-password">
           <KeyRound aria-hidden="true" />
           Change password
+        </Link>
+      </Button>
+      {/* Not in Figma: the link to My Logs is a reviewed addition from Spec#51 (Ticket#62). */}
+      <Button asChild className="w-full text-foreground" size="cta" variant="row-action">
+        <Link href={MY_LOGS_DESTINATION.href}>
+          <MyLogsIcon aria-hidden="true" />
+          View {MY_LOGS_DESTINATION.label.toLowerCase()}
         </Link>
       </Button>
       {otherSystemNames.length > 0 ? (

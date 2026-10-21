@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  auditGatewayConfig,
   createAuditClient,
   exportSystemLogs,
+  readMyLogOptions,
+  readMyLogs,
   readSystemLogOptions,
   readSystemLogs,
   SYSTEM_LOG_PAGE_SIZE,
@@ -362,6 +365,17 @@ describe("listing events", () => {
     expect(Object.fromEntries(calls[1].url.searchParams)).toEqual({ limit: "50" });
   });
 
+  it("keeps a path prefix in the base URL, so it can be reached through the api-gateway's /audit", async () => {
+    const { calls, client: audit } = client(() => Response.json({ events: [], next_cursor: null }), {
+      baseUrl: "https://gateway.test/audit/",
+    });
+
+    await audit.listPage({ limit: 50 });
+
+    expect(calls[0].url.origin).toBe("https://gateway.test");
+    expect(calls[0].url.pathname).toBe("/audit/events");
+  });
+
   it("rejects when the service cannot be read, so the page shows its error", async () => {
     const { client: audit } = client(() => Response.json({ error: "Invalid API key" }, { status: 401 }));
 
@@ -440,6 +454,58 @@ describe("reading the filter options", () => {
 
     await expect(readSystemLogOptions(audit, viewer)).rejects.toThrow("Administrators only");
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe("through the api-gateway", () => {
+  const env = {
+    API_GATEWAY_URL: "https://gateway.test/",
+    API_GATEWAY_KEY: "portal-caller-key",
+    API_GATEWAY_AUDIT_READ_KEY: "audit-reader-caller-key",
+  };
+
+  it("writes and reads under the gateway's /audit prefix, each with its own Caller key", async () => {
+    const { calls, fetchStub } = stubService((call) =>
+      call.method === "POST" ? created() : Response.json({ events: [], next_cursor: null }),
+    );
+    const audit = createAuditClient({ ...auditGatewayConfig(env), users, fetch: fetchStub });
+
+    await audit.record({ action: "auth.logout", outcome: "SUCCESS", actorId: "staff", targetUserId: "staff" });
+    await audit.listPage({ limit: 25 });
+
+    expect(calls.map((call) => `${call.method} ${call.url.origin}${call.url.pathname}`)).toEqual([
+      "POST https://gateway.test/audit/events",
+      "GET https://gateway.test/audit/events",
+    ]);
+    expect(calls[0].headers.get("authorization")).toBe("Bearer portal-caller-key");
+    expect(calls[1].headers.get("authorization")).toBe("Bearer audit-reader-caller-key");
+  });
+
+  it("is unconfigured, so every call fails, when the gateway URL is missing", () => {
+    expect(auditGatewayConfig({}).baseUrl).toBe("");
+  });
+
+  it("waits longer for a read than for a write, so a slow page load is not reported as an outage", async () => {
+    const slow = (after: number, response: () => Response) =>
+      ((_input: RequestInfo | URL, init?: RequestInit) =>
+        new Promise<Response>((resolve, reject) => {
+          const timer = setTimeout(() => resolve(response()), after);
+          init?.signal?.addEventListener("abort", () => {
+            clearTimeout(timer);
+            reject(new DOMException("timed out", "TimeoutError"));
+          });
+        })) as typeof fetch;
+    const audit = createAuditClient({
+      baseUrl: "https://gateway.test/audit",
+      writeKey: "w",
+      readKey: "r",
+      users,
+      timeoutMs: 20,
+      readTimeoutMs: 500,
+      fetch: slow(60, () => Response.json({ events: [], next_cursor: null })),
+    });
+
+    await expect(audit.listPage({ limit: 25 })).resolves.toEqual({ entries: [], nextCursor: null });
   });
 });
 
@@ -580,5 +646,67 @@ describe("reading the previous sign-in", () => {
     );
 
     await expect(audit.previousSignIn("staff")).resolves.toBeNull();
+  });
+});
+
+describe("reading My Logs", () => {
+  const events = () => Response.json({ events: [], next_cursor: null });
+
+  it("asks only for events the signed-in User performed, with the screen's filters", async () => {
+    const { calls, client: audit } = client(events);
+
+    await readMyLogs(audit, { id: "staff" }, { q: "signed", action: "user.login", source: "Authentication", cursor: "c1" });
+
+    expect(Object.fromEntries(calls[0].url.searchParams)).toEqual({
+      limit: String(SYSTEM_LOG_PAGE_SIZE),
+      q: "signed",
+      action: "user.login",
+      source: "Authentication",
+      cursor: "c1",
+      actor_type: "user",
+      actor_id: "staff",
+    });
+  });
+
+  it("filters by Actor, so events an Administrator performed on the User are not asked for", async () => {
+    const { calls, client: audit } = client(events);
+
+    await readMyLogs(audit, { id: "staff" }, {});
+
+    const params = calls[0].url.searchParams;
+    expect(params.get("actor_id")).toBe("staff");
+    expect(params.has("subject_id")).toBe(false);
+    expect(params.has("target_id")).toBe(false);
+  });
+
+  it("cannot be widened to another User by anything in the filters", async () => {
+    const { calls, client: audit } = client(events);
+    const widened = { actor: { type: "user", id: "admin" }, actor_id: "admin", actor_type: "anonymous", subject_id: "admin" };
+
+    await readMyLogs(audit, { id: "staff" }, widened as never);
+
+    const params = calls[0].url.searchParams;
+    expect(params.getAll("actor_id")).toEqual(["staff"]);
+    expect(params.getAll("actor_type")).toEqual(["user"]);
+    expect(params.has("subject_id")).toBe(false);
+  });
+
+  it("refuses when signed out or without a User id, without calling the service", async () => {
+    const { calls, client: audit } = client(events);
+
+    await expect(readMyLogs(audit, null, {})).rejects.toThrow("sign in required");
+    await expect(readMyLogs(audit, { id: "" }, {})).rejects.toThrow("sign in required");
+    await expect(readMyLogOptions(audit, null)).rejects.toThrow("sign in required");
+    expect(calls).toHaveLength(0);
+  });
+
+  it("is open to every signed-in User, not only Administrators", async () => {
+    const { calls, client: audit } = client((call) =>
+      call.url.pathname === "/events/valid-values" ? Response.json({ sources: [] }) : events(),
+    );
+
+    await expect(readMyLogs(audit, { id: "staff" }, {})).resolves.toEqual({ entries: [], nextCursor: null });
+    await expect(readMyLogOptions(audit, { id: "staff" })).resolves.toEqual({ systems: [], actions: [] });
+    expect(calls).toHaveLength(2);
   });
 });

@@ -6,6 +6,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/actions/auth", () => ({ logoutAction: vi.fn() }));
 
+import { logoutAction } from "@/actions/auth";
+
 import { LogoutButton, NotificationButton } from "./portal-actions";
 
 afterEach(cleanup);
@@ -39,8 +41,7 @@ describe("LogoutButton", () => {
     await user.click(screen.getByRole("button", { name: "Log out" }));
 
     const dialog = screen.getByRole("dialog", { name: "Log out?" });
-    expect(dialog.getAttribute("aria-describedby")).toBe("logout-dialog-description");
-    expect(screen.getByText(description).id).toBe("logout-dialog-description");
+    expect(document.getElementById(dialog.getAttribute("aria-describedby") ?? "")?.textContent).toBe(description);
     expect(within(dialog).getByRole("button", { name: "Log out" }).getAttribute("type")).toBe("submit");
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("dialog", { name: "Log out?" })).toBeNull();
@@ -57,5 +58,20 @@ describe("LogoutButton", () => {
     await user.click(screen.getByRole("button", { name: "Log out" }));
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog", { name: "Log out?" })).toBeNull();
+  });
+
+  it("stays open while signing out", async () => {
+    let finish: () => void = () => {};
+    vi.mocked(logoutAction).mockImplementationOnce(() => new Promise<void>((resolve) => (finish = resolve)));
+    const user = userEvent.setup();
+    render(<LogoutButton description={description} layout="sidebar" />);
+
+    await user.click(screen.getByRole("button", { name: "Log out" }));
+    await user.click(within(screen.getByRole("dialog", { name: "Log out?" })).getByRole("button", { name: "Log out" }));
+    await user.keyboard("{Escape}");
+
+    expect(screen.getByRole("dialog", { name: "Log out?" })).toBeTruthy();
+    expect(logoutAction).toHaveBeenCalledTimes(1);
+    finish();
   });
 });

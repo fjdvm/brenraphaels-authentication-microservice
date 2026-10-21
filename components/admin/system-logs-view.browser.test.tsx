@@ -362,3 +362,54 @@ describe("SystemLogsView Export CSV", () => {
     expect((screen.getByRole("button", { name: "Export CSV" }) as HTMLButtonElement).disabled).toBe(true);
   });
 });
+
+describe("SystemLogsView as My Logs", () => {
+  function setupMine(initial: SystemLogsResult = ok(entries), load = vi.fn().mockResolvedValue(ok(entries))) {
+    render(<SystemLogsView initial={initial} options={options} defaultRange={range} load={load} scope="mine" />);
+    return { load, user: userEvent.setup() };
+  }
+
+  it("has no User column, since every row is the viewer's own", () => {
+    setupMine();
+
+    const headers = screen.getAllByRole("columnheader").map((h) => h.textContent);
+    expect(headers).toEqual(["Time (PHT)", "System", "Action", "Target", "Outcome", "Description"]);
+    expect(within(screen.getAllByRole("row")[2]).queryByText("Unauthenticated visitor")).toBeNull();
+  });
+
+  it("offers no Export", () => {
+    setupMine();
+
+    expect(screen.queryByRole("button", { name: /export/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /export/i })).toBeNull();
+  });
+
+  it("never offers Export, even if asked to", () => {
+    render(
+      <SystemLogsView initial={ok(entries)} options={options} defaultRange={range} load={vi.fn()} scope="mine" canExport />,
+    );
+
+    expect(screen.queryByRole("button", { name: /export/i })).toBeNull();
+  });
+
+  it("filters and pages the same way", async () => {
+    const { load, user } = setupMine(ok(entries, "c1"));
+
+    await user.selectOptions(screen.getByLabelText("Outcome"), "FAILURE");
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+    expect(load).toHaveBeenLastCalledWith(expect.objectContaining({ outcome: "FAILURE", from: "2026-10-15T00:00:00.000+08:00" }));
+  });
+
+  it("shows the inline error with Retry and no stale rows", async () => {
+    const load = vi.fn().mockResolvedValueOnce({ status: "error" }).mockResolvedValue(ok(entries));
+    const { user } = setupMine(ok(entries), load);
+
+    await user.selectOptions(screen.getByLabelText("Outcome"), "SUCCESS");
+
+    expect(await screen.findByText("Couldn't load your activity")).toBeTruthy();
+    expect(screen.queryByRole("table")).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByRole("table")).toBeTruthy();
+  });
+});
