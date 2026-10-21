@@ -77,6 +77,13 @@
   --loader-border: #ece6f2;
   --loader-track: #f1ebf8;
   --loader-overlay: rgb(250 247 252 / 0.55);
+  /* Figma "Portal UI/UX" dialogs and the Module access cards */
+  --scrim: rgb(18 13 26 / 0.45);
+  --dialog-footer: #fafafa;
+  --dialog-divider: #f0f0f2;
+  --danger-soft: #fee2e2;
+  --checkbox: #7c3aed;
+  --checkbox-border: #d4d4d8;
   --sidebar: #fafafa;
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--primary);
@@ -156,6 +163,12 @@
   --color-loader-border: var(--loader-border);
   --color-loader-track: var(--loader-track);
   --color-loader-overlay: var(--loader-overlay);
+  --color-scrim: var(--scrim);
+  --color-dialog-footer: var(--dialog-footer);
+  --color-dialog-divider: var(--dialog-divider);
+  --color-danger-soft: var(--danger-soft);
+  --color-checkbox: var(--checkbox);
+  --color-checkbox-border: var(--checkbox-border);
   --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);

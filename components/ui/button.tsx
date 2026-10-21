@@ -19,6 +19,7 @@ const buttonVariants = cva(
         identity: "rounded-lg bg-identity text-identity-foreground hover:bg-identity/90",
         "row-action": "rounded-lg border border-input bg-surface text-foreground hover:bg-accent",
         "row-danger": "rounded-lg border border-danger-border bg-surface text-danger-text hover:bg-badge-danger",
+        danger: "rounded-lg bg-danger-text text-white hover:bg-danger-text/90",
       },
       size: {
         default: "h-9 px-4 py-2",

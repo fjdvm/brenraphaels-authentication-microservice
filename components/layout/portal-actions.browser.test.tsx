@@ -36,8 +36,23 @@ describe("LogoutButton", () => {
 
     await user.click(screen.getByRole("button", { name: "Log out" }));
 
-    expect(screen.getByRole("dialog", { name: "Log out?" })).toBeTruthy();
+    const dialog = screen.getByRole("dialog", { name: "Log out?" });
+    expect(dialog.getAttribute("aria-describedby")).toBeTruthy();
+    expect(screen.getByText(/signed out of the portal and every system you opened/)).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog", { name: "Log out?" })).toBeNull();
+  });
+
+  it("closes from the close button and with Escape", async () => {
+    const user = userEvent.setup();
+    render(<LogoutButton layout="sidebar" />);
+
+    await user.click(screen.getByRole("button", { name: "Log out" }));
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog", { name: "Log out?" })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Log out" }));
+    await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog", { name: "Log out?" })).toBeNull();
   });
 });

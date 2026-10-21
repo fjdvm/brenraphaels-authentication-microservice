@@ -1,10 +1,12 @@
 "use client";
 
-import Link from "next/link";
+import { ChevronDown } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { startTransition, useActionState, useState, type SyntheticEvent } from "react";
 
 import { ModuleAccessMatrix } from "@/components/admin/module-access-matrix";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import type { SelectableSystem } from "@/lib/admin/module-selection";
 import {
@@ -14,20 +16,37 @@ import {
 
 type EditUserAccessFormProps = {
   action: (previous: EditUserAccessFormState, formData: FormData) => Promise<EditUserAccessFormState>;
-  user: { id: string; roleId: string; activeModuleIds: string[] };
+  user: {
+    id: string;
+    roleId: string;
+    activeModuleIds: string[];
+    firstName: string;
+    lastName: string;
+    username: string;
+    isDeleted: boolean;
+  };
   roles: { id: string; name: string }[];
   systems: SelectableSystem[];
 };
 
-const selectClass =
-  "h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive";
+const USER_MANAGEMENT = "/admin/users";
 
+/**
+ * Figma "Portal · Edit access dialog", open over User management. Closing it returns there.
+ * The Role picker is not in the Figma frame; it keeps the Administrator's ability to change a Role.
+ */
 export function EditUserAccessForm({ action, user, roles, systems }: EditUserAccessFormProps) {
+  const router = useRouter();
   const [state, formAction, isPending] = useActionState(action, initialEditUserAccessFormState);
   const [roleId, setRoleId] = useState(user.roleId);
   // Changing the Role deliberately leaves the checkboxes alone: only grants decide access.
   const [moduleIds, setModuleIds] = useState(user.activeModuleIds);
   const { fieldErrors } = state;
+  const savedRoleName = roles.find((role) => role.id === user.roleId)?.name;
+
+  function close() {
+    router.push(USER_MANAGEMENT, { scroll: false });
+  }
 
   function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -35,84 +54,95 @@ export function EditUserAccessForm({ action, user, roles, systems }: EditUserAcc
     startTransition(() => formAction(formData));
   }
 
+  const cancelButton = (
+    <Button disabled={isPending} onClick={close} size="cta" type="button" variant="row-action">
+      {user.isDeleted ? "Close" : "Cancel"}
+    </Button>
+  );
+
   return (
-    <form className="flex flex-col gap-8" noValidate onSubmit={handleSubmit}>
-      <input name="userId" type="hidden" value={user.id} />
+    <Dialog onOpenChange={(open) => (open ? undefined : close())} open>
+      <DialogContent className="max-w-190">
+        <DialogHeader
+          description={`${user.username}${savedRoleName ? ` · ${savedRoleName}` : ""}. Changes apply the next time they open a system.`}
+          title={`Edit access · ${user.firstName} ${user.lastName}`}
+        />
 
-      {state.error ? (
-        <p className="rounded-lg bg-danger/10 px-4 py-3 text-sm text-danger" role="alert">
-          {state.error}
-        </p>
-      ) : null}
-      {state.saved ? (
-        <p className="rounded-lg bg-primary/10 px-4 py-3 text-sm text-primary" role="status">
-          Access saved.
-        </p>
-      ) : null}
+        {user.isDeleted ? (
+          <>
+            <DialogBody>
+              <p className="rounded-lg bg-badge-danger px-4 py-3 text-sm text-badge-danger-foreground" role="status">
+                This User is Deleted. Their access cannot be changed until they are restored.
+              </p>
+            </DialogBody>
+            <DialogFooter>{cancelButton}</DialogFooter>
+          </>
+        ) : (
+          <form className="flex min-h-0 flex-col" noValidate onSubmit={handleSubmit}>
+            <input name="userId" type="hidden" value={user.id} />
+            <DialogBody className="flex flex-col gap-3.5">
+              {state.error ? (
+                <p className="rounded-lg bg-badge-danger px-4 py-3 text-sm text-badge-danger-foreground" role="alert">
+                  {state.error}
+                </p>
+              ) : null}
+              {state.saved ? (
+                <p className="rounded-lg bg-badge-success px-4 py-3 text-sm text-badge-success-foreground" role="status">
+                  Access saved.
+                </p>
+              ) : null}
 
-      <section aria-labelledby="role-heading" className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-primary" id="role-heading">
-          Role
-        </h2>
-        <p className="mt-1 text-sm text-on-surface-variant">
-          Administrator Roles confer administrative authority. Changing a Role never changes the Modules below.
-        </p>
-        <div className="mt-4 max-w-sm">
-          <label className="sr-only" htmlFor="roleId">
-            Role
-          </label>
-          <select
-            aria-describedby="roleId-error"
-            aria-invalid={fieldErrors.roleId ? true : undefined}
-            className={selectClass}
-            id="roleId"
-            name="roleId"
-            onChange={(event) => setRoleId(event.target.value)}
-            value={roleId}
-          >
-            {roles.map((role) => (
-              <option key={role.id} value={role.id}>
-                {role.name}
-              </option>
-            ))}
-          </select>
-          {fieldErrors.roleId ? (
-            <p className="mt-1.5 text-sm text-danger" id="roleId-error" role="alert">
-              {fieldErrors.roleId}
-            </p>
-          ) : null}
-        </div>
-      </section>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                <label className="text-[13px] font-medium text-field-label" htmlFor="roleId">
+                  Role
+                </label>
+                <div className="relative">
+                  <select
+                    aria-describedby={["roleId-hint", fieldErrors.roleId ? "roleId-error" : null].filter(Boolean).join(" ")}
+                    aria-invalid={fieldErrors.roleId ? true : undefined}
+                    className="w-60 appearance-none rounded-lg border border-input bg-surface py-2 pr-9 pl-3 text-sm leading-[normal] text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive"
+                    id="roleId"
+                    name="roleId"
+                    onChange={(event) => setRoleId(event.target.value)}
+                    value={roleId}
+                  >
+                    {roles.map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    aria-hidden="true"
+                    className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-on-surface-variant"
+                  />
+                </div>
+                <p className="text-xs text-on-surface-variant" id="roleId-hint">
+                  Changing a role never changes the modules below.
+                </p>
+                {fieldErrors.roleId ? (
+                  <p className="w-full text-xs text-danger-text" id="roleId-error" role="alert">
+                    {fieldErrors.roleId}
+                  </p>
+                ) : null}
+              </div>
 
-      <section aria-labelledby="module-access-heading" className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-primary" id="module-access-heading">
-          Module access
-        </h2>
-        <p className="mt-1 text-sm text-on-surface-variant">
-          Unchecking a Module revokes it; its history is kept.
-        </p>
-        {fieldErrors.moduleIds ? (
-          <p className="mt-2 text-sm text-danger" id="moduleIds-error" role="alert">
-            {fieldErrors.moduleIds}
-          </p>
-        ) : null}
-        <ModuleAccessMatrix setSelected={setModuleIds} selected={moduleIds} systems={systems} />
-      </section>
-
-      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
-        <Button asChild variant="outline">
-          <Link href="/admin/users">Back to users</Link>
-        </Button>
-        <div className="sm:w-56">
-          <button
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-on-primary transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={isPending}
-            type="submit"
-          >
-            {isPending ? "Saving…" : "Save access"} {isPending ? <Spinner /> : null}
-          </button>
-        </div>
-      </div>
-    </form>
+              {fieldErrors.moduleIds ? (
+                <p className="text-xs text-danger-text" id="moduleIds-error" role="alert">
+                  {fieldErrors.moduleIds}
+                </p>
+              ) : null}
+              <ModuleAccessMatrix density="dialog" setSelected={setModuleIds} selected={moduleIds} systems={systems} />
+            </DialogBody>
+            <DialogFooter>
+              {cancelButton}
+              <Button disabled={isPending} size="cta" type="submit" variant="identity">
+                {isPending ? "Saving…" : "Save access"} {isPending ? <Spinner /> : null}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
