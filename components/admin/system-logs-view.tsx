@@ -149,7 +149,7 @@ type Props = {
   /** Administrators only; the export endpoint checks again. Never offered on My Logs. */
   canExport?: boolean;
   exportCsv?: (query: AuditLogFilters) => Promise<ExportOutcome>;
-  /** "mine" is My Logs: every row is the viewer's own, so there is no Actor column and no Export. */
+  /** "mine" is My Logs, a personal history: no Actor column, no Export, and no System, Action or Outcome filter. */
   scope?: "all" | "mine";
 };
 
@@ -174,8 +174,9 @@ export function SystemLogsView({
   scope = "all",
 }: Props) {
   const copy = COPY[scope];
-  const showActor = scope === "all";
-  const canExport = canExportProp && scope === "all";
+  const personal = scope === "mine";
+  const showActor = !personal;
+  const canExport = canExportProp && !personal;
   const [filters, setFilters] = useState<Filters>({ q: "", ...defaultRange, action: "", outcome: "", source: "" });
   const [search, setSearch] = useState("");
   const [paging, setPaging] = useState<Paging>({ ...FIRST_PAGE, sizes: [initial.status === "ok" ? initial.entries.length : 0] });
@@ -343,31 +344,36 @@ export function SystemLogsView({
           </Popover.Portal>
         </Popover.Root>
 
-        <FilterSelect label="Action" value={filters.action} onChange={(action) => refilter({ action })}>
-          <option value="">All actions</option>
-          {actionOptions.map((a) => (
-            <option key={a.value} value={a.value}>
-              {a.label}
-            </option>
-          ))}
-        </FilterSelect>
-        <FilterSelect
-          label="Outcome"
-          value={filters.outcome}
-          onChange={(outcome) => refilter({ outcome: outcome as Filters["outcome"] })}
-        >
-          <option value="">All outcomes</option>
-          <option value="SUCCESS">Success</option>
-          <option value="FAILURE">Failed</option>
-        </FilterSelect>
-        <FilterSelect label="System" value={filters.source} onChange={(source) => refilter({ source })}>
-          <option value="">All systems</option>
-          {options?.systems.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
-            </option>
-          ))}
-        </FilterSelect>
+        {personal ? null : (
+          <>
+            <FilterSelect label="Action" value={filters.action} onChange={(action) => refilter({ action })}>
+              <option value="">All actions</option>
+              {actionOptions.map((a) => (
+                <option key={a.value} value={a.value}>
+                  {a.label}
+                </option>
+              ))}
+            </FilterSelect>
+            <FilterSelect
+              label="Outcome"
+              value={filters.outcome}
+              onChange={(outcome) => refilter({ outcome: outcome as Filters["outcome"] })}
+            >
+              <option value="">All outcomes</option>
+              <option value="SUCCESS">Success</option>
+              <option value="FAILURE">Failed</option>
+            </FilterSelect>
+            <FilterSelect label="System" value={filters.source} onChange={(source) => refilter({ source })}>
+              <option value="">All systems</option>
+              {options?.systems.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </FilterSelect>
+
+          </>
+        )}
 
         {rangeInvalid ? (
           <p role="alert" className="w-full text-sm text-danger-text">

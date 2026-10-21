@@ -442,19 +442,33 @@ describe("SystemLogsView as My Logs", () => {
     expect(screen.queryByRole("button", { name: /export/i })).toBeNull();
   });
 
-  it("filters and pages the same way", async () => {
+  it("offers only search and the date range: no System, Action or Outcome filter", () => {
+    setupMine();
+
+    expect(screen.getByRole("searchbox", { name: "Search" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Date range/ })).toBeTruthy();
+    expect(screen.queryByLabelText("System")).toBeNull();
+    expect(screen.queryByLabelText("Action")).toBeNull();
+    expect(screen.queryByLabelText("Outcome")).toBeNull();
+  });
+
+  it("searches and pages the same way", async () => {
     const { load, user } = setupMine(ok(entries, "c1"));
 
-    await user.selectOptions(screen.getByLabelText("Outcome"), "FAILURE");
+    await user.type(screen.getByRole("searchbox", { name: "Search" }), "signed{Enter}");
     await waitFor(() => expect(load).toHaveBeenCalledTimes(1));
-    expect(load).toHaveBeenLastCalledWith(expect.objectContaining({ outcome: "FAILURE", from: "2026-10-15T00:00:00.000+08:00" }));
+    expect(load).toHaveBeenLastCalledWith({
+      q: "signed",
+      from: "2026-10-15T00:00:00.000+08:00",
+      to: "2026-10-21T23:59:59.999+08:00",
+    });
   });
 
   it("shows the inline error with Retry and no stale rows", async () => {
     const load = vi.fn().mockResolvedValueOnce({ status: "error" }).mockResolvedValue(ok(entries));
     const { user } = setupMine(ok(entries), load);
 
-    await user.selectOptions(screen.getByLabelText("Outcome"), "SUCCESS");
+    await user.type(screen.getByRole("searchbox", { name: "Search" }), "signed{Enter}");
 
     expect(await screen.findByText("Couldn't load your activity")).toBeTruthy();
     expect(screen.queryByRole("table")).toBeNull();

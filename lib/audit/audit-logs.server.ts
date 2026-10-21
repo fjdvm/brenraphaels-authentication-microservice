@@ -10,7 +10,6 @@ import { prisma } from "@/lib/db/prisma";
 import {
   auditGatewayConfig,
   createAuditClient,
-  readMyLogOptions,
   readMyLogs,
   exportSystemLogs,
   readSystemLogOptions,
@@ -84,9 +83,6 @@ export async function listMyLogEvents(filters: AuditLogFilters): Promise<AuditLo
   return readMyLogs(client, await getPortalUser(), filters);
 }
 
-export async function listMyLogOptions(): Promise<AuditFilterOptions> {
-  return readMyLogOptions(client, await getPortalUser());
-}
 
 export async function exportSystemLogEvents(filters: AuditExportFilters): Promise<AuditExport> {
   return exportSystemLogs(client, await getPortalUser(), filters);
