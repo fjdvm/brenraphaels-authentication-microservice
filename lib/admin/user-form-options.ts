@@ -26,6 +26,7 @@ export async function loadUserFormOptions(): Promise<UserFormOptions> {
       select: {
         id: true,
         name: true,
+        iconName: true,
         modules: { select: { id: true, name: true }, orderBy: { name: "asc" } },
       },
       orderBy: { name: "asc" },
