@@ -74,6 +74,11 @@ export type AuditClient = {
   filterOptions(): Promise<AuditFilterOptions>;
   /** Streams the matching events as CSV, newest first. Rejects when the service cannot be read. */
   exportCsv(filters: AuditExportFilters, requestedBy: ExportRequester): Promise<AuditExport>;
+  /**
+   * When the User last signed in to the Portal before the current session: their second most
+   * recent successful sign-in. Null when there is none, and never throws: a failed read shows a dash.
+   */
+  previousSignIn(userId: string): Promise<Date | null>;
 };
 
 type ClientConfig = {
@@ -404,6 +409,45 @@ export function createAuditClient(config: ClientConfig): AuditClient {
       }
 
       return { status: "ok", body: response.body };
+    },
+
+    async previousSignIn(userId) {
+      try {
+        // The newest successful sign-in is the current session, so the previous one is the second.
+        const params = new URLSearchParams({
+          source: SOURCE,
+          action: CATALOG["auth.login"].action,
+          outcome: "success",
+          actor_type: "user",
+          actor_id: userId,
+          limit: "2",
+        });
+
+        const response = await send(`/events?${params}`, { method: "GET", key: config.readKey });
+
+        if (!response.ok) {
+          throw new Error(`Audit-logs service answered ${response.status}`);
+        }
+
+        const { events } = (await response.json()) as { events: ServiceEvent[] };
+        const previous = events[1];
+
+        if (!previous) {
+          return null;
+        }
+
+        const at = new Date(previous.occurred_at);
+
+        // An unreadable time would make the page's formatting throw; show a dash instead.
+        if (Number.isNaN(at.getTime())) {
+          throw new Error(`Audit-logs service sent an unreadable time: ${previous.occurred_at}`);
+        }
+
+        return at;
+      } catch (error) {
+        console.error("Audit: could not read the previous sign-in", error);
+        return null;
+      }
     },
   };
 }
