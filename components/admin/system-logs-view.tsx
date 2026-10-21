@@ -1,11 +1,14 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { Download } from "lucide-react";
+import { useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { AuditFilterOptions, AuditLogFilters } from "@/lib/audit/audit-logs";
+import { downloadSystemLogsCsv, type ExportOutcome } from "@/lib/audit/system-logs-download";
+import { EXPORT_TOO_LARGE_MESSAGE } from "@/lib/audit/system-logs-export";
 import { dayRangeBounds, type DayRange, type SystemLogsResult } from "@/lib/audit/system-logs-query";
 
 const timestampFormat = new Intl.DateTimeFormat("en", {
@@ -58,14 +61,34 @@ type Props = {
   options: AuditFilterOptions | null;
   defaultRange: DayRange;
   load: (query: AuditLogFilters) => Promise<SystemLogsResult>;
+  /** The page title and description, with Export CSV beside them. */
+  heading?: ReactNode;
+  /** Administrators only; the export endpoint checks again. */
+  canExport?: boolean;
+  exportCsv?: (query: AuditLogFilters) => Promise<ExportOutcome>;
 };
 
-export function SystemLogsView({ initial, options, defaultRange, load }: Props) {
+const exportMessages = {
+  too_large: EXPORT_TOO_LARGE_MESSAGE,
+  error: "Couldn't export System logs. Try again.",
+} as const;
+
+export function SystemLogsView({
+  initial,
+  options,
+  defaultRange,
+  load,
+  heading,
+  canExport = false,
+  exportCsv = downloadSystemLogsCsv,
+}: Props) {
   const [filters, setFilters] = useState<Filters>({ q: "", ...defaultRange, action: "", outcome: "", source: "" });
   const [search, setSearch] = useState("");
   const [paging, setPaging] = useState<Paging>({ ...FIRST_PAGE, sizes: [initial.status === "ok" ? initial.entries.length : 0] });
   const [result, setResult] = useState<SystemLogsResult | null>(initial);
   const latest = useRef(0);
+  const [exporting, setExporting] = useState(false);
+  const [exportProblem, setExportProblem] = useState<keyof typeof exportMessages | null>(null);
 
   const rangeInvalid = Boolean(filters.from && filters.to && filters.from > filters.to);
 
@@ -101,6 +124,7 @@ export function SystemLogsView({ initial, options, defaultRange, load }: Props) 
     }
 
     setFilters(next);
+    setExportProblem(null);
 
     if (next.from && next.to && next.from > next.to) {
       // Don't ask for a range the service rejects, and don't leave rows from another range on screen.
@@ -116,13 +140,52 @@ export function SystemLogsView({ initial, options, defaultRange, load }: Props) 
     refilter({ q: search });
   }
 
+  async function exportShown() {
+    setExporting(true);
+    setExportProblem(null);
+
+    // Exactly what the screen shows: the applied filters and date range, every page of them.
+    const outcome = await exportCsv(toQuery(filters, null)).catch((): ExportOutcome => ({ status: "error" }));
+
+    setExporting(false);
+    if (outcome.status !== "ok") setExportProblem(outcome.status);
+  }
+
   const actionOptions = options?.actions.filter((a) => !filters.source || a.systems.includes(filters.source)) ?? [];
   const loading = result === null;
   const nextCursor = result?.status === "ok" ? result.nextCursor : null;
   const start = paging.sizes.slice(0, paging.index).reduce((sum, n) => sum + n, 0) + 1;
 
+  // The service exports a whole, bounded date range only.
+  const exportable = Boolean(filters.from && filters.to) && !rangeInvalid;
+
   return (
     <div className="flex flex-col gap-4">
+      {heading || canExport ? (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">{heading}</div>
+          {canExport ? (
+            <div className="flex flex-col items-start gap-1 sm:items-end">
+              <Button
+                variant="outline"
+                size="cta"
+                disabled={!exportable || exporting}
+                title={exportable ? undefined : "Choose a From and To date to export"}
+                onClick={() => void exportShown()}
+              >
+                <Download aria-hidden="true" />
+                {exporting ? "Exporting…" : "Export CSV"}
+              </Button>
+              {exportProblem ? (
+                <p role="alert" className="text-sm text-destructive sm:text-right">
+                  {exportMessages[exportProblem]}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       <form
         role="search"
         onSubmit={submitSearch}

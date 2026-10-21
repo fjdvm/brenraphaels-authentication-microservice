@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createAuditClient, readSystemLogOptions, readSystemLogs, SYSTEM_LOG_PAGE_SIZE, type UserDirectory } from "./audit-logs";
+import {
+  createAuditClient,
+  exportSystemLogs,
+  readSystemLogOptions,
+  readSystemLogs,
+  SYSTEM_LOG_PAGE_SIZE,
+  type UserDirectory,
+} from "./audit-logs";
 import { AUDIT_ACTIONS } from "./events";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- request bodies are asserted loosely */
@@ -432,6 +439,79 @@ describe("reading the filter options", () => {
     const { calls, client: audit } = client(() => Response.json({ sources: [] }));
 
     await expect(readSystemLogOptions(audit, viewer)).rejects.toThrow("Administrators only");
+    expect(calls).toHaveLength(0);
+  });
+});
+
+describe("exporting System logs", () => {
+  const range = { from: "2026-10-15T00:00:00.000+08:00", to: "2026-10-21T23:59:59.999+08:00" };
+  const admin = { id: "admin", firstName: "Ada", lastName: "Min", username: "2026-ADMIN-001", isAdministrator: true };
+  const csv = () =>
+    new Response("id,source\r\n1,Authentication\r\n", {
+      headers: { "Content-Type": "text/csv; charset=utf-8" },
+    });
+
+  it("asks for CSV with the read key, the screen's filters and the requesting Administrator", async () => {
+    const { calls, client: audit } = client(csv);
+
+    const result = await exportSystemLogs(audit, admin, {
+      ...range,
+      q: " ada ",
+      action: "user.login",
+      outcome: "FAILURE",
+      source: "Authentication",
+    });
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].method).toBe("GET");
+    expect(calls[0].url.pathname).toBe("/events/export");
+    expect(calls[0].headers.get("authorization")).toBe("Bearer read-key");
+    expect(Object.fromEntries(calls[0].url.searchParams)).toEqual({
+      format: "csv",
+      from: range.from,
+      to: range.to,
+      q: "ada",
+      action: "user.login",
+      outcome: "failure",
+      source: "Authentication",
+      requested_by_id: "admin",
+      requested_by_name: "Ada Min (2026-ADMIN-001)",
+    });
+    expect(result.status).toBe("ok");
+    expect(result.status === "ok" && (await new Response(result.body).text())).toBe("id,source\r\n1,Authentication\r\n");
+  });
+
+  it("sends only the filters that are set, and never a cursor or limit", async () => {
+    const { calls, client: audit } = client(csv);
+
+    await audit.exportCsv({ ...range, q: "", action: undefined }, { id: "admin", name: "Ada" });
+
+    expect([...calls[0].url.searchParams.keys()].sort()).toEqual(
+      ["format", "from", "requested_by_id", "requested_by_name", "to"].sort(),
+    );
+  });
+
+  it("reports an export over the service's cap without a body", async () => {
+    const { client: audit } = client(() =>
+      Response.json({ error: "Export matches 60000 events, more than 50000 rows.", row_count: 60000, limit: 50000 }, { status: 413 }),
+    );
+
+    await expect(audit.exportCsv(range, { id: "admin", name: "Ada" })).resolves.toEqual({ status: "too_large" });
+  });
+
+  it("rejects when the service cannot be read", async () => {
+    const { client: audit } = client(() => new Response(null, { status: 502 }));
+
+    await expect(audit.exportCsv(range, { id: "admin", name: "Ada" })).rejects.toThrow("502");
+  });
+
+  it.each([
+    ["signed out", null],
+    ["not an Administrator", { ...admin, isAdministrator: false }],
+  ])("refuses when %s, without calling the service", async (_label, viewer) => {
+    const { calls, client: audit } = client(csv);
+
+    await expect(exportSystemLogs(audit, viewer, range)).rejects.toThrow("Administrators only");
     expect(calls).toHaveLength(0);
   });
 });
