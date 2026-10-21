@@ -1,16 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { updateUserAccess, type AccessStore } from "./user-access";
 
 import type { SystemLogEventInput } from "@/lib/audit/system-log";
+import { stubNotificationsService } from "@/lib/notifications/test-support";
 
 const ADMIN = { id: "admin-1" };
 const TARGET = "user-2";
-const MODULES = ["m1", "m2", "m3"];
+const MODULES: Record<string, { system: string; name: string }> = {
+  m1: { system: "CRMS", name: "Customer Profiles" },
+  m2: { system: "HRMS", name: "Payroll & ESS" },
+  m3: { system: "POS", name: "Sales" },
+};
 
 type Grant = { moduleId: string; grantedBy: string; revoked: boolean };
 
-function createWorld(options: { deleted?: boolean; storeFails?: boolean } = {}) {
+function createWorld(options: { deleted?: boolean; storeFails?: boolean; notificationsDown?: boolean } = {}) {
   const grants: Grant[] = [{ moduleId: "m1", grantedBy: "seed", revoked: false }];
   const user = { id: TARGET, roleId: "role-a", isDeleted: options.deleted ?? false };
   const events: SystemLogEventInput[] = [];
@@ -24,7 +29,7 @@ function createWorld(options: { deleted?: boolean; storeFails?: boolean } = {}) 
       return roleId in roles;
     },
     async countModules(ids) {
-      return ids.filter((id) => MODULES.includes(id)).length;
+      return ids.filter((id) => id in MODULES).length;
     },
     async apply({ userId, roleId, moduleIds, actorId }) {
       if (options.storeFails) throw new Error("db down");
@@ -38,19 +43,25 @@ function createWorld(options: { deleted?: boolean; storeFails?: boolean } = {}) 
         if (!grant.revoked && toRevoke.includes(grant.moduleId)) grant.revoked = true;
       });
       toGrant.forEach((moduleId) => grants.push({ moduleId, grantedBy: actorId, revoked: false }));
-      return { roleChange, granted: toGrant.length, revoked: toRevoke.length };
+      return {
+        roleChange,
+        granted: toGrant.map((id) => MODULES[id]),
+        revoked: toRevoke.map((id) => MODULES[id]),
+      };
     },
   };
 
+  const notifications = stubNotificationsService({ down: options.notificationsDown });
   const ports = {
     store,
+    notify: notifications.notify,
     audit: async (event: SystemLogEventInput) => {
       events.push(event);
     },
   };
   const active = () => grants.filter((grant) => !grant.revoked).map((grant) => grant.moduleId);
 
-  return { grants, user, events, ports, active };
+  return { grants, user, events, ports, active, notifications: notifications.sent };
 }
 
 const save = (world: ReturnType<typeof createWorld>, input: Partial<{ roleId: string; moduleIds: string[] }> = {}) =>
@@ -174,5 +185,58 @@ describe("updateUserAccess", () => {
       expect.objectContaining({ action: "user.access_update", outcome: "FAILURE", targetUserId: TARGET }),
     ]);
     expect(JSON.stringify(world.events)).not.toContain("db down");
+  });
+
+  it("sends the User one notification per access save, naming what was granted and revoked", async () => {
+    const world = createWorld();
+
+    await save(world, { moduleIds: ["m2", "m3"] });
+
+    expect(world.notifications).toHaveLength(1);
+    expect(world.notifications[0]).toMatchObject({ type: "access.changed", userIds: [TARGET] });
+    expect(world.notifications[0].body).toContain("Granted: HRMS Payroll & ESS, POS Sales");
+    expect(world.notifications[0].body).toContain("Revoked: CRMS Customer Profiles");
+  });
+
+  it("sends one Role change notification, and no access notification when only the Role changed", async () => {
+    const world = createWorld();
+
+    await save(world, { roleId: "role-b" });
+
+    expect(world.notifications).toEqual([
+      expect.objectContaining({ type: "role.changed", userIds: [TARGET], body: expect.stringContaining("Cashier to CEO") }),
+    ]);
+  });
+
+  it("sends nothing when nothing changed or the save failed", async () => {
+    const unchanged = createWorld();
+    const failed = createWorld({ storeFails: true });
+
+    await save(unchanged);
+    await save(failed, { moduleIds: [] });
+    await save(failed, { roleId: "nope" });
+
+    expect(unchanged.notifications).toEqual([]);
+    expect(failed.notifications).toEqual([]);
+  });
+
+  it("sends nothing when an Administrator changes their own access", async () => {
+    const world = createWorld();
+
+    await updateUserAccess({ userId: TARGET, roleId: "role-b", moduleIds: ["m2"] }, { id: TARGET }, world.ports);
+
+    expect(world.active()).toEqual(["m2"]);
+    expect(world.notifications).toEqual([]);
+  });
+
+  it("still saves the access and Role when the notifications service is down", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const world = createWorld({ notificationsDown: true });
+
+    const result = await save(world, { roleId: "role-b", moduleIds: ["m2"] });
+
+    expect(result).toEqual({ ok: true });
+    expect(world.active()).toEqual(["m2"]);
+    expect(world.user.roleId).toBe("role-b");
   });
 });

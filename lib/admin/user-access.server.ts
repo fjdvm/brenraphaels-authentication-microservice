@@ -2,6 +2,7 @@ import "server-only";
 
 import { recordSystemLogEvent } from "@/lib/audit/system-log";
 import { prisma } from "@/lib/db/prisma";
+import { notify } from "@/lib/notifications/notifications.server";
 
 import type { AccessPorts, AccessStore } from "./user-access";
 
@@ -85,30 +86,34 @@ export const prismaAccessStore: AccessStore = {
 
       // Revoking only stamps revokedAt, so the grant stays as history.
       const revoked = toRevoke.length
-        ? (
-            await transaction.accessGrant.updateMany({
-              where: { userId, moduleId: { in: toRevoke }, revokedAt: null },
-              data: { revokedAt: new Date() },
-            })
-          ).count
-        : 0;
+        ? await transaction.accessGrant.updateManyAndReturn({
+            where: { userId, moduleId: { in: toRevoke }, revokedAt: null },
+            data: { revokedAt: new Date() },
+            select: { module: { select: { name: true, system: { select: { name: true } } } } },
+          })
+        : [];
 
       // skipDuplicates is ON CONFLICT DO NOTHING: if a concurrent save already
-      // created the active grant, the partial unique index makes this a no-op.
+      // created the active grant, the partial unique index makes this a no-op
+      // and the grant is not returned, so it is not reported as this save's.
       const granted = toGrant.length
-        ? (
-            await transaction.accessGrant.createMany({
-              data: toGrant.map((moduleId) => ({ userId, moduleId, grantedBy: actorId })),
-              skipDuplicates: true,
-            })
-          ).count
-        : 0;
+        ? await transaction.accessGrant.createManyAndReturn({
+            data: toGrant.map((moduleId) => ({ userId, moduleId, grantedBy: actorId })),
+            skipDuplicates: true,
+            select: { module: { select: { name: true, system: { select: { name: true } } } } },
+          })
+        : [];
 
-      return { roleChange, granted, revoked };
+      const toModuleRef = ({ module }: { module: { name: string; system: { name: string } } }) => ({
+        system: module.system.name,
+        name: module.name,
+      });
+
+      return { roleChange, granted: granted.map(toModuleRef), revoked: revoked.map(toModuleRef) };
     });
   },
 };
 
 export function createProductionAccessPorts(): AccessPorts {
-  return { store: prismaAccessStore, audit: recordSystemLogEvent };
+  return { store: prismaAccessStore, audit: recordSystemLogEvent, notify };
 }

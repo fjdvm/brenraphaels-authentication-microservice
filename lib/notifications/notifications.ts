@@ -14,7 +14,22 @@ export type Inbox = {
   notifications: PortalNotification[];
 };
 
+/** What an Administrator did that the affected User is told about. */
+export type NotificationType = "access.changed" | "role.changed" | "credentials.resent";
+
+/** A notification the Portal sends to one User's Portal inbox. */
+export type OutgoingNotification = {
+  userId: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+};
+
+/** Sends a notification on a best-effort basis. Never throws. */
+export type Notifier = (notification: OutgoingNotification) => Promise<void>;
+
 export type NotificationsClient = {
+  send(notification: OutgoingNotification): Promise<void>;
   list(userId: string): Promise<PortalNotification[]>;
   unreadCount(userId: string): Promise<number>;
   markRead(userId: string, notificationId: string): Promise<void>;
@@ -64,6 +79,12 @@ export function createNotificationsClient(config: ClientConfig): NotificationsCl
   }
 
   return {
+    async send({ userId, ...message }) {
+      await call("", {
+        method: "POST",
+        body: { ...message, sendingApp: config.app, targetApp: config.app, userIds: [userId] },
+      });
+    },
     async list(userId) {
       const body = await call("", { method: "GET", query: { userId, app: config.app, limit: String(LIST_LIMIT) } });
 
@@ -100,4 +121,15 @@ export async function readInbox(client: NotificationsClient, userId: string): Pr
 
     return { available: false, unread: 0, notifications: [] };
   }
+}
+
+/** A failed send is logged and dropped, so it can never fail the action that caused it. */
+export function createNotifier(client: NotificationsClient): Notifier {
+  return async (notification) => {
+    try {
+      await client.send(notification);
+    } catch (error) {
+      console.error("Could not send a notification", error);
+    }
+  };
 }

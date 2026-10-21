@@ -2,7 +2,7 @@ import "server-only";
 
 import { getPortalUser } from "@/lib/auth/session";
 
-import { createNotificationsClient, type NotificationsClient } from "./notifications";
+import { createNotificationsClient, createNotifier, type NotificationsClient } from "./notifications";
 
 /**
  * The Portal's connection to the notifications service, through the api-gateway with the
@@ -19,3 +19,6 @@ export const notificationsDeps = {
   resolveUser: getPortalUser,
   client,
 };
+
+/** Sends to a User's Portal inbox on a best-effort basis; a failure never reaches the caller. */
+export const notify = createNotifier(client);
