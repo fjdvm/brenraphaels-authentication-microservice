@@ -58,6 +58,14 @@
   --system-ims-foreground: #0f6e56;
   --system-pos: #faece7;
   --system-pos-foreground: #993c1d;
+  /* Figma "Staff home": the page behind the cards, and the Module chips on a System card */
+  --canvas: #fafafa;
+  --chip: #fafafa;
+  --chip-border: #ede9f2;
+  /* Figma dialogs: the dimmed page behind them and the action footer */
+  --scrim: rgb(18 13 26 / 0.45);
+  --dialog-footer: #fafafa;
+  --dialog-divider: #f0f0f2;
   --callout: #f7f5fa;
   --callout-foreground: #5a5368;
   /* Figma "Portal UI/UX" auth screens and loading card */
@@ -138,6 +146,12 @@
   --color-system-ims-foreground: var(--system-ims-foreground);
   --color-system-pos: var(--system-pos);
   --color-system-pos-foreground: var(--system-pos-foreground);
+  --color-canvas: var(--canvas);
+  --color-chip: var(--chip);
+  --color-chip-border: var(--chip-border);
+  --color-scrim: var(--scrim);
+  --color-dialog-footer: var(--dialog-footer);
+  --color-dialog-divider: var(--dialog-divider);
   --color-callout: var(--callout);
   --color-callout-foreground: var(--callout-foreground);
   --color-auth-panel: var(--auth-panel);
