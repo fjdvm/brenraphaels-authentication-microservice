@@ -1,7 +1,8 @@
 import { connection } from "next/server";
 
 import { SystemLogsView } from "@/components/admin/system-logs-view";
-import { listSystemLogEvents, SYSTEM_LOG_PAGE_SIZE } from "@/lib/audit/system-log";
+import { SYSTEM_LOG_PAGE_SIZE } from "@/lib/audit/audit-logs";
+import { listSystemLogEvents } from "@/lib/audit/audit-logs.server";
 import { requireAdministrator } from "@/lib/auth/session";
 
 export default async function SystemLogsPage() {
@@ -18,7 +19,7 @@ export default async function SystemLogsPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-primary">System logs</h1>
         <p className="mt-1 text-sm text-on-surface-variant">
-          Portal sign-in, sign-out and password activity. The {SYSTEM_LOG_PAGE_SIZE} most recent events.
+          Activity from every System, recorded in the audit-logs service. The {SYSTEM_LOG_PAGE_SIZE} most recent events.
         </p>
       </div>
       <SystemLogsView entries={entries} />

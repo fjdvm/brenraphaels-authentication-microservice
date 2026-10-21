@@ -1,6 +1,6 @@
 import "server-only";
 
-import { recordSystemLogEvent } from "@/lib/audit/system-log";
+import { recordAuditEvent } from "@/lib/audit/audit-logs.server";
 import { createNeonAuthCredentialIssuer } from "@/lib/auth/identity-provisioner";
 import { generateTemporaryPassword } from "@/lib/auth/temporary-password";
 import { prisma } from "@/lib/db/prisma";
@@ -39,7 +39,7 @@ export function createProductionResendPorts(): ResendPorts {
 
       return missing.length > 0 ? `Missing ${missing.join(", ")}` : null;
     },
-    audit: recordSystemLogEvent,
+    audit: recordAuditEvent,
     generatePassword: generateTemporaryPassword,
     notify,
   };

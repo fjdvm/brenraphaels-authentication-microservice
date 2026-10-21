@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { SystemLogEventInput } from "@/lib/audit/system-log";
+import type { AuditEventInput } from "@/lib/audit/events";
 import type { Notifier } from "@/lib/notifications/notifications";
 import type { FieldErrors } from "@/lib/validations/user";
 
@@ -31,7 +31,7 @@ export type AccessStore = {
 
 export type AccessPorts = {
   store: AccessStore;
-  audit(event: SystemLogEventInput): Promise<void>;
+  audit(event: AuditEventInput): Promise<void>;
   notify: Notifier;
 };
 
@@ -125,7 +125,7 @@ export async function updateUserAccess(
     return fail("Saving access failed", "The changes were not saved. Reload the page and try again.");
   }
 
-  const log = (action: SystemLogEventInput["action"], detail: string) =>
+  const log = (action: AuditEventInput["action"], detail: string) =>
     audit({ action, outcome: "SUCCESS", actorId, targetUserId: userId, detail });
 
   const { granted, revoked, roleChange } = outcome;

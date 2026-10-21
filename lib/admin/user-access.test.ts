@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { updateUserAccess, type AccessStore } from "./user-access";
 
-import type { SystemLogEventInput } from "@/lib/audit/system-log";
+import type { AuditEventInput } from "@/lib/audit/events";
 import { stubNotificationsService } from "@/lib/notifications/test-support";
 
 const ADMIN = { id: "admin-1" };
@@ -18,7 +18,7 @@ type Grant = { moduleId: string; grantedBy: string; revoked: boolean };
 function createWorld(options: { deleted?: boolean; storeFails?: boolean; notificationsDown?: boolean } = {}) {
   const grants: Grant[] = [{ moduleId: "m1", grantedBy: "seed", revoked: false }];
   const user = { id: TARGET, roleId: "role-a", isDeleted: options.deleted ?? false };
-  const events: SystemLogEventInput[] = [];
+  const events: AuditEventInput[] = [];
   const roles: Record<string, string> = { "role-a": "Cashier", "role-b": "CEO" };
 
   const store: AccessStore = {
@@ -55,7 +55,7 @@ function createWorld(options: { deleted?: boolean; storeFails?: boolean; notific
   const ports = {
     store,
     notify: notifications.notify,
-    audit: async (event: SystemLogEventInput) => {
+    audit: async (event: AuditEventInput) => {
       events.push(event);
     },
   };
