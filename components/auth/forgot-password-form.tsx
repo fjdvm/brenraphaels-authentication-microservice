@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, AtSign, MailCheck } from "lucide-react";
+import { ArrowRight, AtSign, MailCheck } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useState } from "react";
 
@@ -10,11 +10,11 @@ import { SubmitButton, primaryButtonClass } from "@/components/ui/submit-button"
 import {
   AuthField,
   AuthHeading,
+  BackToLogIn,
   FormAlert,
   authFieldsClass,
   authFormClass,
   authInputClass,
-  authLinkClass,
 } from "./auth-card";
 
 const initialState: FormState = { error: null };
@@ -51,10 +51,7 @@ export function ForgotPasswordForm() {
         {state.error ? <FormAlert tone="error">{state.error}</FormAlert> : null}
         <SubmitButton label="Send reset link" pendingLabel="Sending…" />
       </div>
-      <Link className={authLinkClass} href="/login">
-        <ArrowLeft aria-hidden="true" className="size-3.5" />
-        Back to log in
-      </Link>
+      <BackToLogIn />
     </form>
   );
 }

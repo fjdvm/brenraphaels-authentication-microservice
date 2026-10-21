@@ -6,7 +6,7 @@ import { BrandLogo } from "@/components/ui/brand-logo";
 import { cn } from "@/lib/utils/cn";
 
 /** Waits shorter than this finish without the card flashing up. */
-export const LOADING_CARD_DELAY_MS = 300;
+const LOADING_CARD_DELAY_MS = 300;
 
 // The Figma arc runs from 12 o'clock to about 4 o'clock: 35% of the ring.
 const RING_RADIUS = 34;

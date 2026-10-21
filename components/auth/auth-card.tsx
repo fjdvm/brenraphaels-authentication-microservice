@@ -1,4 +1,5 @@
-import { Box, IdCardLanyard, Shield, Store, Users, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Box, IdCardLanyard, Shield, Store, Users, type LucideIcon } from "lucide-react";
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { BrandLogo } from "@/components/ui/brand-logo";
@@ -134,6 +135,15 @@ export const authFieldsClass = "flex flex-col gap-4";
 
 export const authLinkClass =
   "inline-flex items-center gap-1.5 self-start text-[13px]/[normal] font-medium text-identity underline-offset-4 hover:underline";
+
+export function BackToLogIn() {
+  return (
+    <Link className={authLinkClass} href="/login">
+      <ArrowLeft aria-hidden="true" className="size-3.5" />
+      Back to log in
+    </Link>
+  );
+}
 
 type AuthFieldProps = {
   id: string;

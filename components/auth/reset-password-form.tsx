@@ -1,15 +1,15 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useActionState } from "react";
 
 import { resetPasswordAction, type FormState } from "@/actions/auth";
-import { SubmitButton, primaryButtonClass } from "@/components/ui/submit-button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { MIN_PASSWORD_LENGTH } from "@/lib/validations/auth";
 
 import {
   AuthHeading,
+  BackToLogIn,
   FormAlert,
   authFieldsClass,
   authFormClass,
@@ -68,19 +68,11 @@ export function InvalidResetLink() {
         title="Reset link not valid"
         description="This link is missing or has expired. Reset links last 15 minutes."
       />
-      <Link className={primaryButtonClass} href="/forgot-password">
+      <FormAlert tone="error">Request a new reset link to continue.</FormAlert>
+      <Link className={authLinkClass} href="/forgot-password">
         Request a new link
       </Link>
-      <BackToLogIn />
     </div>
   );
 }
 
-function BackToLogIn() {
-  return (
-    <Link className={authLinkClass} href="/login">
-      <ArrowLeft aria-hidden="true" className="size-3.5" />
-      Back to log in
-    </Link>
-  );
-}
