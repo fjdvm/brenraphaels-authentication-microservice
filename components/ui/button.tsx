@@ -15,12 +15,18 @@ const buttonVariants = cva(
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        // Figma "Portal UI/UX" buttons.
+        identity: "rounded-lg bg-identity text-identity-foreground hover:bg-identity/90",
+        "row-action": "rounded-lg border border-input bg-surface text-foreground hover:bg-accent",
+        "row-danger": "rounded-lg border border-danger-border bg-surface text-danger-text hover:bg-badge-danger",
       },
       size: {
         default: "h-9 px-4 py-2",
         sm: "h-8 rounded-md px-3 text-xs",
         lg: "h-10 rounded-md px-8",
         icon: "size-9",
+        figma: "h-auto px-4 py-[9px] leading-[normal] [&_svg:not([class*='size-'])]:size-4",
+        row: "h-auto gap-1.5 py-1.5 pl-2.5 pr-3 text-[13px] leading-[normal] [&_svg:not([class*='size-'])]:size-3.5",
       },
     },
     defaultVariants: { variant: "default", size: "default" },

@@ -14,6 +14,7 @@ export function initialsOf({ firstName, lastName }: Pick<ShellUser, "firstName" 
 }
 
 const AVATAR_SIZES = {
+  sm: "size-8 text-xs",
   md: "size-9 text-[13px]",
   lg: "size-11 text-[15px]",
 } as const;
@@ -21,15 +22,19 @@ const AVATAR_SIZES = {
 export function UserAvatar({
   user,
   size,
+  tone = "solid",
 }: {
   user: Pick<ShellUser, "firstName" | "lastName">;
   size: keyof typeof AVATAR_SIZES;
+  /** Figma's user table shows Administrators solid and everyone else soft. */
+  tone?: "solid" | "soft";
 }) {
   return (
     <span
       aria-hidden="true"
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full bg-identity font-semibold leading-[normal] text-identity-foreground",
+        "flex shrink-0 items-center justify-center rounded-full font-semibold leading-[normal]",
+        tone === "solid" ? "bg-identity text-identity-foreground" : "bg-identity-soft text-identity",
         AVATAR_SIZES[size],
       )}
     >

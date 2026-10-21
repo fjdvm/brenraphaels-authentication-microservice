@@ -20,15 +20,15 @@ export function UserLifecycleButton({ action, mode, userId, username }: Props) {
   const isDelete = mode === "delete";
 
   return (
-    <form action={formAction} className="flex flex-wrap items-center gap-2">
+    <form action={formAction} className="flex flex-wrap items-center justify-end gap-2">
       <input name="userId" type="hidden" value={userId} />
       {isDelete && !confirming ? (
         <Button
           aria-label={`Delete ${username}`}
           onClick={() => setConfirming(true)}
-          size="sm"
+          size="row"
           type="button"
-          variant="outline"
+          variant="row-danger"
         >
           <Trash2 aria-hidden="true" />
           Delete
@@ -36,22 +36,23 @@ export function UserLifecycleButton({ action, mode, userId, username }: Props) {
       ) : (
         <>
           {isDelete ? (
-            <span className="text-xs text-on-surface-variant">
+            <span className="text-xs leading-[normal] text-on-surface-variant">
               Delete {username}? They will be signed out and blocked immediately.
             </span>
           ) : null}
           <Button
             aria-label={`${isDelete ? "Confirm delete" : "Restore"} ${username}`}
+            className={isDelete ? "rounded-lg" : undefined}
             disabled={pending}
-            size="sm"
+            size="row"
             type="submit"
-            variant={isDelete ? "destructive" : "outline"}
+            variant={isDelete ? "destructive" : "row-action"}
           >
             {isDelete ? <Trash2 aria-hidden="true" /> : <RotateCcw aria-hidden="true" />}
             {isDelete ? "Confirm delete" : "Restore"}
           </Button>
           {isDelete ? (
-            <Button disabled={pending} onClick={() => setConfirming(false)} size="sm" type="button" variant="ghost">
+            <Button className="rounded-lg" disabled={pending} onClick={() => setConfirming(false)} size="row" type="button" variant="ghost">
               Cancel
             </Button>
           ) : null}
