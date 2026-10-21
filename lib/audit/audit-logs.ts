@@ -22,11 +22,42 @@ export type AuditLogEntry = {
   description: string;
 };
 
+/** Filters for one page of the System logs. Absent or blank means no filter. */
+export type AuditLogFilters = {
+  /** Free text over the description and the Actor and Subject names. */
+  q?: string;
+  /** Inclusive ISO 8601 bounds, timezone required. */
+  from?: string;
+  to?: string;
+  /** The service's action value, for example "user.login". */
+  action?: string;
+  outcome?: AuditOutcome;
+  /** The service's Source value, for example "Authentication". */
+  source?: string;
+  /** The `nextCursor` of the previous page, with the same filters. */
+  cursor?: string | null;
+};
+
+export type AuditLogPage = {
+  entries: AuditLogEntry[];
+  /** Null on the last page. */
+  nextCursor: string | null;
+};
+
+/** Values for the Action and System dropdowns, as the service reports them. */
+export type AuditFilterOptions = {
+  systems: { value: string; label: string }[];
+  /** `systems` lists the Sources that can write the action. */
+  actions: { value: string; label: string; systems: string[] }[];
+};
+
 export type AuditClient = {
   /** Best effort and never throws: a failed audit write must not block any flow. */
   record(event: AuditEventInput, context?: RequestContext): Promise<void>;
   /** Newest first, across every Source. Rejects when the service cannot be read. */
-  listNewest(limit: number): Promise<AuditLogEntry[]>;
+  listPage(query: AuditLogFilters & { limit: number }): Promise<AuditLogPage>;
+  /** Rejects when the service cannot be read. */
+  filterOptions(): Promise<AuditFilterOptions>;
 };
 
 type ClientConfig = {
@@ -78,7 +109,10 @@ const CATALOG: Record<AuditAction, { action: string; label: string }> = {
 const ACTION_LABELS: Record<string, string> = {
   ...Object.fromEntries(Object.values(CATALOG).map(({ action, label }) => [action, label])),
   "user.login_failed": "Failed sign-in",
+  "audit_log.exported": "Exported System logs",
 };
+
+const systemLabel = (source: string) => (source === SOURCE ? "Portal" : source);
 
 const ANONYMOUS_ACTOR = { type: "anonymous", id: "unauthenticated", display_name: "Unauthenticated visitor" };
 const PORTAL_TARGET = { type: "portal", id: "portal", display_name: "Portal" };
@@ -203,39 +237,98 @@ export function createAuditClient(config: ClientConfig): AuditClient {
       }
     },
 
-    async listNewest(limit) {
-      const response = await send(`/events?limit=${limit}`, { method: "GET", key: config.readKey });
+    async listPage({ limit, cursor, outcome, q, ...filters }) {
+      const params = new URLSearchParams({ limit: String(limit) });
+      const set = (name: string, value: string | null | undefined) => {
+        const trimmed = value?.trim();
+        if (trimmed) params.set(name, trimmed);
+      };
+
+      set("q", q);
+      set("from", filters.from);
+      set("to", filters.to);
+      set("action", filters.action);
+      set("source", filters.source);
+      set("outcome", outcome?.toLowerCase());
+      set("cursor", cursor);
+
+      const response = await send(`/events?${params}`, { method: "GET", key: config.readKey });
 
       if (!response.ok) {
         throw new Error(`Audit-logs service answered ${response.status}`);
       }
 
-      const { events } = (await response.json()) as { events: ServiceEvent[] };
+      const { events, next_cursor } = (await response.json()) as { events: ServiceEvent[]; next_cursor: string | null };
 
-      return events.map((row) => ({
-        id: row.id,
-        occurredAt: new Date(row.occurred_at),
-        system: row.source === SOURCE ? "Portal" : row.source,
-        action: ACTION_LABELS[row.action] ?? row.action,
-        actor: row.actor?.display_name ?? "",
-        target: row.target?.display_name ?? "",
-        outcome: row.outcome === "success" ? "SUCCESS" : "FAILURE",
-        description: row.description ?? "",
-      }));
+      return {
+        nextCursor: next_cursor ?? null,
+        entries: events.map((row) => ({
+          id: row.id,
+          occurredAt: new Date(row.occurred_at),
+          system: systemLabel(row.source),
+          action: ACTION_LABELS[row.action] ?? row.action,
+          actor: row.actor?.display_name ?? "",
+          target: row.target?.display_name ?? "",
+          outcome: row.outcome === "success" ? "SUCCESS" : "FAILURE",
+          description: row.description ?? "",
+        })),
+      };
+    },
+
+    async filterOptions() {
+      const response = await send("/events/valid-values", { method: "GET", key: config.readKey });
+
+      if (!response.ok) {
+        throw new Error(`Audit-logs service answered ${response.status}`);
+      }
+
+      const { sources } = (await response.json()) as { sources: { source: string; actions: string[] }[] };
+      const actions = new Map<string, { value: string; label: string; systems: string[] }>();
+
+      for (const { source, actions: names } of sources) {
+        for (const value of names) {
+          const known = actions.get(value);
+
+          if (known) {
+            known.systems.push(source);
+          } else {
+            actions.set(value, { value, label: ACTION_LABELS[value] ?? value, systems: [source] });
+          }
+        }
+      }
+
+      return {
+        systems: sources.map(({ source }) => ({ value: source, label: systemLabel(source) })),
+        actions: [...actions.values()],
+      };
     },
   };
 }
 
-export const SYSTEM_LOG_PAGE_SIZE = 100;
+export const SYSTEM_LOG_PAGE_SIZE = 50;
+
+function assertAdministrator(viewer: { isAdministrator: boolean } | null): void {
+  if (!viewer?.isAdministrator) {
+    throw new Error("System Logs: Administrators only");
+  }
+}
 
 /** The System logs page's read. Checks the live Administrator status itself, so a direct call can't bypass the page guard. */
 export async function readSystemLogs(
   client: AuditClient,
   viewer: { isAdministrator: boolean } | null,
-): Promise<AuditLogEntry[]> {
-  if (!viewer?.isAdministrator) {
-    throw new Error("System Logs: Administrators only");
-  }
+  filters: AuditLogFilters,
+): Promise<AuditLogPage> {
+  assertAdministrator(viewer);
 
-  return client.listNewest(SYSTEM_LOG_PAGE_SIZE);
+  return client.listPage({ ...filters, limit: SYSTEM_LOG_PAGE_SIZE });
+}
+
+export async function readSystemLogOptions(
+  client: AuditClient,
+  viewer: { isAdministrator: boolean } | null,
+): Promise<AuditFilterOptions> {
+  assertAdministrator(viewer);
+
+  return client.filterOptions();
 }

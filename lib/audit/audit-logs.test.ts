@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createAuditClient, readSystemLogs, type UserDirectory } from "./audit-logs";
+import { createAuditClient, readSystemLogOptions, readSystemLogs, SYSTEM_LOG_PAGE_SIZE, type UserDirectory } from "./audit-logs";
 import { AUDIT_ACTIONS } from "./events";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- request bodies are asserted loosely */
@@ -272,7 +272,7 @@ describe("recording events", () => {
   });
 });
 
-describe("listing the newest events", () => {
+describe("listing events", () => {
   const row = (over: Record<string, unknown> = {}) => ({
     id: "e1",
     source: "Authentication",
@@ -306,13 +306,14 @@ describe("listing the newest events", () => {
       }),
     );
 
-    const entries = await audit.listNewest(25);
+    const page = await audit.listPage({ limit: 25 });
 
     expect(calls[0].method).toBe("GET");
     expect(calls[0].url.pathname).toBe("/events");
     expect(calls[0].url.searchParams.get("limit")).toBe("25");
     expect(calls[0].headers.get("authorization")).toBe("Bearer read-key");
-    expect(entries[0]).toEqual({
+    expect(page.nextCursor).toBe("abc");
+    expect(page.entries[0]).toEqual({
       id: "e1",
       occurredAt: new Date("2026-10-06T01:00:00.000Z"),
       system: "Portal",
@@ -322,13 +323,77 @@ describe("listing the newest events", () => {
       outcome: "SUCCESS",
       description: "Ada Min signed in.",
     });
-    expect(entries[1]).toMatchObject({ system: "CRMS", action: "record.created", outcome: "FAILURE" });
+    expect(page.entries[1]).toMatchObject({ system: "CRMS", action: "record.created", outcome: "FAILURE" });
+  });
+
+  it("sends each filter and the cursor to the service, and only those set", async () => {
+    const { calls, client: audit } = client(() => Response.json({ events: [], next_cursor: null }));
+
+    await audit.listPage({
+      limit: 50,
+      q: "  ada ",
+      from: "2026-10-01T00:00:00+08:00",
+      to: "2026-10-07T23:59:59.999+08:00",
+      action: "user.login",
+      outcome: "FAILURE",
+      source: "Authentication",
+      cursor: "abc",
+    });
+    await audit.listPage({ limit: 50, q: "   " });
+
+    const first = calls[0].url.searchParams;
+    expect(Object.fromEntries(first)).toEqual({
+      limit: "50",
+      q: "ada",
+      from: "2026-10-01T00:00:00+08:00",
+      to: "2026-10-07T23:59:59.999+08:00",
+      action: "user.login",
+      outcome: "failure",
+      source: "Authentication",
+      cursor: "abc",
+    });
+    expect(Object.fromEntries(calls[1].url.searchParams)).toEqual({ limit: "50" });
   });
 
   it("rejects when the service cannot be read, so the page shows its error", async () => {
     const { client: audit } = client(() => Response.json({ error: "Invalid API key" }, { status: 401 }));
 
-    await expect(audit.listNewest(25)).rejects.toThrow("401");
+    await expect(audit.listPage({ limit: 25 })).rejects.toThrow("401");
+  });
+});
+
+describe("filter options", () => {
+  const catalog = {
+    sources: [
+      { source: "CRMS", modules: ["Tickets"], actions: ["record.created"] },
+      { source: "Authentication", modules: [], actions: ["user.login", "user.login_failed", "audit_log.exported", "future.thing"] },
+    ],
+  };
+
+  it("lists every Source, labelling Authentication as Portal, with each Source's actions", async () => {
+    const { calls, client: audit } = client(() => Response.json(catalog));
+
+    const options = await audit.filterOptions();
+
+    expect(calls[0].url.pathname).toBe("/events/valid-values");
+    expect(calls[0].headers.get("authorization")).toBe("Bearer read-key");
+    expect(options.systems).toEqual([
+      { value: "CRMS", label: "CRMS" },
+      { value: "Authentication", label: "Portal" },
+    ]);
+    expect(options.actions).toEqual([
+      { value: "record.created", label: "record.created", systems: ["CRMS"] },
+      { value: "user.login", label: "Signed in", systems: ["Authentication"] },
+      { value: "user.login_failed", label: "Failed sign-in", systems: ["Authentication"] },
+      { value: "audit_log.exported", label: "Exported System logs", systems: ["Authentication"] },
+      { value: "future.thing", label: "future.thing", systems: ["Authentication"] },
+    ]);
+  });
+
+  it("rejects when the service cannot be read", async () => {
+    const { client: audit } = client(() => new Response("nope", { status: 500 }));
+
+    await expect(audit.filterOptions()).rejects.toThrow("500");
   });
 });
 
@@ -338,8 +403,14 @@ describe("reading System logs", () => {
   it("lists for an Administrator", async () => {
     const { calls, client: audit } = client(events);
 
-    await expect(readSystemLogs(audit, { isAdministrator: true })).resolves.toEqual([]);
+    await expect(readSystemLogs(audit, { isAdministrator: true }, { q: "ada", cursor: "c1" })).resolves.toEqual({
+      entries: [],
+      nextCursor: null,
+    });
     expect(calls).toHaveLength(1);
+    expect(calls[0].url.searchParams.get("limit")).toBe(String(SYSTEM_LOG_PAGE_SIZE));
+    expect(calls[0].url.searchParams.get("q")).toBe("ada");
+    expect(calls[0].url.searchParams.get("cursor")).toBe("c1");
   });
 
   it.each([
@@ -348,7 +419,19 @@ describe("reading System logs", () => {
   ])("refuses when %s, without calling the service", async (_label, viewer) => {
     const { calls, client: audit } = client(events);
 
-    await expect(readSystemLogs(audit, viewer)).rejects.toThrow("Administrators only");
+    await expect(readSystemLogs(audit, viewer, {})).rejects.toThrow("Administrators only");
+    expect(calls).toHaveLength(0);
+  });
+});
+
+describe("reading the filter options", () => {
+  it.each([
+    ["signed out", null],
+    ["not an Administrator", { isAdministrator: false }],
+  ])("refuses when %s, without calling the service", async (_label, viewer) => {
+    const { calls, client: audit } = client(() => Response.json({ sources: [] }));
+
+    await expect(readSystemLogOptions(audit, viewer)).rejects.toThrow("Administrators only");
     expect(calls).toHaveLength(0);
   });
 });
