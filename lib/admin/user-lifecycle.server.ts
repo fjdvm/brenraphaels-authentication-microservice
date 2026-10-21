@@ -1,6 +1,6 @@
 import "server-only";
 
-import { recordSystemLogEvent } from "@/lib/audit/system-log";
+import { recordAuditEvent } from "@/lib/audit/audit-logs.server";
 import { prisma } from "@/lib/db/prisma";
 
 import type { LifecyclePorts, LifecycleStore } from "./user-lifecycle";
@@ -35,5 +35,5 @@ export const prismaLifecycleStore: LifecycleStore = {
 };
 
 export function createProductionLifecyclePorts(): LifecyclePorts {
-  return { store: prismaLifecycleStore, audit: recordSystemLogEvent };
+  return { store: prismaLifecycleStore, audit: recordAuditEvent };
 }

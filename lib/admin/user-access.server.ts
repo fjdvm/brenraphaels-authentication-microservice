@@ -1,6 +1,6 @@
 import "server-only";
 
-import { recordSystemLogEvent } from "@/lib/audit/system-log";
+import { recordAuditEvent } from "@/lib/audit/audit-logs.server";
 import { prisma } from "@/lib/db/prisma";
 
 import type { AccessPorts, AccessStore } from "./user-access";
@@ -110,5 +110,5 @@ export const prismaAccessStore: AccessStore = {
 };
 
 export function createProductionAccessPorts(): AccessPorts {
-  return { store: prismaAccessStore, audit: recordSystemLogEvent };
+  return { store: prismaAccessStore, audit: recordAuditEvent };
 }

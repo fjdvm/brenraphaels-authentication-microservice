@@ -1,4 +1,4 @@
-import type { SystemLogEventInput } from "@/lib/audit/system-log";
+import type { AuditEventInput } from "@/lib/audit/events";
 
 import type { CredentialsMailer } from "./user-provisioning";
 
@@ -24,7 +24,7 @@ export type ResendPorts = {
   mailer: CredentialsMailer;
   /** Null when email can be sent; otherwise why not. Checked before any password is replaced. */
   deliveryProblem(): string | null;
-  audit(event: SystemLogEventInput): Promise<void>;
+  audit(event: AuditEventInput): Promise<void>;
   generatePassword(): string;
 };
 

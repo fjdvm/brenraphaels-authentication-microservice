@@ -1,4 +1,4 @@
-import type { SystemLogEventInput } from "@/lib/audit/system-log";
+import type { AuditEventInput } from "@/lib/audit/events";
 import { SUPER_ADMIN_ROLE_NAME } from "@/lib/seed-data";
 
 export type LifecycleAction = "delete" | "restore";
@@ -17,7 +17,7 @@ export type LifecycleStore = {
 
 export type LifecyclePorts = {
   store: LifecycleStore;
-  audit(event: SystemLogEventInput): Promise<void>;
+  audit(event: AuditEventInput): Promise<void>;
 };
 
 export type LifecycleResult = { ok: true; username: string } | { ok: false; error: string };

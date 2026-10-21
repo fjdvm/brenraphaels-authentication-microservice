@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import type { SystemLogEntry } from "@/lib/audit/system-log";
+import type { AuditLogEntry } from "@/lib/audit/audit-logs";
 
 const timestampFormat = new Intl.DateTimeFormat("en", {
   dateStyle: "medium",
@@ -13,7 +13,7 @@ const outcomeDisplay = {
 } as const;
 
 /** `entries` is null when the log could not be read. */
-export function SystemLogsView({ entries }: { entries: SystemLogEntry[] | null }) {
+export function SystemLogsView({ entries }: { entries: AuditLogEntry[] | null }) {
   if (entries === null) {
     return (
       <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 text-sm">
@@ -37,15 +37,16 @@ export function SystemLogsView({ entries }: { entries: SystemLogEntry[] | null }
   return (
     <section aria-label="System Logs" className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-220 text-left text-sm">
+        <table className="w-full min-w-260 text-left text-sm">
           <thead className="bg-surface-container-low text-xs uppercase tracking-wide text-on-surface-variant">
             <tr>
               <th className="px-6 py-3 font-medium" scope="col">Time (UTC)</th>
+              <th className="px-6 py-3 font-medium" scope="col">System</th>
               <th className="px-6 py-3 font-medium" scope="col">Actor</th>
               <th className="px-6 py-3 font-medium" scope="col">Action</th>
               <th className="px-6 py-3 font-medium" scope="col">Target</th>
               <th className="px-6 py-3 font-medium" scope="col">Outcome</th>
-              <th className="px-6 py-3 font-medium" scope="col">Detail</th>
+              <th className="px-6 py-3 font-medium" scope="col">Description</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -56,15 +57,16 @@ export function SystemLogsView({ entries }: { entries: SystemLogEntry[] | null }
                     {timestampFormat.format(entry.occurredAt)}
                   </time>
                 </td>
-                <td className="px-6 py-4 text-foreground">{entry.actor ?? "Unknown"}</td>
+                <td className="whitespace-nowrap px-6 py-4 text-on-surface-variant">{entry.system}</td>
+                <td className="px-6 py-4 text-foreground">{entry.actor}</td>
                 <td className="whitespace-nowrap px-6 py-4 text-foreground">{entry.action}</td>
-                <td className="px-6 py-4 text-on-surface-variant">{entry.target ?? "—"}</td>
+                <td className="px-6 py-4 text-on-surface-variant">{entry.target}</td>
                 <td className="whitespace-nowrap px-6 py-4">
                   <Badge variant={outcomeDisplay[entry.outcome].variant}>
                     {outcomeDisplay[entry.outcome].label}
                   </Badge>
                 </td>
-                <td className="px-6 py-4 text-on-surface-variant">{entry.detail ?? "—"}</td>
+                <td className="px-6 py-4 text-on-surface-variant">{entry.description}</td>
               </tr>
             ))}
           </tbody>

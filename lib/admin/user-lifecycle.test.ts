@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { SystemLogEventInput } from "@/lib/audit/system-log";
+import type { AuditEventInput } from "@/lib/audit/events";
 
 import { changeUserLifecycle, type LifecycleStore } from "./user-lifecycle";
 
@@ -36,7 +36,7 @@ function row(id: string, overrides: Partial<Row> = {}): Row {
 }
 
 function world(rows: Row[]) {
-  const events: SystemLogEventInput[] = [];
+  const events: AuditEventInput[] = [];
   const store: LifecycleStore = {
     async findActor(id) {
       const user = rows.find((r) => r.id === id);
@@ -53,7 +53,7 @@ function world(rows: Row[]) {
       return true;
     },
   };
-  const ports = { store, audit: async (event: SystemLogEventInput) => void events.push(event) };
+  const ports = { store, audit: async (event: AuditEventInput) => void events.push(event) };
   return { rows, events, ports };
 }
 

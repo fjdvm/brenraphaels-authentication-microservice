@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { resendCredentials, type ResendPorts, type ResendTarget } from "./credential-resend";
 import type { CredentialsMailer } from "./user-provisioning";
 
-import type { SystemLogEventInput } from "@/lib/audit/system-log";
+import type { AuditEventInput } from "@/lib/audit/events";
 
 const ADMIN = { id: "admin-1" };
 
@@ -23,7 +23,7 @@ function createWorld(
   };
   const state = { password: "old-password", mustChangePassword: user.mustChangePassword };
   const sent: Parameters<CredentialsMailer["sendCredentials"]>[0][] = [];
-  const events: SystemLogEventInput[] = [];
+  const events: AuditEventInput[] = [];
 
   const ports: ResendPorts = {
     store: {
