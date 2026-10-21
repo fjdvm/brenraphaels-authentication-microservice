@@ -13,7 +13,7 @@ const SYSTEM_STYLES: Record<string, { icon: LucideIcon; tile: string; accent: st
 
 const FALLBACK_STYLE = { icon: LayoutGrid, tile: "bg-badge-muted", accent: "text-foreground" };
 
-const modules = (count: number) => `module${count === 1 ? "" : "s"}`;
+const pluralModules = (count: number) => `module${count === 1 ? "" : "s"}`;
 
 /**
  * Figma "Portal · Access": one card per Accessible System. A card only opens the
@@ -49,7 +49,7 @@ export function AccessSystemCards({ systems }: { systems: AccessibleSystem[] }) 
                   <Icon aria-hidden="true" className={`size-6 ${style.accent}`} strokeWidth={1.75} />
                 </span>
                 <Badge variant="muted">
-                  {system.grantedModules} of {system.totalModules} {modules(system.totalModules)}
+                  {system.grantedModules} of {system.totalModules} {pluralModules(system.totalModules)}
                 </Badge>
               </span>
               <span className="flex flex-col gap-1.5">

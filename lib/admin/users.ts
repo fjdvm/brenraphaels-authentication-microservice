@@ -4,8 +4,6 @@ import { prisma } from "@/lib/db/prisma";
 
 import type { ManagedUser, UserStatus } from "./user-directory";
 
-export type { ManagedUser, UserStatus };
-
 function getUserStatus(user: {
   isDeleted: boolean;
   mustChangePassword: boolean;

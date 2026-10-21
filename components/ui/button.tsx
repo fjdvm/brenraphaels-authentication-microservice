@@ -25,7 +25,7 @@ const buttonVariants = cva(
         sm: "h-8 rounded-md px-3 text-xs",
         lg: "h-10 rounded-md px-8",
         icon: "size-9",
-        figma: "h-auto px-4 py-[9px] leading-[normal] [&_svg:not([class*='size-'])]:size-4",
+        cta: "h-auto px-4 py-[9px] leading-[normal] [&_svg:not([class*='size-'])]:size-4",
         row: "h-auto gap-1.5 py-1.5 pl-2.5 pr-3 text-[13px] leading-[normal] [&_svg:not([class*='size-'])]:size-3.5",
       },
     },

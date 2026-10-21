@@ -22,7 +22,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
             Everyone who can log in to the portal. New users get their username and a temporary password by email.
           </p>
         </div>
-        <Button asChild size="figma" variant="identity">
+        <Button asChild size="cta" variant="identity">
           <Link href="/admin/users/new">
             <UserPlus aria-hidden="true" />
             Add new user
