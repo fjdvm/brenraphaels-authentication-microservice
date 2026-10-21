@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { Badge } from "@/components/ui/badge";
 import { ResendCredentialsButton } from "@/components/admin/resend-credentials-button";
 import { Button } from "@/components/ui/button";
+import { SUPER_ADMIN_ROLE_NAME } from "@/lib/seed-data";
 import { UserLifecycleButton } from "@/components/admin/user-lifecycle-button";
 import { deleteUserAction, restoreUserAction, resendCredentialsAction } from "@/actions/users";
 import { requireAdministrator } from "@/lib/auth/session";
@@ -90,7 +91,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                         )}
                         {user.status === "Deleted" ? (
                           <UserLifecycleButton action={restoreUserAction} mode="restore" userId={user.id} username={user.username} />
-                        ) : user.id === administrator.id ? null : (
+                        ) : user.id === administrator.id || user.roleName === SUPER_ADMIN_ROLE_NAME ? null : (
                           <UserLifecycleButton action={deleteUserAction} mode="delete" userId={user.id} username={user.username} />
                         )}
                       </div>
