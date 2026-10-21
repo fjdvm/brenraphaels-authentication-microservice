@@ -22,7 +22,8 @@ describe("User lifecycle button", () => {
 
     const dialog = within(screen.getByRole("dialog", { name: "Delete Jane Doe?" }));
     expect(dialog.getByText(/2026-JD-001 will no longer be able to log in/)).toBeTruthy();
-    expect(dialog.getByText("Sign them out of every system now")).toBeTruthy();
+    const signOut = dialog.getByRole("checkbox", { name: "Sign them out of every system now" }) as HTMLInputElement;
+    expect(signOut.checked && signOut.disabled).toBe(true);
     await userEvent.click(dialog.getByRole("button", { name: "Delete user" }));
 
     await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
@@ -49,6 +50,24 @@ describe("User lifecycle button", () => {
 
     const dialog = within(screen.getByRole("dialog", { name: "Delete Jane Doe?" }));
     expect((await dialog.findByRole("alert")).textContent).toBe("Super Admins cannot be deleted.");
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await userEvent.click(screen.getByRole("button", { name: "Delete 2026-JD-001" }));
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("stays open while the delete is in flight", async () => {
+    let finish: (state: LifecycleFormState) => void = () => {};
+    const action = vi.fn<Action>(() => new Promise((resolve) => (finish = resolve)));
+    render(<UserLifecycleButton action={action} mode="delete" name="Jane Doe" userId="u1" username="2026-JD-001" />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Delete 2026-JD-001" }));
+    await userEvent.click(screen.getByRole("button", { name: "Delete user" }));
+    await userEvent.keyboard("{Escape}");
+
+    expect(screen.getByRole("dialog", { name: "Delete Jane Doe?" })).toBeTruthy();
+    finish({ error: "Super Admins cannot be deleted." });
+    expect((await screen.findByRole("alert")).textContent).toBe("Super Admins cannot be deleted.");
   });
 
   it("restores in one click and shows a refusal", async () => {

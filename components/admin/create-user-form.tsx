@@ -192,7 +192,7 @@ export function CreateUserForm({ action, roles, systems }: CreateUserFormProps) 
           </div>
           <p className="flex items-center gap-2.5 rounded-lg bg-callout px-3 py-2.5 text-[13px] text-callout-foreground">
             <Info aria-hidden="true" className="size-4 shrink-0 text-identity" />
-            A temporary password is generated and emailed with their username; you will not see it.
+            A temporary password is generated and emailed; you will not see it.
           </p>
         </section>
 

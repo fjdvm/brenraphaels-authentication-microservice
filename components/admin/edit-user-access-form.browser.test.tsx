@@ -76,6 +76,23 @@ describe("Edit user access form", () => {
     expect(screen.getByRole("status").textContent).toContain("restored");
     expect(screen.queryByRole("button", { name: /save access/i })).toBeNull();
     expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Close" })).toHaveLength(1);
+  });
+
+  it("stays open while the save is in flight", async () => {
+    const person = userEvent.setup();
+    let finish: (state: EditUserAccessFormState) => void = () => {};
+    const action = vi.fn<(previous: EditUserAccessFormState, data: FormData) => Promise<EditUserAccessFormState>>(
+      () => new Promise((resolve) => (finish = resolve)),
+    );
+    render(<EditUserAccessForm action={action} roles={roles} systems={systems} user={user} />);
+
+    await person.click(screen.getByRole("button", { name: /save access/i }));
+    await person.keyboard("{Escape}");
+
+    expect(push).not.toHaveBeenCalled();
+    finish({ error: null, saved: true, fieldErrors: {} });
+    expect((await screen.findByRole("status")).textContent).toContain("Access saved");
   });
 
   it("shows the User's current grants grouped by System with Select all", () => {

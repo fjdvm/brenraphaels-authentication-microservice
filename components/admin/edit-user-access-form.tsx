@@ -45,6 +45,8 @@ export function EditUserAccessForm({ action, user, roles, systems }: EditUserAcc
   const savedRoleName = roles.find((role) => role.id === user.roleId)?.name;
 
   function close() {
+    // A save in flight keeps the dialog open, so its outcome is never lost.
+    if (isPending) return;
     router.push(USER_MANAGEMENT, { scroll: false });
   }
 
@@ -56,7 +58,7 @@ export function EditUserAccessForm({ action, user, roles, systems }: EditUserAcc
 
   const cancelButton = (
     <Button disabled={isPending} onClick={close} size="cta" type="button" variant="row-action">
-      {user.isDeleted ? "Close" : "Cancel"}
+      {user.isDeleted ? "Back to users" : "Cancel"}
     </Button>
   );
 

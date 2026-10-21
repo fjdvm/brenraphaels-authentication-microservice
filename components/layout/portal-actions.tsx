@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, LogOut } from "lucide-react";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
 
 import { logoutAction } from "@/actions/auth";
@@ -37,9 +37,11 @@ const LOGOUT_DESCRIPTIONS = {
 
 export function LogoutButton({ layout }: { layout: keyof typeof LOGOUT_LAYOUTS }) {
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+  const [isLoggingOut, startLogout] = useTransition();
 
   return (
-    <Dialog onOpenChange={setIsLogoutDialogOpen} open={isLogoutDialogOpen}>
+    // Signing out in flight keeps the dialog open until the redirect.
+    <Dialog onOpenChange={(open) => isLoggingOut || setIsLogoutDialogOpen(open)} open={isLogoutDialogOpen}>
       <Button
         className={cn("h-auto rounded-lg leading-[normal] text-foreground", LOGOUT_LAYOUTS[layout])}
         onClick={() => setIsLogoutDialogOpen(true)}
@@ -58,7 +60,7 @@ export function LogoutButton({ layout }: { layout: keyof typeof LOGOUT_LAYOUTS }
               Cancel
             </Button>
           </DialogClose>
-          <form action={logoutAction}>
+          <form action={() => startLogout(logoutAction)}>
             <LogoutSubmitButton />
           </form>
         </DialogFooter>
