@@ -515,3 +515,61 @@ describe("exporting System logs", () => {
     expect(calls).toHaveLength(0);
   });
 });
+
+describe("reading the previous sign-in", () => {
+  const login = (occurred_at: string) => ({
+    id: occurred_at,
+    source: "Authentication",
+    action: "user.login",
+    outcome: "success",
+    actor: { type: "user", id: "staff", display_name: "Sam Staff (2026-SS-002)" },
+    occurred_at,
+  });
+
+  it("asks for the User's own successful Portal sign-ins with the read key and skips the current one", async () => {
+    const { calls, client: audit } = client(() =>
+      Response.json({
+        events: [login("2026-10-21T06:10:00.000Z"), login("2026-10-20T08:25:00.000Z")],
+        next_cursor: "more",
+      }),
+    );
+
+    await expect(audit.previousSignIn("staff")).resolves.toEqual(new Date("2026-10-20T08:25:00.000Z"));
+
+    expect(calls[0].method).toBe("GET");
+    expect(calls[0].url.pathname).toBe("/events");
+    expect(calls[0].headers.get("authorization")).toBe("Bearer read-key");
+    expect(Object.fromEntries(calls[0].url.searchParams)).toEqual({
+      source: "Authentication",
+      action: "user.login",
+      outcome: "success",
+      actor_type: "user",
+      actor_id: "staff",
+      limit: "2",
+    });
+  });
+
+  it("is null on a first-ever sign-in", async () => {
+    const { client: audit } = client(() =>
+      Response.json({ events: [login("2026-10-21T06:10:00.000Z")], next_cursor: null }),
+    );
+
+    await expect(audit.previousSignIn("staff")).resolves.toBeNull();
+  });
+
+  it("is null, without throwing, when the service answers with an error", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { client: audit } = client(() => new Response(null, { status: 503 }));
+
+    await expect(audit.previousSignIn("staff")).resolves.toBeNull();
+  });
+
+  it("is null, without throwing, when the service is unreachable or slow", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { client: audit } = client(
+      () => new Promise<Response>((_, reject) => setTimeout(() => reject(new Error("unreachable")), 5)),
+    );
+
+    await expect(audit.previousSignIn("staff")).resolves.toBeNull();
+  });
+});

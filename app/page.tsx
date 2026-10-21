@@ -3,9 +3,11 @@ import { redirect } from "next/navigation";
 import { PortalShell } from "@/components/layout/portal-shell";
 import { AccountCard } from "@/components/portal/account-card";
 import { SystemLaunchCards } from "@/components/portal/system-launch-cards";
+import { readPreviousSignIn } from "@/lib/audit/audit-logs.server";
 import { requirePortalUser } from "@/lib/auth/session";
 import { listAccessibleSystems, listSystemNames } from "@/lib/portal/accessible-systems";
 import { greetingFor } from "@/lib/portal/greeting";
+import { formatSignInTime } from "@/lib/portal/sign-in-time";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +24,12 @@ export default async function PortalPage() {
     redirect("/admin/access");
   }
 
-  const [systems, systemNames] = await Promise.all([listAccessibleSystems(user.id), listSystemNames()]);
+  const [systems, systemNames, previousSignIn] = await Promise.all([
+    listAccessibleSystems(user.id),
+    listSystemNames(),
+    readPreviousSignIn(user.id),
+  ]);
+  const now = new Date();
   const accessibleNames = new Set(systems.map(({ name }) => name));
 
   return (
@@ -30,7 +37,7 @@ export default async function PortalPage() {
       <main className="flex w-full flex-1 flex-col gap-6 px-4 py-10 sm:px-6 xl:px-[120px]">
         <div className="flex flex-col gap-1.5 leading-[normal]">
           <h1 className="text-[28px] font-semibold text-foreground">
-            {greetingFor(new Date())}, {user.firstName}
+            {greetingFor(now)}, {user.firstName}
           </h1>
           <p className="text-[15px] text-on-surface-variant">{accessSummary(systems.length)}</p>
         </div>
@@ -38,10 +45,9 @@ export default async function PortalPage() {
           <div className="w-full min-w-0 flex-1">
             <SystemLaunchCards systems={systems} />
           </div>
-          {/* The previous sign-in arrives with Ticket#63. */}
           <AccountCard
             email={user.email}
-            lastSignIn={null}
+            lastSignIn={previousSignIn ? formatSignInTime(previousSignIn, now) : null}
             otherSystemNames={systemNames.filter((name) => !accessibleNames.has(name))}
             roleName={user.roleName}
             username={user.username}

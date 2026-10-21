@@ -36,7 +36,8 @@ const users: UserDirectory = async (ids) => {
  * The Portal's connection to the audit-logs service: the Source "Authentication" write
  * key and a read key, both server-side only. Through the api-gateway, AUDIT_LOGS_URL is
  * the gateway's `/audit` prefix and the keys are gateway Caller keys whose Callers hold
- * those audit-logs keys. If they are not configured every call fails,
+ * those audit-logs keys. The read key also serves the Staff home's previous sign-in, always
+ * narrowed to the signed-in User on the server. If they are not configured every call fails,
  * writes are dropped (best effort) and the System logs page shows its error state.
  */
 const client = createAuditClient({
@@ -77,4 +78,9 @@ export async function listSystemLogOptions(): Promise<AuditFilterOptions> {
 
 export async function exportSystemLogEvents(filters: AuditExportFilters): Promise<AuditExport> {
   return exportSystemLogs(client, await getPortalUser(), filters);
+}
+
+/** The Staff home's "Last sign-in"; null (a dash) when there is none or the service can't be read. */
+export async function readPreviousSignIn(userId: string): Promise<Date | null> {
+  return client.previousSignIn(userId);
 }
