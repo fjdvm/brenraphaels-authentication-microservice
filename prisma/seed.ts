@@ -8,6 +8,7 @@ import { mergeCallbackUrls } from "../lib/integrations/callbacks";
 import {
   ADMINISTRATOR_ROLE_NAMES,
   SEED_ROLES,
+  SEED_MODULE_FORMER_NAMES,
   SEED_ROLE_FORMER_NAMES,
   SEED_SYSTEMS,
   SUPER_ADMIN_ROLE_NAME,
@@ -30,7 +31,7 @@ type SeededRecord = { id: string };
 export type SeedPortalStore = {
   upsertRole(name: string, isAdministrator: boolean): Promise<SeededRecord>;
   upsertSystem(system: SeedSystem): Promise<SeededRecord>;
-  upsertModule(systemId: string, name: string): Promise<SeededRecord>;
+  upsertModule(systemId: string, name: string, formerName?: string): Promise<SeededRecord>;
   upsertAccessTemplate(roleId: string, moduleId: string): Promise<void>;
   upsertUser(user: Omit<SeedSuperAdmin, "password"> & { roleId: string; neonAuthUserId: string; mustChangePassword: boolean }): Promise<SeededRecord>;
   upsertAccessGrant(userId: string, moduleId: string): Promise<void>;
@@ -76,7 +77,13 @@ export async function seedPortal(
     const seededSystem = await portal.upsertSystem(system);
 
     for (const moduleName of system.modules) {
-      modules.push(await portal.upsertModule(seededSystem.id, moduleName));
+      modules.push(
+        await portal.upsertModule(
+          seededSystem.id,
+          moduleName,
+          SEED_MODULE_FORMER_NAMES[system.name]?.[moduleName],
+        ),
+      );
     }
   }
 
@@ -187,7 +194,12 @@ function createPortalStore(prisma: PrismaClient): SeedPortalStore {
         },
       });
     },
-    async upsertModule(systemId, name) {
+    async upsertModule(systemId, name, formerName) {
+      if (formerName && !(await prisma.module.findUnique({ where: { systemId_name: { systemId, name } } }))) {
+        // Keep the Module's id so existing AccessGrants and templates carry over.
+        await prisma.module.updateMany({ where: { systemId, name: formerName }, data: { name } });
+      }
+
       return prisma.module.upsert({
         where: { systemId_name: { systemId, name } },
         update: {},
