@@ -32,7 +32,7 @@ export default async function MyLogsPage() {
           <>
             <h1 className="text-2xl font-semibold text-foreground">Activity log</h1>
             <p className="text-sm text-on-surface-variant">
-              Your own sign-ins and actions, in the portal and every system. Times are shown in Philippine time (UTC+8).
+              Your own sign-ins and actions, in the Portal and every System. Times are shown in Philippine time (UTC+8).
             </p>
           </>
         }

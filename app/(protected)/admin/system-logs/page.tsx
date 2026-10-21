@@ -33,7 +33,7 @@ export default async function SystemLogsPage() {
           <>
             <h1 className="text-2xl font-semibold text-foreground">System logs</h1>
             <p className="text-sm text-on-surface-variant">
-              Every sign-in, sign-out, password and administrative event, from the portal and every system. Times are shown in Philippine time (UTC+8).
+              Every sign-in, sign-out, password and administrative event, from the Portal and every System. Times are shown in Philippine time (UTC+8).
             </p>
           </>
         }

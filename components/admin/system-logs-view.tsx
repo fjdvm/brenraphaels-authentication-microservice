@@ -154,8 +154,18 @@ type Props = {
 };
 
 const COPY = {
-  all: { title: "System logs", search: "Search user or action", error: "Couldn't load System logs" },
-  mine: { title: "Your activity", search: "Search action", error: "Couldn't load your activity" },
+  all: {
+    title: "System logs",
+    search: "Search user or action",
+    error: "Couldn't load System logs",
+    empty: "Try a wider date range or fewer filters.",
+  },
+  mine: {
+    title: "Your activity",
+    search: "Search action",
+    error: "Couldn't load your activity",
+    empty: "Try a wider date range or another search.",
+  },
 } as const;
 
 const exportMessages = {
@@ -400,7 +410,7 @@ export function SystemLogsView({
           {result.entries.length === 0 ? (
             <div className="border-b border-table-divider py-10 text-center text-sm leading-[normal]">
               <p className="font-medium text-foreground">No events match</p>
-              <p className="mt-1 text-on-surface-variant">Try a wider date range or fewer filters.</p>
+              <p className="mt-1 text-on-surface-variant">{copy.empty}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
