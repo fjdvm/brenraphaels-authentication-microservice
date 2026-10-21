@@ -3,33 +3,33 @@
 import { useActionState } from "react";
 
 import { changePasswordAction, type FormState } from "@/actions/auth";
-import { PasswordInput } from "@/components/ui/password-input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { MIN_PASSWORD_LENGTH } from "@/lib/validations/auth";
 
 import {
-  AuthCardHeader,
   AuthHeading,
   FormAlert,
   ReturnRequestFields,
   type ReturnRequestProps,
-  authCardClass,
+  authFieldsClass,
+  authFormClass,
 } from "./auth-card";
+import { PasswordInput } from "./password-input";
 
 const initialState: FormState = { error: null };
 
+// Figma has no Change password frame; it follows the Log in frame.
 export function ChangePasswordForm(returnRequest: ReturnRequestProps) {
   const [state, formAction] = useActionState(changePasswordAction, initialState);
 
   return (
-    <form action={formAction} className={authCardClass}>
-      <AuthCardHeader />
-      <div className="space-y-5">
-        <ReturnRequestFields {...returnRequest} />
-        <AuthHeading
-          title="Change your password"
-          description="Enter the temporary password you were emailed, then choose a new one before continuing."
-        />
+    <form action={formAction} className={authFormClass}>
+      <AuthHeading
+        title="Change your password"
+        description="Enter the temporary password you were emailed, then choose a new one before continuing."
+      />
+      <ReturnRequestFields {...returnRequest} />
+      <div className={authFieldsClass}>
         <PasswordInput
           autoComplete="current-password"
           id="currentPassword"
