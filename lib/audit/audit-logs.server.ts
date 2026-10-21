@@ -80,7 +80,9 @@ export async function exportSystemLogEvents(filters: AuditExportFilters): Promis
   return exportSystemLogs(client, await getPortalUser(), filters);
 }
 
-/** The Staff home's "Last sign-in"; null (a dash) when there is none or the service can't be read. */
-export async function readPreviousSignIn(userId: string): Promise<Date | null> {
-  return client.previousSignIn(userId);
+/** The signed-in User's "Last sign-in"; null (a dash) when there is none or the service can't be read. */
+export async function readPreviousSignIn(): Promise<Date | null> {
+  const user = await getPortalUser();
+
+  return user ? client.previousSignIn(user.id) : null;
 }

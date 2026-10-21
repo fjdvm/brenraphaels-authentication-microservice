@@ -394,7 +394,18 @@ export function createAuditClient(config: ClientConfig): AuditClient {
         const { events } = (await response.json()) as { events: ServiceEvent[] };
         const previous = events[1];
 
-        return previous ? new Date(previous.occurred_at) : null;
+        if (!previous) {
+          return null;
+        }
+
+        const at = new Date(previous.occurred_at);
+
+        // An unreadable time would make the page's formatting throw; show a dash instead.
+        if (Number.isNaN(at.getTime())) {
+          throw new Error(`Audit-logs service sent an unreadable time: ${previous.occurred_at}`);
+        }
+
+        return at;
       } catch (error) {
         console.error("Audit: could not read the previous sign-in", error);
         return null;

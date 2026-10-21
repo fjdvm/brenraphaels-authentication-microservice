@@ -27,7 +27,7 @@ export default async function PortalPage() {
   const [systems, systemNames, previousSignIn] = await Promise.all([
     listAccessibleSystems(user.id),
     listSystemNames(),
-    readPreviousSignIn(user.id),
+    readPreviousSignIn(),
   ]);
   const now = new Date();
   const accessibleNames = new Set(systems.map(({ name }) => name));

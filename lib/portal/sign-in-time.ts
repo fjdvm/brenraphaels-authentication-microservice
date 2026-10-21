@@ -7,11 +7,11 @@ const DATE_IN_MANILA = new Intl.DateTimeFormat("en-US", {
   timeZone: "Asia/Manila",
 });
 
+// Philippine time has no daylight saving, so a day earlier is always 24 hours earlier.
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Figma's "Today, 12:30 PM" and "Yesterday, 4:25 PM" in Philippine time; older ones as "Oct 15, 2026, 9:02 AM". */
 export function formatSignInTime(at: Date, now: Date): string {
-  // Philippine time has no daylight saving, so a day earlier is always 24 hours earlier.
   const day = DAY_IN_MANILA.format(at);
   const prefix =
     day === DAY_IN_MANILA.format(now)

@@ -557,6 +557,15 @@ describe("reading the previous sign-in", () => {
     await expect(audit.previousSignIn("staff")).resolves.toBeNull();
   });
 
+  it("is null when the previous sign-in's time can't be read", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { client: audit } = client(() =>
+      Response.json({ events: [login("2026-10-21T06:10:00.000Z"), login("not a time")], next_cursor: null }),
+    );
+
+    await expect(audit.previousSignIn("staff")).resolves.toBeNull();
+  });
+
   it("is null, without throwing, when the service answers with an error", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const { client: audit } = client(() => new Response(null, { status: 503 }));
