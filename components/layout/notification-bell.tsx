@@ -4,12 +4,24 @@ import { Bell, CheckCheck } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils/cn";
 import type { Inbox, PortalNotification } from "@/lib/notifications/notifications";
 
 const POLL_INTERVAL_MS = 5000;
 const MAX_BADGE = 99;
 
 const EMPTY_INBOX: Inbox = { available: false, unread: 0, notifications: [] };
+
+/** Only web links are followed: the service accepts any URL, including javascript: ones. */
+function isWebLink(link: string) {
+  try {
+    const { protocol } = new URL(link, window.location.href);
+
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+}
 
 const dateFormat = new Intl.DateTimeFormat("en-US", {
   timeZone: "Asia/Manila",
@@ -131,7 +143,7 @@ export function NotificationBell({
       }
     }
 
-    if (notification.link) {
+    if (notification.link && isWebLink(notification.link)) {
       navigate(notification.link);
     }
   }
@@ -153,7 +165,7 @@ export function NotificationBell({
   const unread = inbox.available ? inbox.unread : 0;
 
   return (
-    <div className={`relative ${className ?? ""}`}>
+    <div className={cn("relative", className)}>
       <Button
         aria-expanded={isOpen}
         aria-haspopup="dialog"
@@ -196,7 +208,7 @@ export function NotificationBell({
           </div>
           {inbox.notifications.length === 0 ? (
             <p className="border-t border-border px-5 py-4 text-center text-xs text-on-surface-variant">
-              No notifications yet.
+              {inbox.available ? "No notifications yet." : "Notifications are unavailable right now."}
             </p>
           ) : (
             <ul className="max-h-96 divide-y divide-border overflow-y-auto border-t border-border">

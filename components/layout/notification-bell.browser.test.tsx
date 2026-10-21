@@ -70,7 +70,7 @@ describe("NotificationBell", () => {
     await user.click(screen.getByRole("button", { name: "Notifications" }));
 
     expect(screen.getByRole("button", { name: "Notifications" }).textContent).toBe("");
-    expect(screen.getByText("No notifications yet.")).toBeTruthy();
+    expect(screen.getByText("Notifications are unavailable right now.")).toBeTruthy();
   });
 
   it("tolerates a failed request to the Portal's own server", async () => {
@@ -128,6 +128,18 @@ describe("NotificationBell", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/notifications/n2/read", expect.objectContaining({ method: "POST" }));
     expect(navigate).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Notifications" }).textContent).toBe("");
+  });
+
+  it("does not follow a link that is not a web link", async () => {
+    inbox = { available: true, unread: 1, notifications: [{ ...older, link: "javascript:alert(1)", read: false }] };
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const { navigate } = await renderBell();
+
+    await user.click(screen.getByRole("button", { name: "Notifications, 1 unread" }));
+    await user.click(screen.getByRole("button", { name: /Your access changed/ }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/notifications/n1/read", expect.objectContaining({ method: "POST" }));
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   it("clears the badge with Mark all read", async () => {
