@@ -26,6 +26,8 @@
   --danger: oklch(0.577 0.245 27.325);
   /* Figma "Portal UI/UX" shell tokens */
   --nav-foreground: #3f3f46;
+  /* Sidebar section headings, as in CREOMS */
+  --nav-section: #8b8b94;
   --brand-badge: #f3e8ff;
   --brand-badge-foreground: #6d28d9;
   --identity: #5b2a86;
@@ -108,6 +110,7 @@
   --color-outline-variant: var(--outline-variant);
   --color-danger: var(--danger);
   --color-nav-foreground: var(--nav-foreground);
+  --color-nav-section: var(--nav-section);
   --color-brand-badge: var(--brand-badge);
   --color-brand-badge-foreground: var(--brand-badge-foreground);
   --color-identity: var(--identity);

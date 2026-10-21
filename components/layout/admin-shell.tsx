@@ -29,8 +29,8 @@ type AdminShellProps = {
   user: ShellUser;
 };
 
-// Figma "Portal sidebar" is 256px wide.
-const SIDEBAR_STYLE = { "--sidebar-width": "16rem" } as CSSProperties;
+// Matches the CREOMS sidebar (296px), so the Portal and CREOMS feel like one product.
+const SIDEBAR_STYLE = { "--sidebar-width": "18.5rem" } as CSSProperties;
 
 function AdministrativeNavigation({ user }: { user: ShellUser }) {
   const pathname = usePathname();
@@ -38,20 +38,20 @@ function AdministrativeNavigation({ user }: { user: ShellUser }) {
 
   return (
     <>
-      <SidebarContent className="px-3 py-4">
+      <SidebarContent className="px-5 py-6">
         {SIDEBAR_SECTIONS.map(({ label: sectionLabel, destinations }, index) => (
           <SidebarGroup className="p-0" key={sectionLabel ?? index}>
             {sectionLabel ? (
-              <SidebarGroupLabel className="mt-4 px-2.5 text-xs font-semibold tracking-wider text-muted-foreground">
+              <SidebarGroupLabel className="mt-1.5 mb-1 px-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-nav-section">
                 {sectionLabel}
               </SidebarGroupLabel>
             ) : null}
-            <SidebarMenu className="gap-0.5">
+            <SidebarMenu className="gap-1">
               {destinations.map(({ href, icon: Icon, label }) => (
                 <SidebarMenuItem key={href}>
                   <SidebarMenuButton
                     asChild
-                    className="h-auto gap-3 rounded-lg px-2.5 py-[9px] text-[15px] leading-[normal] font-medium text-nav-foreground data-[active=true]:font-medium [&>svg]:size-[18px]"
+                    className="h-auto gap-2 rounded-lg px-2.5 py-[10px] text-[15px] leading-[normal] font-normal text-nav-foreground data-[active=true]:font-semibold data-[active=true]:text-foreground [&>svg]:size-4"
                     isActive={pathname === href}
                     onClick={() => setOpenMobile(false)}
                     tooltip={label}
@@ -67,7 +67,7 @@ function AdministrativeNavigation({ user }: { user: ShellUser }) {
           </SidebarGroup>
         ))}
       </SidebarContent>
-      <SidebarFooter className="gap-2.5 border-t border-border px-3 py-3.5">
+      <SidebarFooter className="gap-2.5 border-t border-border px-4 py-3.5">
         <UserCard user={user} />
         <LogoutButton layout="sidebar" />
       </SidebarFooter>
