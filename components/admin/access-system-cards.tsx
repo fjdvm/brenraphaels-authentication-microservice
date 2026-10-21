@@ -1,10 +1,8 @@
 import { ArrowUpRight, LayoutGrid } from "lucide-react";
 
-import { systemStyle } from "@/components/admin/system-style";
+import { pluralModules, systemStyle } from "@/components/portal/system-style";
 import { Badge } from "@/components/ui/badge";
 import type { AccessibleSystem } from "@/lib/portal/accessible-systems";
-
-const pluralModules = (count: number) => `module${count === 1 ? "" : "s"}`;
 
 /**
  * Figma "Portal · Access": one card per Accessible System. A card only opens the

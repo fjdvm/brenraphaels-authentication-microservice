@@ -1,6 +1,6 @@
 import { Box, Contact, LayoutGrid, Store, Users, type LucideIcon } from "lucide-react";
 
-export type SystemStyle = { icon: LucideIcon; tile: string; accent: string };
+type SystemStyle = { icon: LucideIcon; tile: string; accent: string };
 
 // Keys match SeedSystem.iconName; unknown keys fall back to a generic, neutral style.
 const SYSTEM_STYLES: Record<string, SystemStyle> = {
@@ -12,7 +12,9 @@ const SYSTEM_STYLES: Record<string, SystemStyle> = {
 
 const FALLBACK_STYLE: SystemStyle = { icon: LayoutGrid, tile: "bg-badge-muted", accent: "text-foreground" };
 
-/** Figma's per-System icon tile colours, shared by the Access cards and the Module access cards. */
-export function systemStyle(iconName: string | null | undefined): SystemStyle {
+/** Figma's per-System icon, icon tile and accent colour. */
+export function systemStyle(iconName: string | null): SystemStyle {
   return (iconName && SYSTEM_STYLES[iconName]) || FALLBACK_STYLE;
 }
+
+export const pluralModules = (count: number) => `module${count === 1 ? "" : "s"}`;

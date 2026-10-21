@@ -32,22 +32,24 @@ describe("NotificationButton", () => {
 });
 
 describe("LogoutButton", () => {
-  it("asks for confirmation before logging out", async () => {
+  const description = "You will be signed out of the portal and CRMS.";
+
+  it("asks for confirmation before logging out, saying what logging out ends", async () => {
     const user = userEvent.setup();
-    render(<LogoutButton layout="header" />);
+    render(<LogoutButton description={description} layout="header" />);
 
     await user.click(screen.getByRole("button", { name: "Log out" }));
 
     const dialog = screen.getByRole("dialog", { name: "Log out?" });
-    expect(dialog.getAttribute("aria-describedby")).toBeTruthy();
-    expect(screen.getByText(/signed out of the portal and every system you opened/)).toBeTruthy();
+    expect(document.getElementById(dialog.getAttribute("aria-describedby") ?? "")?.textContent).toBe(description);
+    expect(within(dialog).getByRole("button", { name: "Log out" }).getAttribute("type")).toBe("submit");
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("dialog", { name: "Log out?" })).toBeNull();
   });
 
-  it("closes from the close button and with Escape", async () => {
+  it("closes from its close button and from Escape without logging out", async () => {
     const user = userEvent.setup();
-    render(<LogoutButton layout="sidebar" />);
+    render(<LogoutButton description={description} layout="header" />);
 
     await user.click(screen.getByRole("button", { name: "Log out" }));
     await user.click(screen.getByRole("button", { name: "Close" }));
@@ -62,7 +64,7 @@ describe("LogoutButton", () => {
     let finish: () => void = () => {};
     vi.mocked(logoutAction).mockImplementationOnce(() => new Promise<void>((resolve) => (finish = resolve)));
     const user = userEvent.setup();
-    render(<LogoutButton layout="sidebar" />);
+    render(<LogoutButton description={description} layout="sidebar" />);
 
     await user.click(screen.getByRole("button", { name: "Log out" }));
     await user.click(within(screen.getByRole("dialog", { name: "Log out?" })).getByRole("button", { name: "Log out" }));

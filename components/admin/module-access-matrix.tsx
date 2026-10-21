@@ -1,6 +1,6 @@
 "use client";
 
-import { systemStyle } from "@/components/admin/system-style";
+import { systemStyle } from "@/components/portal/system-style";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   countSelectedModules,
@@ -29,7 +29,7 @@ export function ModuleAccessMatrix({ systems, selected, setSelected, density = "
   return (
     <div className={cn("grid md:grid-cols-2", isDialog ? "gap-3" : "gap-4")}>
       {systems.map((system) => {
-        const style = systemStyle(system.iconName);
+        const style = systemStyle(system.iconName ?? null);
         const Icon = style.icon;
         const count = countSelectedModules(system, selected);
         const isFull = isSystemFullySelected(system, selected);

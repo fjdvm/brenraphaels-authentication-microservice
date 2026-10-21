@@ -29,13 +29,13 @@ const LOGOUT_LAYOUTS = {
   header: "px-3.5 py-[9px]",
 } as const;
 
-// Figma "Portal · Log out dialog". The Staff header's copy is finished with the Staff log out dialog.
-const LOGOUT_DESCRIPTIONS = {
-  sidebar: "You will be signed out of the portal and every system you opened (CRMS, HRMS, IMS, POS).",
-  header: "You will be signed out of the portal and every system you opened.",
-} as const;
+type LogoutButtonProps = {
+  layout: keyof typeof LOGOUT_LAYOUTS;
+  /** What logging out ends, under the dialog's title. */
+  description: string;
+};
 
-export function LogoutButton({ layout }: { layout: keyof typeof LOGOUT_LAYOUTS }) {
+export function LogoutButton({ layout, description }: LogoutButtonProps) {
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
   const [isLoggingOut, startLogout] = useTransition();
 
@@ -53,7 +53,7 @@ export function LogoutButton({ layout }: { layout: keyof typeof LOGOUT_LAYOUTS }
       </Button>
 
       <DialogContent className="max-w-110">
-        <DialogHeader description={LOGOUT_DESCRIPTIONS[layout]} icon={<LogOut aria-hidden="true" />} title="Log out?" />
+        <DialogHeader description={description} icon={<LogOut aria-hidden="true" />} title="Log out?" />
         <DialogFooter>
           <DialogClose asChild>
             <Button size="cta" type="button" variant="row-action">

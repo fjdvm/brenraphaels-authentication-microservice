@@ -58,6 +58,14 @@
   --system-ims-foreground: #0f6e56;
   --system-pos: #faece7;
   --system-pos-foreground: #993c1d;
+  /* Figma "Staff home": the page behind the cards, and the Module chips on a System card */
+  --canvas: #fafafa;
+  --chip: #fafafa;
+  --chip-border: #ede9f2;
+  /* Figma dialogs: the dimmed page behind them and the action footer */
+  --scrim: rgb(18 13 26 / 0.45);
+  --dialog-footer: #fafafa;
+  --dialog-divider: #f0f0f2;
   --callout: #f7f5fa;
   --callout-foreground: #5a5368;
   /* Figma "Portal UI/UX" auth screens and loading card */
@@ -78,9 +86,6 @@
   --loader-track: #f1ebf8;
   --loader-overlay: rgb(250 247 252 / 0.55);
   /* Figma "Portal UI/UX" dialogs and the Module access cards */
-  --scrim: rgb(18 13 26 / 0.45);
-  --dialog-footer: #fafafa;
-  --dialog-divider: #f0f0f2;
   --danger-soft: #fee2e2;
   --checkbox: #7c3aed;
   --checkbox-border: #d4d4d8;
@@ -145,6 +150,12 @@
   --color-system-ims-foreground: var(--system-ims-foreground);
   --color-system-pos: var(--system-pos);
   --color-system-pos-foreground: var(--system-pos-foreground);
+  --color-canvas: var(--canvas);
+  --color-chip: var(--chip);
+  --color-chip-border: var(--chip-border);
+  --color-scrim: var(--scrim);
+  --color-dialog-footer: var(--dialog-footer);
+  --color-dialog-divider: var(--dialog-divider);
   --color-callout: var(--callout);
   --color-callout-foreground: var(--callout-foreground);
   --color-auth-panel: var(--auth-panel);
@@ -163,9 +174,6 @@
   --color-loader-border: var(--loader-border);
   --color-loader-track: var(--loader-track);
   --color-loader-overlay: var(--loader-overlay);
-  --color-scrim: var(--scrim);
-  --color-dialog-footer: var(--dialog-footer);
-  --color-dialog-divider: var(--dialog-divider);
   --color-danger-soft: var(--danger-soft);
   --color-checkbox: var(--checkbox);
   --color-checkbox-border: var(--checkbox-border);

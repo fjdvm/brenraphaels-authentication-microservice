@@ -69,7 +69,7 @@ function AdministrativeNavigation({ user }: { user: ShellUser }) {
       </SidebarContent>
       <SidebarFooter className="gap-2.5 border-t border-border px-4 py-3.5">
         <UserCard user={user} />
-        <LogoutButton layout="sidebar" />
+        <LogoutButton description="You will be signed out of the portal and every system you opened." layout="sidebar" />
       </SidebarFooter>
     </>
   );
