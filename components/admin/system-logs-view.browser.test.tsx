@@ -14,6 +14,7 @@ const entry = (over: Partial<AuditLogEntry> = {}): AuditLogEntry => ({
   occurredAt: new Date("2026-10-06T01:00:00Z"),
   system: "Portal",
   action: "Signed in",
+  actionValue: "user.login",
   actor: "Ada Min (2026-ADMIN-001)",
   target: "Ada Min (2026-ADMIN-001)",
   outcome: "SUCCESS",
@@ -28,6 +29,7 @@ const entries = [
     occurredAt: new Date("2026-10-06T00:00:00Z"),
     system: "CRMS",
     action: "Failed sign-in",
+    actionValue: "user.login_failed",
     actor: "Unauthenticated visitor",
     target: "Portal",
     outcome: "FAILURE",
@@ -56,30 +58,72 @@ const ok = (list: AuditLogEntry[], nextCursor: string | null = null): SystemLogs
 
 afterEach(cleanup);
 
+/** The From and To inputs sit behind the date-range button, as in Figma. */
+function openDates() {
+  fireEvent.click(screen.getByRole("button", { name: /^Date range/ }));
+}
+
 function setup(initial: SystemLogsResult = ok(entries), load = vi.fn().mockResolvedValue(ok(entries))) {
   render(<SystemLogsView initial={initial} options={options} defaultRange={range} load={load} />);
   return { load, user: userEvent.setup() };
 }
 
 describe("SystemLogsView rows", () => {
-  it("shows actor, action, target, time and a truthful outcome for each event", () => {
+  it("shows actor, action, detail, time and a truthful outcome for each event", () => {
     setup();
 
     const rows = screen.getAllByRole("row").slice(1);
     expect(rows).toHaveLength(2);
     expect(within(rows[0]).getByText("Success")).toBeTruthy();
     expect(within(rows[0]).getByText("Portal")).toBeTruthy();
-    expect(within(rows[0]).getAllByText("Ada Min (2026-ADMIN-001)")).toHaveLength(2);
+    expect(within(rows[0]).getByText("Ada Min (2026-ADMIN-001)")).toBeTruthy();
+    expect(within(rows[0]).getByText("Ada Min (2026-ADMIN-001): Signed in.")).toBeTruthy();
     expect(within(rows[1]).getByText("Failed")).toBeTruthy();
     expect(within(rows[1]).getByText("Unauthenticated visitor")).toBeTruthy();
     expect(within(rows[1]).getByText(/Unknown Username/)).toBeTruthy();
     expect(within(rows[0]).getByRole("time").getAttribute("datetime")).toBe("2026-10-06T01:00:00.000Z");
   });
 
-  it("shows times in Philippine time", () => {
+  it("shows times in Philippine time, naming today and yesterday", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    // 7:30 AM on Oct 7 in Manila: the first event is yesterday there, though still Oct 6 in UTC.
+    vi.setSystemTime(new Date("2026-10-06T23:30:00Z"));
+    try {
+      setup(
+        ok([
+          entry({ id: "a", occurredAt: new Date("2026-10-06T22:15:00Z") }),
+          entry({ id: "b", occurredAt: new Date("2026-10-06T01:00:00Z") }),
+          entry({ id: "c", occurredAt: new Date("2026-10-01T08:05:00Z") }),
+          entry({ id: "d", occurredAt: new Date("2025-12-31T15:00:00Z") }),
+        ]),
+      );
+
+      const times = screen.getAllByRole("time").map((t) => t.textContent);
+      expect(times).toEqual(["Today, 6:15 AM", "Yesterday, 9:00 AM", "Oct 1, 4:05 PM", "Dec 31, 2025, 11:00 PM"]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("has the Figma columns, with the description as the Detail", () => {
     setup();
 
-    expect(screen.getByText(/Oct 6, 2026, 9:00:00 AM/)).toBeTruthy();
+    const headers = screen.getAllByRole("columnheader").map((h) => h.textContent);
+    expect(headers).toEqual(["Time", "User", "Action", "System", "Outcome", "Detail"]);
+  });
+
+  it("falls back to the Target, then a dash, when an event has no description", () => {
+    setup(ok([entry({ id: "a", description: "", target: "Order 42" }), entry({ id: "b", description: "", target: "" })]));
+
+    const rows = screen.getAllByRole("row").slice(1);
+    expect(within(rows[0]).getByText("Order 42")).toBeTruthy();
+    expect(within(rows[1]).getByText("—")).toBeTruthy();
+  });
+
+  it("names an event with no recorded actor Unknown", () => {
+    setup(ok([entry({ actor: "" })]));
+
+    expect(within(screen.getAllByRole("row")[1]).getByText("Unknown")).toBeTruthy();
   });
 
   it("explains an empty result and keeps the filters", () => {
@@ -95,6 +139,8 @@ describe("SystemLogsView filters", () => {
   it("starts on the last 7 days without asking the service again", () => {
     const { load } = setup();
 
+    expect(screen.getByRole("button", { name: /^Date range/ }).textContent).toContain("Last 7 days");
+    openDates();
     expect((screen.getByLabelText("From") as HTMLInputElement).value).toBe("2026-10-15");
     expect((screen.getByLabelText("To") as HTMLInputElement).value).toBe("2026-10-21");
     expect(load).not.toHaveBeenCalled();
@@ -162,6 +208,7 @@ describe("SystemLogsView filters", () => {
   it("filters by the dates the Administrator picks, in Philippine days", async () => {
     const { load } = setup();
 
+    openDates();
     fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-10-01" } });
 
     await waitFor(() => expect(load).toHaveBeenCalledTimes(1));
@@ -169,11 +216,13 @@ describe("SystemLogsView filters", () => {
       from: "2026-10-01T00:00:00.000+08:00",
       to: "2026-10-21T23:59:59.999+08:00",
     });
+    expect(screen.getByRole("button", { name: /^Date range/ }).textContent).toContain("Oct 1 – Oct 21");
   });
 
   it("does not ask the service for a range that ends before it starts", async () => {
     const { load } = setup();
 
+    openDates();
     fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-10-30" } });
 
     expect(screen.getByText("From must be on or before To")).toBeTruthy();
@@ -189,7 +238,7 @@ describe("SystemLogsView filters", () => {
 
     expect(await screen.findByText("Only Match")).toBeTruthy();
     expect(load.mock.lastCall![0].cursor).toBeUndefined();
-    expect(screen.getByText("Showing 1-1")).toBeTruthy();
+    expect(screen.getByText("Showing 1–1")).toBeTruthy();
   });
 });
 
@@ -203,7 +252,7 @@ describe("SystemLogsView paging", () => {
   it("shows the range without a total", () => {
     setup(ok(entries, "c1"));
 
-    expect(screen.getByText("Showing 1-2")).toBeTruthy();
+    expect(screen.getByText("Showing 1–2")).toBeTruthy();
   });
 
   it("pages forward with the service cursor and back through the cursors already visited", async () => {
@@ -213,21 +262,21 @@ describe("SystemLogsView paging", () => {
     await user.click(screen.getByRole("button", { name: "Next" }));
     expect(await screen.findByText("Page Two A")).toBeTruthy();
     expect(fn).toHaveBeenLastCalledWith(expect.objectContaining({ cursor: "c1" }));
-    expect(screen.getByText("Showing 3-5")).toBeTruthy();
+    expect(screen.getByText("Showing 3–5")).toBeTruthy();
 
     await user.click(screen.getByRole("button", { name: "Next" }));
     expect(await screen.findByText("Page Three")).toBeTruthy();
-    expect(screen.getByText("Showing 6-6")).toBeTruthy();
+    expect(screen.getByText("Showing 6–6")).toBeTruthy();
 
     await user.click(screen.getByRole("button", { name: "Previous" }));
     expect(await screen.findByText("Page Two A")).toBeTruthy();
     expect(fn).toHaveBeenLastCalledWith(expect.objectContaining({ cursor: "c1" }));
-    expect(screen.getByText("Showing 3-5")).toBeTruthy();
+    expect(screen.getByText("Showing 3–5")).toBeTruthy();
 
     await user.click(screen.getByRole("button", { name: "Previous" }));
     expect(await screen.findByText("Ada Min (2026-ADMIN-001): Signed in.")).toBeTruthy();
     expect(fn.mock.lastCall![0].cursor).toBeUndefined();
-    expect(screen.getByText("Showing 1-2")).toBeTruthy();
+    expect(screen.getByText("Showing 1–2")).toBeTruthy();
   });
 
   it("disables Previous on the first page and Next at the end", async () => {
@@ -355,6 +404,7 @@ describe("SystemLogsView Export CSV", () => {
   it("needs a whole, valid date range", () => {
     setupExport();
 
+    openDates();
     fireEvent.change(screen.getByLabelText("To"), { target: { value: "" } });
     expect((screen.getByRole("button", { name: "Export CSV" }) as HTMLButtonElement).disabled).toBe(true);
 
@@ -373,7 +423,7 @@ describe("SystemLogsView as My Logs", () => {
     setupMine();
 
     const headers = screen.getAllByRole("columnheader").map((h) => h.textContent);
-    expect(headers).toEqual(["Time (PHT)", "System", "Action", "Target", "Outcome", "Description"]);
+    expect(headers).toEqual(["Time", "Action", "System", "Outcome", "Detail"]);
     expect(within(screen.getAllByRole("row")[2]).queryByText("Unauthenticated visitor")).toBeNull();
   });
 
@@ -392,19 +442,33 @@ describe("SystemLogsView as My Logs", () => {
     expect(screen.queryByRole("button", { name: /export/i })).toBeNull();
   });
 
-  it("filters and pages the same way", async () => {
+  it("offers only search and the date range: no System, Action or Outcome filter", () => {
+    setupMine();
+
+    expect(screen.getByRole("searchbox", { name: "Search" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Date range/ })).toBeTruthy();
+    expect(screen.queryByLabelText("System")).toBeNull();
+    expect(screen.queryByLabelText("Action")).toBeNull();
+    expect(screen.queryByLabelText("Outcome")).toBeNull();
+  });
+
+  it("searches and pages the same way", async () => {
     const { load, user } = setupMine(ok(entries, "c1"));
 
-    await user.selectOptions(screen.getByLabelText("Outcome"), "FAILURE");
+    await user.type(screen.getByRole("searchbox", { name: "Search" }), "signed{Enter}");
     await waitFor(() => expect(load).toHaveBeenCalledTimes(1));
-    expect(load).toHaveBeenLastCalledWith(expect.objectContaining({ outcome: "FAILURE", from: "2026-10-15T00:00:00.000+08:00" }));
+    expect(load).toHaveBeenLastCalledWith({
+      q: "signed",
+      from: "2026-10-15T00:00:00.000+08:00",
+      to: "2026-10-21T23:59:59.999+08:00",
+    });
   });
 
   it("shows the inline error with Retry and no stale rows", async () => {
     const load = vi.fn().mockResolvedValueOnce({ status: "error" }).mockResolvedValue(ok(entries));
     const { user } = setupMine(ok(entries), load);
 
-    await user.selectOptions(screen.getByLabelText("Outcome"), "SUCCESS");
+    await user.type(screen.getByRole("searchbox", { name: "Search" }), "signed{Enter}");
 
     expect(await screen.findByText("Couldn't load your activity")).toBeTruthy();
     expect(screen.queryByRole("table")).toBeNull();

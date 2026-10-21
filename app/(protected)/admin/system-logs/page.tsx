@@ -27,13 +27,13 @@ export default async function SystemLogsPage() {
   ]);
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 p-6 md:p-8">
+    <main className="flex w-full flex-1 flex-col gap-5 px-6 py-7 md:px-8">
       <SystemLogsView
         heading={
           <>
-            <h1 className="text-2xl font-semibold tracking-tight text-primary">System logs</h1>
-            <p className="mt-1 text-sm text-on-surface-variant">
-              Activity from every System, recorded in the audit-logs service. Times are Philippine time.
+            <h1 className="text-2xl font-semibold text-foreground">System logs</h1>
+            <p className="text-sm text-on-surface-variant">
+              Every sign-in, sign-out, password and administrative event, from the Portal and every System. Times are shown in Philippine time (UTC+8).
             </p>
           </>
         }

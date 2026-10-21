@@ -4,7 +4,6 @@ import {
   auditGatewayConfig,
   createAuditClient,
   exportSystemLogs,
-  readMyLogOptions,
   readMyLogs,
   readSystemLogOptions,
   readSystemLogs,
@@ -328,6 +327,7 @@ describe("listing events", () => {
       occurredAt: new Date("2026-10-06T01:00:00.000Z"),
       system: "Portal",
       action: "Signed in",
+      actionValue: "user.login",
       actor: "Ada Min (2026-ADMIN-001)",
       target: "Ada Min (2026-ADMIN-001)",
       outcome: "SUCCESS",
@@ -652,16 +652,24 @@ describe("reading the previous sign-in", () => {
 describe("reading My Logs", () => {
   const events = () => Response.json({ events: [], next_cursor: null });
 
-  it("asks only for events the signed-in User performed, with the screen's filters", async () => {
+  it("asks only for events the signed-in User performed, by search and date range only", async () => {
     const { calls, client: audit } = client(events);
 
-    await readMyLogs(audit, { id: "staff" }, { q: "signed", action: "user.login", source: "Authentication", cursor: "c1" });
+    await readMyLogs(audit, { id: "staff" }, {
+      q: "signed",
+      from: "2026-10-15T00:00:00.000+08:00",
+      to: "2026-10-21T23:59:59.999+08:00",
+      action: "user.login",
+      outcome: "FAILURE",
+      source: "Authentication",
+      cursor: "c1",
+    });
 
     expect(Object.fromEntries(calls[0].url.searchParams)).toEqual({
       limit: String(SYSTEM_LOG_PAGE_SIZE),
       q: "signed",
-      action: "user.login",
-      source: "Authentication",
+      from: "2026-10-15T00:00:00.000+08:00",
+      to: "2026-10-21T23:59:59.999+08:00",
       cursor: "c1",
       actor_type: "user",
       actor_id: "staff",
@@ -696,17 +704,13 @@ describe("reading My Logs", () => {
 
     await expect(readMyLogs(audit, null, {})).rejects.toThrow("sign in required");
     await expect(readMyLogs(audit, { id: "" }, {})).rejects.toThrow("sign in required");
-    await expect(readMyLogOptions(audit, null)).rejects.toThrow("sign in required");
     expect(calls).toHaveLength(0);
   });
 
   it("is open to every signed-in User, not only Administrators", async () => {
-    const { calls, client: audit } = client((call) =>
-      call.url.pathname === "/events/valid-values" ? Response.json({ sources: [] }) : events(),
-    );
+    const { calls, client: audit } = client(events);
 
     await expect(readMyLogs(audit, { id: "staff" }, {})).resolves.toEqual({ entries: [], nextCursor: null });
-    await expect(readMyLogOptions(audit, { id: "staff" })).resolves.toEqual({ systems: [], actions: [] });
-    expect(calls).toHaveLength(2);
+    expect(calls).toHaveLength(1);
   });
 });

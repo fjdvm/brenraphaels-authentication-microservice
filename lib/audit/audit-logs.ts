@@ -15,7 +15,10 @@ export type AuditLogEntry = {
   occurredAt: Date;
   /** The Source as the Portal labels it: Authentication shows as "Portal". */
   system: string;
+  /** The action as the page labels it, e.g. "Signed in". */
   action: string;
+  /** The service's action value, e.g. "user.login". */
+  actionValue: string;
   actor: string;
   target: string;
   outcome: AuditOutcome;
@@ -353,6 +356,7 @@ export function createAuditClient(config: ClientConfig): AuditClient {
           occurredAt: new Date(row.occurred_at),
           system: systemLabel(row.source),
           action: ACTION_LABELS[row.action] ?? row.action,
+          actionValue: row.action,
           actor: row.actor?.display_name ?? "",
           target: row.target?.display_name ?? "",
           outcome: row.outcome === "success" ? "SUCCESS" : "FAILURE",
@@ -506,28 +510,15 @@ export async function readMyLogs(
     throw new Error("My Logs: sign in required");
   }
 
-  const { q, from, to, action, outcome, source, cursor } = filters;
+  // My Logs is a personal history: search and the date range only, no System, Action or Outcome filter.
+  const { q, from, to, cursor } = filters;
 
   return client.listPage({
     q,
     from,
     to,
-    action,
-    outcome,
-    source,
     cursor,
     limit: SYSTEM_LOG_PAGE_SIZE,
     actor: { type: PORTAL_USER_ACTOR, id: viewer.id },
   });
-}
-
-export async function readMyLogOptions(
-  client: AuditClient,
-  viewer: { id: string } | null,
-): Promise<AuditFilterOptions> {
-  if (!viewer) {
-    throw new Error("My Logs: sign in required");
-  }
-
-  return client.filterOptions();
 }
