@@ -9,6 +9,7 @@ type Row = {
   username: string;
   email: string;
   isAdministrator: boolean;
+  roleName?: string;
   isDeleted: boolean;
   deletedAt: Date | null;
   mustChangePassword: boolean;
@@ -59,6 +60,19 @@ function world(rows: Row[]) {
 const admin = () => row("admin", { isAdministrator: true });
 
 describe("changeUserLifecycle", () => {
+  it("never deletes a Super Admin, even for another Administrator, and logs the refusal", async () => {
+    const superAdmin = row("root", { isAdministrator: true, roleName: "Super Admin" });
+    const { ports, events } = world([row("ceo", { isAdministrator: true, roleName: "CEO" }), superAdmin]);
+
+    const result = await changeUserLifecycle("delete", "root", "ceo", ports);
+
+    expect(result).toEqual({ ok: false, error: "A Super Admin cannot be deleted." });
+    expect(superAdmin.isDeleted).toBe(false);
+    expect(events).toEqual([
+      expect.objectContaining({ action: "user.delete", outcome: "FAILURE", actorId: "ceo", targetUserId: "root" }),
+    ]);
+  });
+
   it("deletes a User, keeping identity, password state and every AccessGrant", async () => {
     const target = row("u1", { mustChangePassword: true });
     const before = structuredClone(target);
