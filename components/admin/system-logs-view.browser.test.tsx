@@ -1,38 +1,69 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import type { AuditFilterOptions, AuditLogEntry } from "@/lib/audit/audit-logs";
+import type { SystemLogsResult } from "@/lib/audit/system-logs-query";
 
 import { SystemLogsView } from "./system-logs-view";
 
+const entry = (over: Partial<AuditLogEntry> = {}): AuditLogEntry => ({
+  id: "1",
+  occurredAt: new Date("2026-10-06T01:00:00Z"),
+  system: "Portal",
+  action: "Signed in",
+  actor: "Ada Min (2026-ADMIN-001)",
+  target: "Ada Min (2026-ADMIN-001)",
+  outcome: "SUCCESS",
+  description: "Ada Min (2026-ADMIN-001): Signed in.",
+  ...over,
+});
+
 const entries = [
-  {
-    id: "1",
-    occurredAt: new Date("2026-10-06T01:00:00Z"),
-    system: "Portal",
-    action: "Signed in",
-    actor: "Ada Min (2026-ADMIN-001)",
-    target: "Ada Min (2026-ADMIN-001)",
-    outcome: "SUCCESS" as const,
-    description: "Ada Min (2026-ADMIN-001): Signed in.",
-  },
-  {
+  entry(),
+  entry({
     id: "2",
     occurredAt: new Date("2026-10-06T00:00:00Z"),
     system: "CRMS",
     action: "Failed sign-in",
     actor: "Unauthenticated visitor",
     target: "Portal",
-    outcome: "FAILURE" as const,
+    outcome: "FAILURE",
     description: "Unauthenticated visitor: Failed sign-in (failed) - Unknown Username.",
-  },
+  }),
 ];
 
-describe("SystemLogsView", () => {
-  afterEach(cleanup);
+const options: AuditFilterOptions = {
+  systems: [
+    { value: "CRMS", label: "CRMS" },
+    { value: "Authentication", label: "Portal" },
+  ],
+  actions: [
+    { value: "record.created", label: "record.created", systems: ["CRMS"] },
+    { value: "user.login", label: "Signed in", systems: ["Authentication"] },
+    { value: "user.login_failed", label: "Failed sign-in", systems: ["Authentication"] },
+  ],
+};
 
+const range = { from: "2026-10-15", to: "2026-10-21" };
+const ok = (list: AuditLogEntry[], nextCursor: string | null = null): SystemLogsResult => ({
+  status: "ok",
+  entries: list,
+  nextCursor,
+});
+
+afterEach(cleanup);
+
+function setup(initial: SystemLogsResult = ok(entries), load = vi.fn().mockResolvedValue(ok(entries))) {
+  render(<SystemLogsView initial={initial} options={options} defaultRange={range} load={load} />);
+  return { load, user: userEvent.setup() };
+}
+
+describe("SystemLogsView rows", () => {
   it("shows actor, action, target, time and a truthful outcome for each event", () => {
-    render(<SystemLogsView entries={entries} />);
+    setup();
 
     const rows = screen.getAllByRole("row").slice(1);
     expect(rows).toHaveLength(2);
@@ -42,22 +73,221 @@ describe("SystemLogsView", () => {
     expect(within(rows[1]).getByText("Failed")).toBeTruthy();
     expect(within(rows[1]).getByText("Unauthenticated visitor")).toBeTruthy();
     expect(within(rows[1]).getByText(/Unknown Username/)).toBeTruthy();
-    expect(within(rows[0]).getByRole("time").getAttribute("datetime")).toBe(
-      "2026-10-06T01:00:00.000Z",
-    );
+    expect(within(rows[0]).getByRole("time").getAttribute("datetime")).toBe("2026-10-06T01:00:00.000Z");
   });
 
-  it("explains an empty log", () => {
-    render(<SystemLogsView entries={[]} />);
+  it("shows times in Philippine time", () => {
+    setup();
 
-    expect(screen.getByText("No activity recorded yet")).toBeTruthy();
+    expect(screen.getByText(/Oct 6, 2026, 9:00:00 AM/)).toBeTruthy();
+  });
+
+  it("explains an empty result and keeps the filters", () => {
+    setup(ok([]));
+
+    expect(screen.getByText("No events match")).toBeTruthy();
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.getByLabelText("Outcome")).toBeTruthy();
+  });
+});
+
+describe("SystemLogsView filters", () => {
+  it("starts on the last 7 days without asking the service again", () => {
+    const { load } = setup();
+
+    expect((screen.getByLabelText("From") as HTMLInputElement).value).toBe("2026-10-15");
+    expect((screen.getByLabelText("To") as HTMLInputElement).value).toBe("2026-10-21");
+    expect(load).not.toHaveBeenCalled();
+  });
+
+  it("lists the Portal under its name, with every Source", () => {
+    setup();
+
+    const system = screen.getByLabelText("System");
+    expect(within(system).getAllByRole("option").map((o) => o.textContent)).toEqual(["All systems", "CRMS", "Portal"]);
+  });
+
+  it("offers the actions of the chosen System only", async () => {
+    const { user } = setup();
+    const action = screen.getByLabelText("Action");
+    const names = () => within(action).getAllByRole("option").map((o) => o.textContent);
+
+    expect(names()).toEqual(["All actions", "record.created", "Signed in", "Failed sign-in"]);
+
+    await user.selectOptions(screen.getByLabelText("System"), "Authentication");
+
+    expect(names()).toEqual(["All actions", "Signed in", "Failed sign-in"]);
+  });
+
+  it("narrows by each filter, and the filters combine", async () => {
+    const { load, user } = setup();
+
+    await user.selectOptions(screen.getByLabelText("System"), "Authentication");
+    await user.selectOptions(screen.getByLabelText("Action"), "user.login_failed");
+    await user.selectOptions(screen.getByLabelText("Outcome"), "FAILURE");
+    await user.type(screen.getByRole("searchbox", { name: "Search" }), "ada{Enter}");
+
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(4));
+    expect(load).toHaveBeenLastCalledWith({
+      source: "Authentication",
+      action: "user.login_failed",
+      outcome: "FAILURE",
+      q: "ada",
+      from: "2026-10-15T00:00:00.000+08:00",
+      to: "2026-10-21T23:59:59.999+08:00",
+    });
+  });
+
+  it("applies text typed into Search together with the next filter change", async () => {
+    const { load, user } = setup();
+
+    await user.type(screen.getByRole("searchbox", { name: "Search" }), "ada");
+    await user.selectOptions(screen.getByLabelText("Outcome"), "FAILURE");
+
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+    expect(load).toHaveBeenCalledWith(expect.objectContaining({ q: "ada", outcome: "FAILURE" }));
+  });
+
+  it("drops an action the new System cannot write", async () => {
+    const { load, user } = setup();
+
+    await user.selectOptions(screen.getByLabelText("Action"), "record.created");
+    await user.selectOptions(screen.getByLabelText("System"), "Authentication");
+
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+    expect(load.mock.lastCall![0]).toMatchObject({ source: "Authentication" });
+    expect(load.mock.lastCall![0].action).toBeUndefined();
+  });
+
+  it("filters by the dates the Administrator picks, in Philippine days", async () => {
+    const { load } = setup();
+
+    fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-10-01" } });
+
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+    expect(load).toHaveBeenCalledWith({
+      from: "2026-10-01T00:00:00.000+08:00",
+      to: "2026-10-21T23:59:59.999+08:00",
+    });
+  });
+
+  it("does not ask the service for a range that ends before it starts", async () => {
+    const { load } = setup();
+
+    fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-10-30" } });
+
+    expect(screen.getByText("From must be on or before To")).toBeTruthy();
+    expect(load).not.toHaveBeenCalled();
     expect(screen.queryByRole("table")).toBeNull();
   });
 
-  it("shows an error state instead of an empty log when reading fails", () => {
-    render(<SystemLogsView entries={null} />);
+  it("shows the new result and goes back to the first page when a filter changes", async () => {
+    const { load, user } = setup(ok(entries, "c1"), vi.fn().mockResolvedValue(ok([entry({ id: "9", actor: "Only Match" })])));
 
-    expect(screen.getByRole("alert").textContent).toContain("Couldn't load System Logs");
-    expect(screen.queryByText("No activity recorded yet")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.selectOptions(screen.getByLabelText("Outcome"), "SUCCESS");
+
+    expect(await screen.findByText("Only Match")).toBeTruthy();
+    expect(load.mock.lastCall![0].cursor).toBeUndefined();
+    expect(screen.getByText("Showing 1-1")).toBeTruthy();
+  });
+});
+
+describe("SystemLogsView paging", () => {
+  const pages: Record<string, SystemLogsResult> = {
+    c1: ok([entry({ id: "3", actor: "Page Two A" }), entry({ id: "4", actor: "Page Two B" }), entry({ id: "5", actor: "Page Two C" })], "c2"),
+    c2: ok([entry({ id: "6", actor: "Page Three" })], null),
+  };
+  const load = () => vi.fn(async (q: { cursor?: string | null }) => (q.cursor ? pages[q.cursor] : ok(entries, "c1")));
+
+  it("shows the range without a total", () => {
+    setup(ok(entries, "c1"));
+
+    expect(screen.getByText("Showing 1-2")).toBeTruthy();
+  });
+
+  it("pages forward with the service cursor and back through the cursors already visited", async () => {
+    const fn = load();
+    const { user } = setup(ok(entries, "c1"), fn);
+
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(await screen.findByText("Page Two A")).toBeTruthy();
+    expect(fn).toHaveBeenLastCalledWith(expect.objectContaining({ cursor: "c1" }));
+    expect(screen.getByText("Showing 3-5")).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(await screen.findByText("Page Three")).toBeTruthy();
+    expect(screen.getByText("Showing 6-6")).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Previous" }));
+    expect(await screen.findByText("Page Two A")).toBeTruthy();
+    expect(fn).toHaveBeenLastCalledWith(expect.objectContaining({ cursor: "c1" }));
+    expect(screen.getByText("Showing 3-5")).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Previous" }));
+    expect(await screen.findByText("Ada Min (2026-ADMIN-001): Signed in.")).toBeTruthy();
+    expect(fn.mock.lastCall![0].cursor).toBeUndefined();
+    expect(screen.getByText("Showing 1-2")).toBeTruthy();
+  });
+
+  it("disables Previous on the first page and Next at the end", async () => {
+    const { user } = setup(ok(entries, "c1"), load());
+
+    expect((screen.getByRole("button", { name: "Previous" }) as HTMLButtonElement).disabled).toBe(true);
+
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(await screen.findByRole("button", { name: "Next" }));
+    await screen.findByText("Page Three");
+
+    expect((screen.getByRole("button", { name: "Next" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Previous" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("disables Next when the first page is also the last", () => {
+    setup(ok(entries, null));
+
+    expect((screen.getByRole("button", { name: "Next" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe("SystemLogsView when the service cannot be reached", () => {
+  it("shows an inline error with Retry, no rows, and keeps the filters", () => {
+    setup({ status: "error" });
+
+    expect(screen.getByRole("alert").textContent).toContain("Couldn't load System logs");
+    expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.queryByText(/Showing/)).toBeNull();
+    expect(screen.getByLabelText("System")).toBeTruthy();
+  });
+
+  it("replaces the rows with the error instead of showing stale data when a later load fails", async () => {
+    const { user } = setup(ok(entries), vi.fn().mockResolvedValue({ status: "error" }));
+
+    await user.selectOptions(screen.getByLabelText("Outcome"), "FAILURE");
+
+    expect((await screen.findByRole("alert")).textContent).toContain("Couldn't load System logs");
+    expect(screen.queryByRole("table")).toBeNull();
+  });
+
+  it("treats a rejected load as an error too", async () => {
+    const { user } = setup(ok(entries), vi.fn().mockRejectedValue(new Error("boom")));
+
+    await user.selectOptions(screen.getByLabelText("Outcome"), "FAILURE");
+
+    expect(await screen.findByRole("alert")).toBeTruthy();
+  });
+
+  it("retries the same query and shows the result", async () => {
+    const load = vi.fn().mockResolvedValueOnce({ status: "error" }).mockResolvedValueOnce(ok(entries));
+    const { user } = setup(ok(entries), load);
+
+    await user.selectOptions(screen.getByLabelText("Outcome"), "FAILURE");
+    await user.click(await screen.findByRole("button", { name: "Retry" }));
+
+    expect(await screen.findByRole("table")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(load.mock.calls[1][0]).toEqual(load.mock.calls[0][0]);
   });
 });
