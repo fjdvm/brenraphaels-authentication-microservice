@@ -22,7 +22,7 @@ describe("SIDEBAR_NAVIGATION", () => {
       { href: "/admin/access", label: "Access" },
       { href: "/admin/users", label: "User management" },
       { href: "/admin/system-logs", label: "System logs" },
-      { href: "/my-logs", label: "My logs" },
+      { href: "/my-logs", label: "Activity log" },
     ]);
   });
 });
