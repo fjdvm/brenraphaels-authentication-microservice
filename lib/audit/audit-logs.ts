@@ -51,6 +51,9 @@ export type AuditFilterOptions = {
   actions: { value: string; label: string; systems: string[] }[];
 };
 
+/** Who performed an event, as the service stores it. Portal Users are `{ type: "user", id: User id }`. */
+export type AuditActor = { type: string; id: string };
+
 /** An export covers a whole date range: the service requires both bounds and takes no cursor. */
 export type AuditExportFilters = Omit<AuditLogFilters, "cursor" | "from" | "to"> & { from: string; to: string };
 
@@ -65,8 +68,8 @@ export type ExportRequester = { id: string; name: string };
 export type AuditClient = {
   /** Best effort and never throws: a failed audit write must not block any flow. */
   record(event: AuditEventInput, context?: RequestContext): Promise<void>;
-  /** Newest first, across every Source. Rejects when the service cannot be read. */
-  listPage(query: AuditLogFilters & { limit: number }): Promise<AuditLogPage>;
+  /** Newest first, across every Source; `actor` keeps only that Actor's events. Rejects when the service cannot be read. */
+  listPage(query: AuditLogFilters & { limit: number; actor?: AuditActor }): Promise<AuditLogPage>;
   /** Rejects when the service cannot be read. */
   filterOptions(): Promise<AuditFilterOptions>;
   /** Streams the matching events as CSV, newest first. Rejects when the service cannot be read. */
@@ -128,6 +131,9 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 const systemLabel = (source: string) => (source === SOURCE ? "Portal" : source);
+
+/** The Actor type the Portal records for its Users, with the User id as the Actor id. */
+const PORTAL_USER_ACTOR = "user";
 
 /** How the Portal names a User on events and exports, e.g. "Ada Min (2026-ADMIN-001)". */
 export function userDisplayName(user: { firstName: string; lastName: string; username: string }): string {
@@ -265,7 +271,7 @@ export function createAuditClient(config: ClientConfig): AuditClient {
       try {
         const ids = [event.actorId, event.targetUserId].filter((id): id is string => Boolean(id));
         const names = await describeUsers(config.users, [...new Set(ids)], config.timeoutMs ?? DEFAULT_TIMEOUT_MS);
-        const person = (id: string) => ({ type: "user", id, display_name: names.get(id) ?? id });
+        const person = (id: string) => ({ type: PORTAL_USER_ACTOR, id, display_name: names.get(id) ?? id });
 
         const actor = event.actorId ? person(event.actorId) : ANONYMOUS_ACTOR;
         const targetUser = event.targetUserId ? person(event.targetUserId) : null;
@@ -292,8 +298,13 @@ export function createAuditClient(config: ClientConfig): AuditClient {
       }
     },
 
-    async listPage({ limit, ...filters }) {
+    async listPage({ limit, actor, ...filters }) {
       const params = filterParams(filters, new URLSearchParams({ limit: String(limit) }));
+
+      if (actor) {
+        params.set("actor_type", actor.type);
+        params.set("actor_id", actor.id);
+      }
 
       const response = await send(`/events?${params}`, { method: "GET", key: config.readKey });
 
@@ -405,6 +416,47 @@ export async function readSystemLogOptions(
   viewer: { isAdministrator: boolean } | null,
 ): Promise<AuditFilterOptions> {
   assertAdministrator(viewer);
+
+  return client.filterOptions();
+}
+
+/**
+ * My Logs: one page of the events the signed-in User performed themselves, across every Source.
+ * The Actor always comes from `viewer` (the session), never from `filters`, so a request
+ * cannot widen the read to another User or to events performed on this one.
+ */
+export async function readMyLogs(
+  client: AuditClient,
+  viewer: { id: string } | null,
+  filters: AuditLogFilters,
+): Promise<AuditLogPage> {
+  // A blank id would drop the Actor filter and widen the read to everyone.
+  if (!viewer?.id) {
+    throw new Error("My Logs: sign in required");
+  }
+
+  const { q, from, to, action, outcome, source, cursor } = filters;
+
+  return client.listPage({
+    q,
+    from,
+    to,
+    action,
+    outcome,
+    source,
+    cursor,
+    limit: SYSTEM_LOG_PAGE_SIZE,
+    actor: { type: PORTAL_USER_ACTOR, id: viewer.id },
+  });
+}
+
+export async function readMyLogOptions(
+  client: AuditClient,
+  viewer: { id: string } | null,
+): Promise<AuditFilterOptions> {
+  if (!viewer) {
+    throw new Error("My Logs: sign in required");
+  }
 
   return client.filterOptions();
 }
