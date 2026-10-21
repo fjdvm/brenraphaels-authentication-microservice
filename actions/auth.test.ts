@@ -44,7 +44,7 @@ vi.mock("@/lib/auth/session", () => ({
   getPortalUser: vi.fn(),
 }));
 
-vi.mock("@/lib/audit/system-log", () => ({ recordSystemLogEvent: mocks.record }));
+vi.mock("@/lib/audit/audit-logs.server", () => ({ recordAuditEvent: mocks.record }));
 
 vi.mock("@/lib/integrations/revocation.server", () => ({
   currentCentralSessionId: mocks.currentSessionId,

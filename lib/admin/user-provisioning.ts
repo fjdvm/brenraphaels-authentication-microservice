@@ -5,7 +5,7 @@ import {
   type FieldErrors,
 } from "@/lib/validations/user";
 
-import type { SystemLogEventInput } from "@/lib/audit/system-log";
+import type { AuditEventInput } from "@/lib/audit/events";
 
 /** Thrown by the store when the Email unique constraint rejects a concurrent creation. */
 export class DuplicateEmailError extends Error {
@@ -56,7 +56,7 @@ export type ProvisioningPorts = {
   store: ProvisioningStore;
   identity: IdentityProvisioner;
   mailer: CredentialsMailer;
-  audit(event: SystemLogEventInput): Promise<void>;
+  audit(event: AuditEventInput): Promise<void>;
   generatePassword(): string;
 };
 

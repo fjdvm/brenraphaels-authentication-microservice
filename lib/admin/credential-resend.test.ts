@@ -1,15 +1,22 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { resendCredentials, type ResendPorts, type ResendTarget } from "./credential-resend";
 import type { CredentialsMailer } from "./user-provisioning";
 
-import type { SystemLogEventInput } from "@/lib/audit/system-log";
+import type { AuditEventInput } from "@/lib/audit/events";
+import { stubNotificationsService } from "@/lib/notifications/test-support";
 
 const ADMIN = { id: "admin-1" };
 
 function createWorld(
   initial: Partial<ResendTarget> = {},
-  options: { unconfigured?: boolean; sendFails?: boolean; passwordFails?: boolean; flagFails?: boolean } = {},
+  options: {
+    unconfigured?: boolean;
+    sendFails?: boolean;
+    passwordFails?: boolean;
+    flagFails?: boolean;
+    notificationsDown?: boolean;
+  } = {},
 ) {
   const user: ResendTarget = {
     id: "user-1",
@@ -23,7 +30,8 @@ function createWorld(
   };
   const state = { password: "old-password", mustChangePassword: user.mustChangePassword };
   const sent: Parameters<CredentialsMailer["sendCredentials"]>[0][] = [];
-  const events: SystemLogEventInput[] = [];
+  const events: AuditEventInput[] = [];
+  const notifications = stubNotificationsService({ down: options.notificationsDown });
 
   const ports: ResendPorts = {
     store: {
@@ -53,9 +61,10 @@ function createWorld(
       events.push(event);
     },
     generatePassword: () => "Fresh-Temp-1",
+    notify: notifications.notify,
   };
 
-  return { ports, state, sent, events };
+  return { ports, state, sent, events, notifications: notifications.sent };
 }
 
 describe("resendCredentials", () => {
@@ -159,5 +168,48 @@ describe("resendCredentials", () => {
 
     expect(result.ok).toBe(false);
     expect(world.sent).toHaveLength(0);
+  });
+
+  it("sends the User one notification once their new credentials are emailed", async () => {
+    const world = createWorld();
+
+    await resendCredentials("user-1", ADMIN, world.ports);
+
+    expect(world.notifications).toEqual([
+      expect.objectContaining({ type: "credentials.resent", userIds: ["user-1"] }),
+    ]);
+  });
+
+  it("sends nothing when the resend fails", async () => {
+    const worlds = [
+      createWorld({ isDeleted: true }),
+      createWorld({}, { unconfigured: true }),
+      createWorld({}, { passwordFails: true }),
+      createWorld({}, { sendFails: true }),
+    ];
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    for (const world of worlds) await resendCredentials("user-1", ADMIN, world.ports);
+
+    expect(worlds.flatMap((world) => world.notifications)).toEqual([]);
+  });
+
+  it("sends nothing when an Administrator resends their own credentials", async () => {
+    const world = createWorld();
+
+    const result = await resendCredentials("user-1", { id: "user-1" }, world.ports);
+
+    expect(result).toMatchObject({ ok: true });
+    expect(world.notifications).toEqual([]);
+  });
+
+  it("still resends when the notifications service is down", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const world = createWorld({}, { notificationsDown: true });
+
+    const result = await resendCredentials("user-1", ADMIN, world.ports);
+
+    expect(result).toEqual({ ok: true, username: "2026-JD-001" });
+    expect(world.sent).toHaveLength(1);
   });
 });

@@ -68,8 +68,6 @@ model User {
   role                Role                 @relation(fields: [roleId], references: [id])
   accessGrants        AccessGrant[]        @relation("AccessGrantUser")
   accessGrantsMade    AccessGrant[]        @relation("AccessGrantGrantedBy")
-  systemLogsActed     SystemLogEvent[]     @relation("SystemLogActor")
-  systemLogsTargeted  SystemLogEvent[]     @relation("SystemLogTarget")
   handoffCodes        HandoffCode[]
   integrationSessions IntegrationSession[]
 }
@@ -91,27 +89,6 @@ model AccessGrant {
   grantedByUser User?     @relation("AccessGrantGrantedBy", fields: [grantedBy], references: [id])
 
   @@index([userId, moduleId])
-}
-
-enum SystemLogOutcome {
-  SUCCESS
-  FAILURE
-}
-
-// Append-only audit history. Never stores credentials, tokens, cookies or codes.
-model SystemLogEvent {
-  id           String           @id @default(cuid())
-  occurredAt   DateTime         @default(now())
-  // Null when no identity was authenticated (e.g. a failed login).
-  actorId      String?
-  action       String
-  targetUserId String?
-  outcome      SystemLogOutcome
-  detail       String?
-  actor        User?            @relation("SystemLogActor", fields: [actorId], references: [id])
-  targetUser   User?            @relation("SystemLogTarget", fields: [targetUserId], references: [id])
-
-  @@index([occurredAt])
 }
 
 // Single-use sign-in code, bound to one System, one exact callback, the original
