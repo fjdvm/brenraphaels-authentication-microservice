@@ -30,7 +30,7 @@ Status: design decisions synthesized into [Spec #17](https://github.com/fjdvm/br
 - Check current User eligibility and Module AccessGrants during central validation.
 - Document the contract and provide a way to register each System's actual deployment and callback URLs for the subsequent integration phase.
 
-See [CONTEXT.md](../../CONTEXT.md) for domain terminology.
+See [GLOSSARY.md](../../GLOSSARY.md) for domain terminology.
 
 ## Published implementation tickets
 
