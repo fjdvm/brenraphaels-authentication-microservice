@@ -9,6 +9,8 @@ import { prisma } from "@/lib/db/prisma";
 
 import {
   createAuditClient,
+  readMyLogOptions,
+  readMyLogs,
   readSystemLogOptions,
   readSystemLogs,
   type AuditFilterOptions,
@@ -67,4 +69,13 @@ export async function listSystemLogEvents(filters: AuditLogFilters): Promise<Aud
 
 export async function listSystemLogOptions(): Promise<AuditFilterOptions> {
   return readSystemLogOptions(client, await getPortalUser());
+}
+
+/** My Logs: the signed-in User's own events. The Actor is the session's User, never a request value. */
+export async function listMyLogEvents(filters: AuditLogFilters): Promise<AuditLogPage> {
+  return readMyLogs(client, await getPortalUser(), filters);
+}
+
+export async function listMyLogOptions(): Promise<AuditFilterOptions> {
+  return readMyLogOptions(client, await getPortalUser());
 }

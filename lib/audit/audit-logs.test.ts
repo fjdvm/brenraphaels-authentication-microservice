@@ -1,6 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createAuditClient, readSystemLogOptions, readSystemLogs, SYSTEM_LOG_PAGE_SIZE, type UserDirectory } from "./audit-logs";
+import {
+  createAuditClient,
+  readMyLogOptions,
+  readMyLogs,
+  readSystemLogOptions,
+  readSystemLogs,
+  SYSTEM_LOG_PAGE_SIZE,
+  type UserDirectory,
+} from "./audit-logs";
 import { AUDIT_ACTIONS } from "./events";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- request bodies are asserted loosely */
@@ -355,6 +363,17 @@ describe("listing events", () => {
     expect(Object.fromEntries(calls[1].url.searchParams)).toEqual({ limit: "50" });
   });
 
+  it("keeps a path prefix in the base URL, so it can be reached through the api-gateway's /audit", async () => {
+    const { calls, client: audit } = client(() => Response.json({ events: [], next_cursor: null }), {
+      baseUrl: "https://gateway.test/audit/",
+    });
+
+    await audit.listPage({ limit: 50 });
+
+    expect(calls[0].url.origin).toBe("https://gateway.test");
+    expect(calls[0].url.pathname).toBe("/audit/events");
+  });
+
   it("rejects when the service cannot be read, so the page shows its error", async () => {
     const { client: audit } = client(() => Response.json({ error: "Invalid API key" }, { status: 401 }));
 
@@ -433,5 +452,67 @@ describe("reading the filter options", () => {
 
     await expect(readSystemLogOptions(audit, viewer)).rejects.toThrow("Administrators only");
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe("reading My Logs", () => {
+  const events = () => Response.json({ events: [], next_cursor: null });
+
+  it("asks only for events the signed-in User performed, with the screen's filters", async () => {
+    const { calls, client: audit } = client(events);
+
+    await readMyLogs(audit, { id: "staff" }, { q: "signed", action: "user.login", source: "Authentication", cursor: "c1" });
+
+    expect(Object.fromEntries(calls[0].url.searchParams)).toEqual({
+      limit: String(SYSTEM_LOG_PAGE_SIZE),
+      q: "signed",
+      action: "user.login",
+      source: "Authentication",
+      cursor: "c1",
+      actor_type: "user",
+      actor_id: "staff",
+    });
+  });
+
+  it("filters by Actor, so events an Administrator performed on the User are not asked for", async () => {
+    const { calls, client: audit } = client(events);
+
+    await readMyLogs(audit, { id: "staff" }, {});
+
+    const params = calls[0].url.searchParams;
+    expect(params.get("actor_id")).toBe("staff");
+    expect(params.has("subject_id")).toBe(false);
+    expect(params.has("target_id")).toBe(false);
+  });
+
+  it("cannot be widened to another User by anything in the filters", async () => {
+    const { calls, client: audit } = client(events);
+    const widened = { actor: { type: "user", id: "admin" }, actor_id: "admin", actor_type: "anonymous", subject_id: "admin" };
+
+    await readMyLogs(audit, { id: "staff" }, widened as never);
+
+    const params = calls[0].url.searchParams;
+    expect(params.getAll("actor_id")).toEqual(["staff"]);
+    expect(params.getAll("actor_type")).toEqual(["user"]);
+    expect(params.has("subject_id")).toBe(false);
+  });
+
+  it("refuses when signed out or without a User id, without calling the service", async () => {
+    const { calls, client: audit } = client(events);
+
+    await expect(readMyLogs(audit, null, {})).rejects.toThrow("sign in required");
+    await expect(readMyLogs(audit, { id: "" }, {})).rejects.toThrow("sign in required");
+    await expect(readMyLogOptions(audit, null)).rejects.toThrow("sign in required");
+    expect(calls).toHaveLength(0);
+  });
+
+  it("is open to every signed-in User, not only Administrators", async () => {
+    const { calls, client: audit } = client((call) =>
+      call.url.pathname === "/events/valid-values" ? Response.json({ sources: [] }) : events(),
+    );
+
+    await expect(readMyLogs(audit, { id: "staff" }, {})).resolves.toEqual({ entries: [], nextCursor: null });
+    await expect(readMyLogOptions(audit, { id: "staff" })).resolves.toEqual({ systems: [], actions: [] });
+    expect(calls).toHaveLength(2);
   });
 });

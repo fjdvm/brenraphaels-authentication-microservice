@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { PortalShell } from "@/components/layout/portal-shell";
+import { AccountCard } from "@/components/portal/account-card";
 import { SystemLaunchCards } from "@/components/portal/system-launch-cards";
 import { requirePortalUser } from "@/lib/auth/session";
 import { listAccessibleSystems } from "@/lib/portal/accessible-systems";
@@ -25,7 +26,10 @@ export default async function PortalPage() {
           </h1>
           <p className="text-sm text-on-surface-variant">Open a System you have access to.</p>
         </div>
-        <SystemLaunchCards systems={systems} />
+        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
+          <SystemLaunchCards systems={systems} />
+          <AccountCard user={user} />
+        </div>
       </main>
     </PortalShell>
   );

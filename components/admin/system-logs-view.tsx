@@ -58,9 +58,18 @@ type Props = {
   options: AuditFilterOptions | null;
   defaultRange: DayRange;
   load: (query: AuditLogFilters) => Promise<SystemLogsResult>;
+  /** "mine" is My Logs: every row is the viewer's own, so there is no Actor column (and no Export). */
+  scope?: "all" | "mine";
 };
 
-export function SystemLogsView({ initial, options, defaultRange, load }: Props) {
+const COPY = {
+  all: { title: "System logs", search: "Search user or action", error: "Couldn't load System logs" },
+  mine: { title: "Your activity", search: "Search action", error: "Couldn't load your activity" },
+} as const;
+
+export function SystemLogsView({ initial, options, defaultRange, load, scope = "all" }: Props) {
+  const copy = COPY[scope];
+  const showActor = scope === "all";
   const [filters, setFilters] = useState<Filters>({ q: "", ...defaultRange, action: "", outcome: "", source: "" });
   const [search, setSearch] = useState("");
   const [paging, setPaging] = useState<Paging>({ ...FIRST_PAGE, sizes: [initial.status === "ok" ? initial.entries.length : 0] });
@@ -134,7 +143,7 @@ export function SystemLogsView({ initial, options, defaultRange, load }: Props) 
             <Input
               type="search"
               aria-label="Search"
-              placeholder="Search user or action"
+              placeholder={copy.search}
               maxLength={200}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
@@ -222,7 +231,7 @@ export function SystemLogsView({ initial, options, defaultRange, load }: Props) 
         </p>
       ) : result.status === "error" ? (
         <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 text-sm">
-          <p className="font-medium text-destructive">Couldn&apos;t load System logs</p>
+          <p className="font-medium text-destructive">{copy.error}</p>
           <p className="mt-1 text-on-surface-variant">The audit-logs service couldn&apos;t be read right now. Try again.</p>
           <Button className="mt-4" variant="outline" size="sm" onClick={() => void open(filters, paging)}>
             Retry
@@ -234,14 +243,14 @@ export function SystemLogsView({ initial, options, defaultRange, load }: Props) 
           <p className="mt-1 text-on-surface-variant">Try a wider date range or fewer filters.</p>
         </div>
       ) : (
-        <section aria-label="System logs" className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+        <section aria-label={copy.title} className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full min-w-260 text-left text-sm">
               <thead className="bg-surface-container-low text-xs uppercase tracking-wide text-on-surface-variant">
                 <tr>
                   <th className="px-6 py-3 font-medium" scope="col">Time (PHT)</th>
                   <th className="px-6 py-3 font-medium" scope="col">System</th>
-                  <th className="px-6 py-3 font-medium" scope="col">Actor</th>
+                  {showActor ? <th className="px-6 py-3 font-medium" scope="col">Actor</th> : null}
                   <th className="px-6 py-3 font-medium" scope="col">Action</th>
                   <th className="px-6 py-3 font-medium" scope="col">Target</th>
                   <th className="px-6 py-3 font-medium" scope="col">Outcome</th>
@@ -255,7 +264,7 @@ export function SystemLogsView({ initial, options, defaultRange, load }: Props) 
                       <time dateTime={entry.occurredAt.toISOString()}>{timestampFormat.format(entry.occurredAt)}</time>
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-on-surface-variant">{entry.system}</td>
-                    <td className="px-6 py-4 text-foreground">{entry.actor}</td>
+                    {showActor ? <td className="px-6 py-4 text-foreground">{entry.actor}</td> : null}
                     <td className="whitespace-nowrap px-6 py-4 text-foreground">{entry.action}</td>
                     <td className="px-6 py-4 text-on-surface-variant">{entry.target}</td>
                     <td className="whitespace-nowrap px-6 py-4">
