@@ -11,6 +11,8 @@ const ims = {
   url: "https://ims.example.com/app",
   iconName: "package",
   description: "Suppliers, procurement, inventory, production and distribution.",
+  grantedModules: 6,
+  totalModules: 6,
 };
 const pos = {
   id: "pos",
@@ -18,6 +20,8 @@ const pos = {
   url: "https://pos.example.com",
   iconName: "store",
   description: "Sales and orders.",
+  grantedModules: 2,
+  totalModules: 7,
 };
 
 describe("SystemLaunchCards", () => {

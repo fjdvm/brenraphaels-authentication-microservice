@@ -1,6 +1,6 @@
 "use client";
 
-import { MailCheck } from "lucide-react";
+import { Mail } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -33,10 +33,16 @@ export function ResendCredentialsButton({ username, action }: ResendCredentialsB
 
   return (
     <div className="flex flex-col items-start gap-1">
-      <Button disabled={isPending} onClick={resend} size="sm" type="button" variant="outline">
-        {isPending ? <Spinner /> : <MailCheck aria-hidden="true" />}
-        Resend credentials
-        <span className="sr-only"> to {username}</span>
+      <Button
+        aria-label={`Resend credentials to ${username}`}
+        disabled={isPending}
+        onClick={resend}
+        size="row"
+        type="button"
+        variant="row-action"
+      >
+        {isPending ? <Spinner /> : <Mail aria-hidden="true" />}
+        Resend
       </Button>
       {outcome ? (
         <p

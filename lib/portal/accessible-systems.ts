@@ -8,6 +8,10 @@ export type AccessibleSystem = {
   url: string;
   iconName: string | null;
   description: string | null;
+  /** Distinct Modules in this System the User holds an active AccessGrant for. */
+  grantedModules: number;
+  /** Every Module the System has. */
+  totalModules: number;
 };
 
 /**
@@ -23,20 +27,36 @@ export async function listAccessibleSystems(userId: string): Promise<AccessibleS
       user: { select: { isDeleted: true } },
       module: {
         select: {
+          id: true,
           system: {
-            select: { id: true, name: true, url: true, iconName: true, description: true },
+            select: {
+              id: true,
+              name: true,
+              url: true,
+              iconName: true,
+              description: true,
+              _count: { select: { modules: true } },
+            },
           },
         },
       },
     },
   });
 
-  const systems = new Map<string, AccessibleSystem>();
+  const systems = new Map<string, { system: (typeof grants)[number]["module"]["system"]; modules: Set<string> }>();
   for (const { revokedAt, user, module } of grants) {
     if (revokedAt === null && !user.isDeleted) {
-      systems.set(module.system.id, module.system);
+      const entry = systems.get(module.system.id) ?? { system: module.system, modules: new Set<string>() };
+      entry.modules.add(module.id);
+      systems.set(module.system.id, entry);
     }
   }
 
-  return [...systems.values()].sort((a, b) => a.name.localeCompare(b.name));
+  return [...systems.values()]
+    .map(({ system: { _count, ...system }, modules }) => ({
+      ...system,
+      grantedModules: modules.size,
+      totalModules: _count.modules,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
