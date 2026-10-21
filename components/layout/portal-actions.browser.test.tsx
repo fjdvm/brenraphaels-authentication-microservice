@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -30,14 +30,32 @@ describe("NotificationButton", () => {
 });
 
 describe("LogoutButton", () => {
-  it("asks for confirmation before logging out", async () => {
+  const description = "You will be signed out of the portal and CRMS.";
+
+  it("asks for confirmation before logging out, saying what logging out ends", async () => {
     const user = userEvent.setup();
-    render(<LogoutButton layout="header" />);
+    render(<LogoutButton description={description} layout="header" />);
 
     await user.click(screen.getByRole("button", { name: "Log out" }));
 
-    expect(screen.getByRole("dialog", { name: "Log out?" })).toBeTruthy();
+    const dialog = screen.getByRole("dialog", { name: "Log out?" });
+    expect(dialog.getAttribute("aria-describedby")).toBe("logout-dialog-description");
+    expect(screen.getByText(description).id).toBe("logout-dialog-description");
+    expect(within(dialog).getByRole("button", { name: "Log out" }).getAttribute("type")).toBe("submit");
     await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog", { name: "Log out?" })).toBeNull();
+  });
+
+  it("closes from its close button and from Escape without logging out", async () => {
+    const user = userEvent.setup();
+    render(<LogoutButton description={description} layout="header" />);
+
+    await user.click(screen.getByRole("button", { name: "Log out" }));
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog", { name: "Log out?" })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Log out" }));
+    await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog", { name: "Log out?" })).toBeNull();
   });
 });

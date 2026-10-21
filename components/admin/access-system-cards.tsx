@@ -1,19 +1,8 @@
-import { ArrowUpRight, Box, Contact, LayoutGrid, Store, Users, type LucideIcon } from "lucide-react";
+import { ArrowUpRight, LayoutGrid } from "lucide-react";
 
+import { pluralModules, systemStyle } from "@/components/portal/system-style";
 import { Badge } from "@/components/ui/badge";
 import type { AccessibleSystem } from "@/lib/portal/accessible-systems";
-
-// Keys match SeedSystem.iconName; unknown keys fall back to a generic, neutral card.
-const SYSTEM_STYLES: Record<string, { icon: LucideIcon; tile: string; accent: string }> = {
-  users: { icon: Users, tile: "bg-system-crms", accent: "text-system-crms-foreground" },
-  contact: { icon: Contact, tile: "bg-system-hrms", accent: "text-system-hrms-foreground" },
-  package: { icon: Box, tile: "bg-system-ims", accent: "text-system-ims-foreground" },
-  store: { icon: Store, tile: "bg-system-pos", accent: "text-system-pos-foreground" },
-};
-
-const FALLBACK_STYLE = { icon: LayoutGrid, tile: "bg-badge-muted", accent: "text-foreground" };
-
-const pluralModules = (count: number) => `module${count === 1 ? "" : "s"}`;
 
 /**
  * Figma "Portal · Access": one card per Accessible System. A card only opens the
@@ -35,7 +24,7 @@ export function AccessSystemCards({ systems }: { systems: AccessibleSystem[] }) 
   return (
     <ul className="grid gap-4 md:grid-cols-2">
       {systems.map((system) => {
-        const style = (system.iconName && SYSTEM_STYLES[system.iconName]) || FALLBACK_STYLE;
+        const style = systemStyle(system.iconName);
         const Icon = style.icon;
 
         return (

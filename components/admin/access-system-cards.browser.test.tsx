@@ -14,6 +14,7 @@ const crms: AccessibleSystem = {
   iconName: "users",
   description: "Customer profiles, orders, payments, conversations and support tickets.",
   grantedModules: 4,
+  grantedModuleNames: ["Conversations", "Customer Profiles", "Dashboard", "Tickets"],
   totalModules: 5,
 };
 
