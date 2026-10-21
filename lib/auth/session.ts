@@ -14,6 +14,7 @@ export type PortalUser = {
   email: string;
   mustChangePassword: boolean;
   isAdministrator: boolean;
+  roleName: string;
 };
 
 /**
@@ -32,7 +33,7 @@ export const getPortalUser = cache(async (): Promise<PortalUser | null> => {
 
   const user = await prisma.user.findUnique({
     where: { neonAuthUserId: session.user.id },
-    include: { role: { select: { isAdministrator: true } } },
+    include: { role: { select: { isAdministrator: true, name: true } } },
   });
 
   if (!user || user.isDeleted) {
@@ -47,8 +48,14 @@ export const getPortalUser = cache(async (): Promise<PortalUser | null> => {
     email: user.email,
     mustChangePassword: user.mustChangePassword,
     isAdministrator: user.role.isAdministrator,
+    roleName: user.role.name,
   };
 });
+
+/** Only what the shell shows of the signed-in User, for passing to client components. */
+export function toShellUser({ firstName, lastName, username, email, roleName }: PortalUser) {
+  return { firstName, lastName, username, email, roleName };
+}
 
 /**
  * Guard for every protected page and Server Action. Pages must call this

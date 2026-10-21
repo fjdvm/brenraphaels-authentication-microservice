@@ -1,11 +1,11 @@
 import { connection } from "next/server";
 
 import { AdminShell } from "@/components/layout/admin-shell";
-import { requireAdministrator } from "@/lib/auth/session";
+import { requireAdministrator, toShellUser } from "@/lib/auth/session";
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   await connection();
-  await requireAdministrator();
+  const administrator = await requireAdministrator();
 
-  return <AdminShell>{children}</AdminShell>;
+  return <AdminShell user={toShellUser(administrator)}>{children}</AdminShell>;
 }

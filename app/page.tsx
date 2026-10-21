@@ -17,7 +17,7 @@ export default async function PortalPage() {
   const systems = await listAccessibleSystems(user.id);
 
   return (
-    <PortalShell firstName={user.firstName}>
+    <PortalShell user={user}>
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 p-6">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-primary">
