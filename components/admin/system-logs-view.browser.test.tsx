@@ -292,6 +292,77 @@ describe("SystemLogsView when the service cannot be reached", () => {
   });
 });
 
+describe("SystemLogsView Export CSV", () => {
+  function setupExport(exportCsv = vi.fn().mockResolvedValue({ status: "ok" }), canExport = true) {
+    const load = vi.fn().mockResolvedValue(ok(entries, "c1"));
+    render(
+      <SystemLogsView
+        initial={ok(entries, "c1")}
+        options={options}
+        defaultRange={range}
+        load={load}
+        canExport={canExport}
+        exportCsv={exportCsv}
+      />,
+    );
+    return { exportCsv, load, user: userEvent.setup() };
+  }
+
+  it("is offered to Administrators only", () => {
+    setupExport(vi.fn(), false);
+
+    expect(screen.queryByRole("button", { name: "Export CSV" })).toBeNull();
+  });
+
+  it("exports the applied filters and date range, not just the page on screen", async () => {
+    const { exportCsv, user } = setupExport();
+
+    await user.selectOptions(screen.getByLabelText("System"), "Authentication");
+    await user.selectOptions(screen.getByLabelText("Outcome"), "FAILURE");
+    await user.type(screen.getByRole("searchbox", { name: "Search" }), "ada{Enter}");
+    await user.click(await screen.findByRole("button", { name: "Next" }));
+    // Text typed but not applied is not what the screen shows.
+    await user.type(screen.getByRole("searchbox", { name: "Search" }), "x");
+    await user.click(screen.getByRole("button", { name: "Export CSV" }));
+
+    expect(exportCsv).toHaveBeenCalledOnce();
+    expect(exportCsv).toHaveBeenCalledWith({
+      source: "Authentication",
+      outcome: "FAILURE",
+      q: "ada",
+      from: "2026-10-15T00:00:00.000+08:00",
+      to: "2026-10-21T23:59:59.999+08:00",
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("asks to narrow the date range when the export is over the cap", async () => {
+    const { user } = setupExport(vi.fn().mockResolvedValue({ status: "too_large" }));
+
+    await user.click(screen.getByRole("button", { name: "Export CSV" }));
+
+    expect((await screen.findByRole("alert")).textContent).toMatch(/narrow the date range/i);
+  });
+
+  it("explains a failed export", async () => {
+    const { user } = setupExport(vi.fn().mockRejectedValue(new Error("offline")));
+
+    await user.click(screen.getByRole("button", { name: "Export CSV" }));
+
+    expect((await screen.findByRole("alert")).textContent).toMatch(/couldn't export/i);
+  });
+
+  it("needs a whole, valid date range", () => {
+    setupExport();
+
+    fireEvent.change(screen.getByLabelText("To"), { target: { value: "" } });
+    expect((screen.getByRole("button", { name: "Export CSV" }) as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-10-01" } });
+    expect((screen.getByRole("button", { name: "Export CSV" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
 describe("SystemLogsView as My Logs", () => {
   function setupMine(initial: SystemLogsResult = ok(entries), load = vi.fn().mockResolvedValue(ok(entries))) {
     render(<SystemLogsView initial={initial} options={options} defaultRange={range} load={load} scope="mine" />);
@@ -311,6 +382,14 @@ describe("SystemLogsView as My Logs", () => {
 
     expect(screen.queryByRole("button", { name: /export/i })).toBeNull();
     expect(screen.queryByRole("link", { name: /export/i })).toBeNull();
+  });
+
+  it("never offers Export, even if asked to", () => {
+    render(
+      <SystemLogsView initial={ok(entries)} options={options} defaultRange={range} load={vi.fn()} scope="mine" canExport />,
+    );
+
+    expect(screen.queryByRole("button", { name: /export/i })).toBeNull();
   });
 
   it("filters and pages the same way", async () => {

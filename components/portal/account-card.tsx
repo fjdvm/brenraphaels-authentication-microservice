@@ -1,44 +1,73 @@
+import { Info, KeyRound } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { MY_LOGS_DESTINATION } from "@/lib/admin/navigation";
 
-type AccountCardUser = { username: string; email: string; roleName: string };
+type AccountCardProps = {
+  username: string;
+  email: string;
+  roleName: string;
+  /** The previous sign-in, already formatted; null shows a dash. */
+  lastSignIn: string | null;
+  /** Systems the User cannot open, named in the closing hint. */
+  otherSystemNames: string[];
+};
 
-/**
- * Figma "Staff home" Your account card. The Activity log link is a reviewed no-Figma
- * addition (Spec#51), styled as the card's outlined button.
- */
-export function AccountCard({ user }: { user: AccountCardUser }) {
+/** "HRMS, IMS or POS" */
+function joinWithOr(names: string[]) {
+  return names.length > 1 ? `${names.slice(0, -1).join(", ")} or ${names.at(-1)}` : names[0];
+}
+
+const MyLogsIcon = MY_LOGS_DESTINATION.icon;
+
+/** Figma "Staff home" "Your account" card. */
+export function AccountCard({ username, email, roleName, lastSignIn, otherSystemNames }: AccountCardProps) {
   const rows = [
-    ["Username", user.username],
-    ["Email", user.email],
-    ["Role", user.roleName],
-  ] as const;
-  const Icon = MY_LOGS_DESTINATION.icon;
+    ["Username", username],
+    ["Email", email],
+    ["Role", roleName],
+    ["Last sign-in", lastSignIn ?? "—"],
+  ];
 
   return (
     <section
-      aria-labelledby="your-account"
-      className="flex flex-col items-start gap-3.5 rounded-xl border border-panel-border bg-surface p-5"
+      aria-labelledby="account-card-title"
+      className="flex w-full shrink-0 flex-col gap-3.5 rounded-xl border border-panel-border bg-surface p-5 leading-[normal] lg:w-[380px]"
     >
-      <h2 id="your-account" className="text-[15px] font-semibold leading-[normal] text-foreground">
+      <h2 className="text-[15px] font-semibold text-foreground" id="account-card-title">
         Your account
       </h2>
-      <dl className="flex w-full flex-col gap-3.5 text-[13px] leading-[normal]">
+      <dl className="flex flex-col gap-3.5 text-[13px]">
         {rows.map(([label, value]) => (
-          <div key={label} className="flex w-full items-start gap-3">
-            <dt className="min-w-px flex-1 text-on-surface-variant">{label}</dt>
-            <dd className="min-w-0 truncate font-medium text-foreground">{value}</dd>
+          <div className="flex gap-3" key={label}>
+            <dt className="flex-1 text-on-surface-variant">{label}</dt>
+            <dd className="min-w-0 truncate font-medium text-foreground" title={value}>
+              {value}
+            </dd>
           </div>
         ))}
       </dl>
-      <Button asChild variant="row-action" size="cta" className="w-full">
+      {/* A signed-in User changes their password through the Forgot password email. */}
+      <Button asChild className="w-full text-foreground" size="cta" variant="row-action">
+        <Link href="/forgot-password">
+          <KeyRound aria-hidden="true" />
+          Change password
+        </Link>
+      </Button>
+      {/* Not in Figma: the link to My Logs is a reviewed addition from Spec#51 (Ticket#62). */}
+      <Button asChild className="w-full text-foreground" size="cta" variant="row-action">
         <Link href={MY_LOGS_DESTINATION.href}>
-          <Icon aria-hidden="true" />
+          <MyLogsIcon aria-hidden="true" />
           View {MY_LOGS_DESTINATION.label.toLowerCase()}
         </Link>
       </Button>
+      {otherSystemNames.length > 0 ? (
+        <p className="flex gap-2 rounded-lg bg-callout px-3 py-2.5 text-xs text-callout-foreground">
+          <Info aria-hidden="true" className="size-4 shrink-0" />
+          Need {joinWithOr(otherSystemNames)}? Ask a Super Admin to update your access.
+        </p>
+      ) : null}
     </section>
   );
 }

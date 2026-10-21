@@ -54,6 +54,17 @@ export type AuditFilterOptions = {
 /** Who performed an event, as the service stores it. Portal Users are `{ type: "user", id: User id }`. */
 export type AuditActor = { type: string; id: string };
 
+/** An export covers a whole date range: the service requires both bounds and takes no cursor. */
+export type AuditExportFilters = Omit<AuditLogFilters, "cursor" | "from" | "to"> & { from: string; to: string };
+
+export type AuditExport =
+  | { status: "ok"; body: ReadableStream<Uint8Array> }
+  /** More events match than the service's cap; nothing was streamed and no export event was written. */
+  | { status: "too_large" };
+
+/** Who asked for an export; keys carry no identity, so the service records this as the Actor. */
+export type ExportRequester = { id: string; name: string };
+
 export type AuditClient = {
   /** Best effort and never throws: a failed audit write must not block any flow. */
   record(event: AuditEventInput, context?: RequestContext): Promise<void>;
@@ -61,6 +72,8 @@ export type AuditClient = {
   listPage(query: AuditLogFilters & { limit: number; actor?: AuditActor }): Promise<AuditLogPage>;
   /** Rejects when the service cannot be read. */
   filterOptions(): Promise<AuditFilterOptions>;
+  /** Streams the matching events as CSV, newest first. Rejects when the service cannot be read. */
+  exportCsv(filters: AuditExportFilters, requestedBy: ExportRequester): Promise<AuditExport>;
 };
 
 type ClientConfig = {
@@ -87,6 +100,8 @@ type ServiceEvent = {
 
 const SOURCE = "Authentication";
 const DEFAULT_TIMEOUT_MS = 2000;
+// Counting up to the cap takes a while, and the api-gateway itself waits 25 seconds for headers.
+const EXPORT_HEADERS_TIMEOUT_MS = 30_000;
 
 /** Portal actions as the Authentication catalog names them, with the wording for the page and descriptions. */
 const CATALOG: Record<AuditAction, { action: string; label: string }> = {
@@ -119,6 +134,29 @@ const systemLabel = (source: string) => (source === SOURCE ? "Portal" : source);
 
 /** The Actor type the Portal records for its Users, with the User id as the Actor id. */
 const PORTAL_USER_ACTOR = "user";
+
+/** How the Portal names a User on events and exports, e.g. "Ada Min (2026-ADMIN-001)". */
+export function userDisplayName(user: { firstName: string; lastName: string; username: string }): string {
+  return `${user.firstName} ${user.lastName} (${user.username})`;
+}
+
+/** The filters as the service's query parameters; blank values are left out. */
+function filterParams(filters: AuditLogFilters, params = new URLSearchParams()): URLSearchParams {
+  const set = (name: string, value: string | null | undefined) => {
+    const trimmed = value?.trim();
+    if (trimmed) params.set(name, trimmed);
+  };
+
+  set("q", filters.q);
+  set("from", filters.from);
+  set("to", filters.to);
+  set("action", filters.action);
+  set("source", filters.source);
+  set("outcome", filters.outcome?.toLowerCase());
+  set("cursor", filters.cursor);
+
+  return params;
+}
 
 const ANONYMOUS_ACTOR = { type: "anonymous", id: "unauthenticated", display_name: "Unauthenticated visitor" };
 const PORTAL_TARGET = { type: "portal", id: "portal", display_name: "Portal" };
@@ -176,15 +214,32 @@ export function createAuditClient(config: ClientConfig): AuditClient {
   const base = config.baseUrl.replace(/\/+$/, "");
   const doFetch = config.fetch ?? fetch;
 
-  const send = (path: string, init: RequestInit & { key: string }) => {
-    const { key, ...rest } = init;
+  const send = async (path: string, init: RequestInit & { key: string; stream?: boolean }) => {
+    const { key, stream, ...rest } = init;
+    const request = (signal: AbortSignal) =>
+      doFetch(`${base}${path}`, {
+        ...rest,
+        headers: { Authorization: `Bearer ${key}`, ...(rest.body ? { "Content-Type": "application/json" } : {}) },
+        cache: "no-store",
+        signal,
+      });
 
-    return doFetch(`${base}${path}`, {
-      ...rest,
-      headers: { Authorization: `Bearer ${key}`, ...(rest.body ? { "Content-Type": "application/json" } : {}) },
-      cache: "no-store",
-      signal: AbortSignal.timeout(config.timeoutMs ?? DEFAULT_TIMEOUT_MS),
-    });
+    if (!stream) {
+      return request(AbortSignal.timeout(config.timeoutMs ?? DEFAULT_TIMEOUT_MS));
+    }
+
+    // A streamed body may take minutes; only the wait for the response headers is bounded.
+    const controller = new AbortController();
+    const timer = setTimeout(
+      () => controller.abort(new DOMException("timed out", "TimeoutError")),
+      EXPORT_HEADERS_TIMEOUT_MS,
+    );
+
+    try {
+      return await request(controller.signal);
+    } finally {
+      clearTimeout(timer);
+    }
   };
 
   async function post(body: string): Promise<void> {
@@ -243,22 +298,13 @@ export function createAuditClient(config: ClientConfig): AuditClient {
       }
     },
 
-    async listPage({ limit, cursor, outcome, q, actor, ...filters }) {
-      const params = new URLSearchParams({ limit: String(limit) });
-      const set = (name: string, value: string | null | undefined) => {
-        const trimmed = value?.trim();
-        if (trimmed) params.set(name, trimmed);
-      };
+    async listPage({ limit, actor, ...filters }) {
+      const params = filterParams(filters, new URLSearchParams({ limit: String(limit) }));
 
-      set("q", q);
-      set("from", filters.from);
-      set("to", filters.to);
-      set("action", filters.action);
-      set("source", filters.source);
-      set("outcome", outcome?.toLowerCase());
-      set("cursor", cursor);
-      set("actor_type", actor?.type);
-      set("actor_id", actor?.id);
+      if (actor) {
+        params.set("actor_type", actor.type);
+        params.set("actor_id", actor.id);
+      }
 
       const response = await send(`/events?${params}`, { method: "GET", key: config.readKey });
 
@@ -310,12 +356,34 @@ export function createAuditClient(config: ClientConfig): AuditClient {
         actions: [...actions.values()],
       };
     },
+
+    async exportCsv(filters, requestedBy) {
+      // The service takes no cursor or limit on an export and rejects parameters it doesn't know.
+      const params = filterParams({ ...filters, cursor: null });
+      params.set("format", "csv");
+      params.set("requested_by_id", requestedBy.id);
+      params.set("requested_by_name", requestedBy.name);
+
+      const response = await send(`/events/export?${params}`, { method: "GET", key: config.readKey, stream: true });
+
+      if (response.status === 413) {
+        await response.body?.cancel();
+        return { status: "too_large" };
+      }
+
+      if (!response.ok || !response.body) {
+        await response.body?.cancel();
+        throw new Error(`Audit-logs service answered ${response.status}`);
+      }
+
+      return { status: "ok", body: response.body };
+    },
   };
 }
 
 export const SYSTEM_LOG_PAGE_SIZE = 50;
 
-function assertAdministrator(viewer: { isAdministrator: boolean } | null): void {
+function assertAdministrator<T extends { isAdministrator: boolean }>(viewer: T | null): asserts viewer is T {
   if (!viewer?.isAdministrator) {
     throw new Error("System Logs: Administrators only");
   }
@@ -330,6 +398,17 @@ export async function readSystemLogs(
   assertAdministrator(viewer);
 
   return client.listPage({ ...filters, limit: SYSTEM_LOG_PAGE_SIZE });
+}
+
+/** The System logs Export CSV. Checks the live Administrator status itself, like the page's read. */
+export async function exportSystemLogs(
+  client: AuditClient,
+  viewer: { id: string; firstName: string; lastName: string; username: string; isAdministrator: boolean } | null,
+  filters: AuditExportFilters,
+): Promise<AuditExport> {
+  assertAdministrator(viewer);
+
+  return client.exportCsv(filters, { id: viewer.id, name: userDisplayName(viewer) });
 }
 
 export async function readSystemLogOptions(

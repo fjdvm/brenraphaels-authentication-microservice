@@ -32,13 +32,15 @@ export default async function MyLogsPage() {
 
   const content = (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 p-6 md:p-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-primary">Activity log</h1>
-        <p className="mt-1 text-sm text-on-surface-variant">
-          Your own sign-ins and actions in every System. Times are Philippine time.
-        </p>
-      </div>
       <SystemLogsView
+        heading={
+          <>
+            <h1 className="text-2xl font-semibold tracking-tight text-primary">Activity log</h1>
+            <p className="mt-1 text-sm text-on-surface-variant">
+              Your own sign-ins and actions in every System. Times are Philippine time.
+            </p>
+          </>
+        }
         initial={initial}
         options={options}
         defaultRange={defaultRange}
