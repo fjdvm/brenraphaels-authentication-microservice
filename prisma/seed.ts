@@ -7,8 +7,8 @@ import { PrismaClient } from "@prisma/client";
 import { mergeCallbackUrls } from "../lib/integrations/callbacks";
 import {
   ADMINISTRATOR_ROLE_NAMES,
-  SEED_ROLES,
   SEED_MODULE_FORMER_NAMES,
+  SEED_ROLES,
   SEED_ROLE_FORMER_NAMES,
   SEED_SYSTEMS,
   SUPER_ADMIN_ROLE_NAME,
