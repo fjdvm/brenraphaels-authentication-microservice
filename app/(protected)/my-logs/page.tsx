@@ -31,13 +31,13 @@ export default async function MyLogsPage() {
   ]);
 
   const content = (
-    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 p-6 md:p-8">
+    <main className="flex w-full flex-1 flex-col gap-5 px-6 py-7 md:px-8">
       <SystemLogsView
         heading={
           <>
-            <h1 className="text-2xl font-semibold tracking-tight text-primary">Activity log</h1>
-            <p className="mt-1 text-sm text-on-surface-variant">
-              Your own sign-ins and actions in every System. Times are Philippine time.
+            <h1 className="text-2xl font-semibold text-foreground">Activity log</h1>
+            <p className="text-sm text-on-surface-variant">
+              Your own sign-ins and actions, in the portal and every system. Times are shown in Philippine time (UTC+8).
             </p>
           </>
         }

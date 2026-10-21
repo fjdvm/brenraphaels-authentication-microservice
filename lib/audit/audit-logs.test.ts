@@ -328,6 +328,7 @@ describe("listing events", () => {
       occurredAt: new Date("2026-10-06T01:00:00.000Z"),
       system: "Portal",
       action: "Signed in",
+      actionValue: "user.login",
       actor: "Ada Min (2026-ADMIN-001)",
       target: "Ada Min (2026-ADMIN-001)",
       outcome: "SUCCESS",

@@ -17,6 +17,7 @@ const badgeVariants = cva(
         muted: "border-transparent bg-badge-muted py-[3px] font-medium leading-[normal] text-badge-muted-foreground",
         success: "border-transparent bg-badge-success py-[3px] font-medium leading-[normal] text-badge-success-foreground",
         warning: "border-transparent bg-badge-warning py-[3px] font-medium leading-[normal] text-badge-warning-foreground",
+        failed: "border-transparent bg-badge-failed py-[3px] font-medium leading-[normal] text-badge-failed-foreground",
         danger: "border-transparent bg-badge-danger py-[3px] font-medium leading-[normal] text-badge-danger-foreground",
       },
     },

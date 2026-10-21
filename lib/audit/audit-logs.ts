@@ -15,7 +15,10 @@ export type AuditLogEntry = {
   occurredAt: Date;
   /** The Source as the Portal labels it: Authentication shows as "Portal". */
   system: string;
+  /** The action as the page labels it, e.g. "Signed in". */
   action: string;
+  /** The service's action value, e.g. "user.login". */
+  actionValue: string;
   actor: string;
   target: string;
   outcome: AuditOutcome;
@@ -348,6 +351,7 @@ export function createAuditClient(config: ClientConfig): AuditClient {
           occurredAt: new Date(row.occurred_at),
           system: systemLabel(row.source),
           action: ACTION_LABELS[row.action] ?? row.action,
+          actionValue: row.action,
           actor: row.actor?.display_name ?? "",
           target: row.target?.display_name ?? "",
           outcome: row.outcome === "success" ? "SUCCESS" : "FAILURE",

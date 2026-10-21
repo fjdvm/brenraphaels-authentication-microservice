@@ -42,6 +42,9 @@
   --badge-muted-foreground: #52525b;
   --badge-success: #e3f4e8;
   --badge-success-foreground: #1e6b3a;
+  /* Figma "System logs": the Failed outcome pill */
+  --badge-failed: #fbe6e0;
+  --badge-failed-foreground: #9a3412;
   /* Not in Figma: Awaiting first login and Deleted badges, in the same style */
   --badge-warning: #fdf3dc;
   --badge-warning-foreground: #8a5a00;
@@ -136,6 +139,8 @@
   --color-badge-muted-foreground: var(--badge-muted-foreground);
   --color-badge-success: var(--badge-success);
   --color-badge-success-foreground: var(--badge-success-foreground);
+  --color-badge-failed: var(--badge-failed);
+  --color-badge-failed-foreground: var(--badge-failed-foreground);
   --color-badge-warning: var(--badge-warning);
   --color-badge-warning-foreground: var(--badge-warning-foreground);
   --color-badge-danger: var(--badge-danger);
