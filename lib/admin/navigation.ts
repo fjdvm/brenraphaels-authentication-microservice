@@ -1,10 +1,4 @@
-import {
-  FileClock,
-  LayoutGrid,
-  type LucideIcon,
-  ScrollText,
-  UserRound,
-} from "lucide-react";
+import { FileClock, LayoutGrid, type LucideIcon, ScrollText, UserRound } from "lucide-react";
 
 export type AdministrativeDestination = {
   href: string;
@@ -42,5 +36,6 @@ export const SIDEBAR_SECTIONS: readonly SidebarSection[] = [
 ];
 
 /** Every sidebar destination, flattened in display order. */
-export const SIDEBAR_NAVIGATION: readonly AdministrativeDestination[] =
-  SIDEBAR_SECTIONS.flatMap(({ destinations }) => destinations);
+export const SIDEBAR_NAVIGATION: readonly AdministrativeDestination[] = SIDEBAR_SECTIONS.flatMap(
+  ({ destinations }) => destinations,
+);
