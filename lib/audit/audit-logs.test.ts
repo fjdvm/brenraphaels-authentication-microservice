@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createAuditClient, readSystemLogOptions, readSystemLogs, SYSTEM_LOG_PAGE_SIZE, type UserDirectory } from "./audit-logs";
+import { auditGatewayConfig, createAuditClient, readSystemLogOptions, readSystemLogs, SYSTEM_LOG_PAGE_SIZE, type UserDirectory } from "./audit-logs";
 import { AUDIT_ACTIONS } from "./events";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- request bodies are asserted loosely */
@@ -433,5 +433,57 @@ describe("reading the filter options", () => {
 
     await expect(readSystemLogOptions(audit, viewer)).rejects.toThrow("Administrators only");
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe("through the api-gateway", () => {
+  const env = {
+    API_GATEWAY_URL: "https://gateway.test/",
+    API_GATEWAY_KEY: "portal-caller-key",
+    API_GATEWAY_AUDIT_READ_KEY: "audit-reader-caller-key",
+  };
+
+  it("writes and reads under the gateway's /audit prefix, each with its own Caller key", async () => {
+    const { calls, fetchStub } = stubService((call) =>
+      call.method === "POST" ? created() : Response.json({ events: [], next_cursor: null }),
+    );
+    const audit = createAuditClient({ ...auditGatewayConfig(env), users, fetch: fetchStub });
+
+    await audit.record({ action: "auth.logout", outcome: "SUCCESS", actorId: "staff", targetUserId: "staff" });
+    await audit.listPage({ limit: 25 });
+
+    expect(calls.map((call) => `${call.method} ${call.url.origin}${call.url.pathname}`)).toEqual([
+      "POST https://gateway.test/audit/events",
+      "GET https://gateway.test/audit/events",
+    ]);
+    expect(calls[0].headers.get("authorization")).toBe("Bearer portal-caller-key");
+    expect(calls[1].headers.get("authorization")).toBe("Bearer audit-reader-caller-key");
+  });
+
+  it("is unconfigured, so every call fails, when the gateway URL is missing", () => {
+    expect(auditGatewayConfig({}).baseUrl).toBe("");
+  });
+
+  it("waits longer for a read than for a write, so a slow page load is not reported as an outage", async () => {
+    const slow = (after: number, response: () => Response) =>
+      ((_input: RequestInfo | URL, init?: RequestInit) =>
+        new Promise<Response>((resolve, reject) => {
+          const timer = setTimeout(() => resolve(response()), after);
+          init?.signal?.addEventListener("abort", () => {
+            clearTimeout(timer);
+            reject(new DOMException("timed out", "TimeoutError"));
+          });
+        })) as typeof fetch;
+    const audit = createAuditClient({
+      baseUrl: "https://gateway.test/audit",
+      writeKey: "w",
+      readKey: "r",
+      users,
+      timeoutMs: 20,
+      readTimeoutMs: 500,
+      fetch: slow(60, () => Response.json({ events: [], next_cursor: null })),
+    });
+
+    await expect(audit.listPage({ limit: 25 })).resolves.toEqual({ entries: [], nextCursor: null });
   });
 });

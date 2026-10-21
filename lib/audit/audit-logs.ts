@@ -62,14 +62,37 @@ export type AuditClient = {
 
 type ClientConfig = {
   baseUrl: string;
-  /** The Portal's `write:Authentication` key. Server-side only. */
+  /** Sent as the bearer for writes; through the gateway, a Caller key holding a `write:Authentication` audit key. */
   writeKey: string;
-  /** A `read:admin` key. Server-side only. */
+  /** Sent as the bearer for reads; through the gateway, a Caller key holding a `read:admin` audit key. */
   readKey: string;
   users: UserDirectory;
+  /** Writes sit on sign-in and admin flows, so they give up quickly. */
   timeoutMs?: number;
+  /** Reads only feed the System logs page, so they may wait longer for a cold service. */
+  readTimeoutMs?: number;
   fetch?: typeof fetch;
 };
+
+/**
+ * The audit-logs service as the api-gateway exposes it, under `/audit`. The gateway swaps
+ * each Caller key for that Caller's own audit-logs key, and an audit-logs key carries one
+ * scope, so writing and reading take two Caller keys. Missing values leave the client
+ * unconfigured: every call fails, writes are dropped and reads show the error state.
+ */
+export function auditGatewayConfig(env: {
+  API_GATEWAY_URL?: string;
+  API_GATEWAY_KEY?: string;
+  API_GATEWAY_AUDIT_READ_KEY?: string;
+}): Pick<ClientConfig, "baseUrl" | "writeKey" | "readKey"> {
+  const gateway = env.API_GATEWAY_URL?.replace(/\/+$/, "");
+
+  return {
+    baseUrl: gateway ? `${gateway}/audit` : "",
+    writeKey: env.API_GATEWAY_KEY ?? "",
+    readKey: env.API_GATEWAY_AUDIT_READ_KEY ?? "",
+  };
+}
 
 type ServiceEvent = {
   id: string;
@@ -84,6 +107,7 @@ type ServiceEvent = {
 
 const SOURCE = "Authentication";
 const DEFAULT_TIMEOUT_MS = 2000;
+const DEFAULT_READ_TIMEOUT_MS = 8000;
 
 /** Portal actions as the Authentication catalog names them, with the wording for the page and descriptions. */
 const CATALOG: Record<AuditAction, { action: string; label: string }> = {
@@ -172,12 +196,14 @@ export function createAuditClient(config: ClientConfig): AuditClient {
 
   const send = (path: string, init: RequestInit & { key: string }) => {
     const { key, ...rest } = init;
+    const timeoutMs =
+      rest.method === "GET" ? (config.readTimeoutMs ?? DEFAULT_READ_TIMEOUT_MS) : (config.timeoutMs ?? DEFAULT_TIMEOUT_MS);
 
     return doFetch(`${base}${path}`, {
       ...rest,
       headers: { Authorization: `Bearer ${key}`, ...(rest.body ? { "Content-Type": "application/json" } : {}) },
       cache: "no-store",
-      signal: AbortSignal.timeout(config.timeoutMs ?? DEFAULT_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   };
 
