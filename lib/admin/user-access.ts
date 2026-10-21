@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import type { SystemLogEventInput } from "@/lib/audit/system-log";
+import type { Notifier } from "@/lib/notifications/notifications";
 import type { FieldErrors } from "@/lib/validations/user";
 
 export type AccessStore = {
@@ -20,14 +21,16 @@ export type AccessStore = {
     actorId: string;
   }): Promise<{
     roleChange: { from: string; to: string } | null;
-    granted: number;
-    revoked: number;
+    /** Names of the Modules newly granted and revoked, each prefixed with its System. */
+    granted: string[];
+    revoked: string[];
   }>;
 };
 
 export type AccessPorts = {
   store: AccessStore;
   audit(event: SystemLogEventInput): Promise<void>;
+  notify: Notifier;
 };
 
 export type UpdateAccessInput = {
@@ -58,7 +61,7 @@ export async function updateUserAccess(
   administrator: { id: string },
   ports: AccessPorts,
 ): Promise<UpdateAccessResult> {
-  const { store, audit } = ports;
+  const { store, audit, notify } = ports;
   const actorId = administrator.id;
   // Only a User that exists may be the log target; an unknown id would break the audit foreign key.
   let targetUserId: string | null = null;
@@ -117,10 +120,38 @@ export async function updateUserAccess(
   const log = (action: SystemLogEventInput["action"], detail: string) =>
     audit({ action, outcome: "SUCCESS", actorId, targetUserId: userId, detail });
 
-  if (outcome.granted > 0) await log("access.grant", `${plural(outcome.granted)} granted`);
-  if (outcome.revoked > 0) await log("access.revoke", `${plural(outcome.revoked)} revoked`);
-  if (outcome.roleChange) {
-    await log("user.role_change", `${outcome.roleChange.from} → ${outcome.roleChange.to}`);
+  const { granted, revoked, roleChange } = outcome;
+
+  if (granted.length > 0) await log("access.grant", `${plural(granted.length)} granted`);
+  if (revoked.length > 0) await log("access.revoke", `${plural(revoked.length)} revoked`);
+  if (roleChange) {
+    await log("user.role_change", `${roleChange.from} → ${roleChange.to}`);
+  }
+
+  // The affected User hears about an Administrator's change, never about their own.
+  if (userId !== actorId) {
+    if (granted.length > 0 || revoked.length > 0) {
+      await notify({
+        userId,
+        type: "access.changed",
+        title: "Your access changed",
+        body: [
+          granted.length > 0 ? `Granted: ${granted.join(", ")}.` : null,
+          revoked.length > 0 ? `Revoked: ${revoked.join(", ")}.` : null,
+        ]
+          .filter(Boolean)
+          .join(" "),
+      });
+    }
+
+    if (roleChange) {
+      await notify({
+        userId,
+        type: "role.changed",
+        title: "Your Role changed",
+        body: `An Administrator changed your Role from ${roleChange.from} to ${roleChange.to}.`,
+      });
+    }
   }
 
   return { ok: true };

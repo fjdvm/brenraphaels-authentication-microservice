@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { createNotificationsClient, readInbox } from "./notifications";
+import { createNotificationsClient, createNotifier, readInbox } from "./notifications";
 
 type Call = { url: URL; method: string; headers: Headers; body: unknown };
 
@@ -105,6 +105,40 @@ describe("notifications client", () => {
     const { client } = stubGateway(() => json({ error: "nope" }, 502));
 
     await expect(client.unreadCount("u1")).rejects.toThrow();
+  });
+});
+
+describe("createNotifier", () => {
+  const message = { userId: "u1", type: "role.changed", title: "Your Role changed", body: "Cashier → CEO" };
+
+  it("sends one notification from the Portal to the User's Portal inbox", async () => {
+    const { calls, client } = stubGateway(() => json({ notifications: [stored], stored: 1, connected: 0 }, 201));
+
+    await createNotifier(client)(message);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].method).toBe("POST");
+    expect(calls[0].url.pathname).toBe("/notifications/notifications");
+    expect(calls[0].headers.get("authorization")).toBe("Bearer caller-key");
+    expect(calls[0].body).toEqual({
+      type: "role.changed",
+      title: "Your Role changed",
+      body: "Cashier → CEO",
+      sendingApp: "Portal",
+      targetApp: "Portal",
+      userIds: ["u1"],
+    });
+  });
+
+  it("never throws when the service is unreachable or answers with an error", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const down = stubGateway(() => {
+      throw new TypeError("fetch failed");
+    });
+    const failing = stubGateway(() => json({ error: "down" }, 503));
+
+    await expect(createNotifier(down.client)(message)).resolves.toBeUndefined();
+    await expect(createNotifier(failing.client)(message)).resolves.toBeUndefined();
   });
 });
 

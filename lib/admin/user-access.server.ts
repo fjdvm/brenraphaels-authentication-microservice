@@ -2,6 +2,7 @@ import "server-only";
 
 import { recordSystemLogEvent } from "@/lib/audit/system-log";
 import { prisma } from "@/lib/db/prisma";
+import { notify } from "@/lib/notifications/notifications.server";
 
 import type { AccessPorts, AccessStore } from "./user-access";
 
@@ -84,7 +85,7 @@ export const prismaAccessStore: AccessStore = {
       const toGrant = moduleIds.filter((id) => !activeIds.has(id));
 
       // Revoking only stamps revokedAt, so the grant stays as history.
-      const revoked = toRevoke.length
+      const revokedCount = toRevoke.length
         ? (
             await transaction.accessGrant.updateMany({
               where: { userId, moduleId: { in: toRevoke }, revokedAt: null },
@@ -95,7 +96,7 @@ export const prismaAccessStore: AccessStore = {
 
       // skipDuplicates is ON CONFLICT DO NOTHING: if a concurrent save already
       // created the active grant, the partial unique index makes this a no-op.
-      const granted = toGrant.length
+      const grantedCount = toGrant.length
         ? (
             await transaction.accessGrant.createMany({
               data: toGrant.map((moduleId) => ({ userId, moduleId, grantedBy: actorId })),
@@ -104,11 +105,23 @@ export const prismaAccessStore: AccessStore = {
           ).count
         : 0;
 
+      const changed = [...(revokedCount > 0 ? toRevoke : []), ...(grantedCount > 0 ? toGrant : [])];
+      const modules = changed.length
+        ? await transaction.module.findMany({
+            where: { id: { in: changed } },
+            select: { id: true, name: true, system: { select: { name: true } } },
+          })
+        : [];
+      const label = new Map(modules.map((module) => [module.id, `${module.system.name} ${module.name}`]));
+      const names = (ids: string[]) => ids.map((id) => label.get(id) ?? id).sort();
+      const granted = grantedCount > 0 ? names(toGrant) : [];
+      const revoked = revokedCount > 0 ? names(toRevoke) : [];
+
       return { roleChange, granted, revoked };
     });
   },
 };
 
 export function createProductionAccessPorts(): AccessPorts {
-  return { store: prismaAccessStore, audit: recordSystemLogEvent };
+  return { store: prismaAccessStore, audit: recordSystemLogEvent, notify };
 }
