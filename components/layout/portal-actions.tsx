@@ -1,69 +1,15 @@
 "use client";
 
-import { Bell, CheckCheck, Loader2, LogOut } from "lucide-react";
+import { Loader2, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal, useFormStatus } from "react-dom";
 
 import { logoutAction } from "@/actions/auth";
+import { NotificationBell } from "@/components/layout/notification-bell";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/cn";
 
-// Figma: a 32px bell in the admin top bar, 36px in the Staff header, each with an
-// 8px dot over the icon's top-right corner.
-const NOTIFICATION_SIZES = {
-  md: { button: "size-8", dot: "right-1 top-[5px]" },
-  lg: { button: "size-9", dot: "right-1.5 top-[7px]" },
-} as const;
-
-export function NotificationButton({
-  className,
-  size = "md",
-}: {
-  className?: string;
-  size?: keyof typeof NOTIFICATION_SIZES;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <div className={cn("relative", className)}>
-      <Button
-        aria-expanded={isOpen}
-        aria-haspopup="dialog"
-        aria-label="Notifications"
-        className={cn("relative text-foreground [&_svg:not([class*='size-'])]:size-[18px]", NOTIFICATION_SIZES[size].button)}
-        onClick={() => setIsOpen((open) => !open)}
-        size="icon"
-        title="Notifications"
-        type="button"
-        variant="ghost"
-      >
-        <Bell aria-hidden="true" />
-        <span aria-hidden="true" className={cn("absolute size-2 rounded-full bg-destructive", NOTIFICATION_SIZES[size].dot)} />
-      </Button>
-      {isOpen ? (
-        <section
-          aria-labelledby="notifications-title"
-          className="absolute right-0 top-full z-20 mt-2 w-80 overflow-hidden rounded-lg border border-border bg-surface shadow-lg"
-          role="dialog"
-        >
-          <div className="flex items-center justify-between px-5 py-3">
-            <h2 className="text-sm font-semibold text-foreground" id="notifications-title">Notifications</h2>
-            <Button className="h-auto gap-1.5 px-0 py-0 text-xs text-on-surface-variant hover:bg-transparent hover:text-foreground" type="button" variant="ghost">
-              <CheckCheck aria-hidden="true" className="size-4" />
-              Mark all read
-            </Button>
-          </div>
-          <p className="border-y border-border px-5 py-4 text-center text-xs text-on-surface-variant">
-            No notifications yet.
-          </p>
-          <Button className="h-auto w-full rounded-none px-5 py-3 text-sm font-semibold hover:bg-accent" type="button" variant="ghost">
-            View all notifications
-          </Button>
-        </section>
-      ) : null}
-    </div>
-  );
-}
+export { NotificationBell as NotificationButton };
 
 function LogoutSubmitButton() {
   const { pending } = useFormStatus();

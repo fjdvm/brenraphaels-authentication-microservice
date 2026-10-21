@@ -11,7 +11,13 @@ import { LogoutButton, NotificationButton } from "./portal-actions";
 afterEach(cleanup);
 
 describe("NotificationButton", () => {
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
   it("opens a notification list from the header control", async () => {
+    vi.stubGlobal("fetch", async () => Response.json({ available: true, unread: 0, notifications: [] }));
     const user = userEvent.setup();
     render(<NotificationButton />);
 
@@ -20,7 +26,6 @@ describe("NotificationButton", () => {
     expect(screen.getByRole("dialog", { name: "Notifications" })).toBeTruthy();
     expect(screen.getByText("No notifications yet.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Mark all read" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "View all notifications" })).toBeTruthy();
   });
 });
 
