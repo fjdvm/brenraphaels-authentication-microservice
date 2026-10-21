@@ -91,7 +91,8 @@ export function SystemLogsView({ initial, options, defaultRange, load }: Props) 
   }
 
   function refilter(change: Partial<Filters>) {
-    const next = { ...filters, ...change };
+    // Text typed into Search is applied with whatever filter changes next, never silently left behind.
+    const next = { ...filters, q: search.trim(), ...change };
 
     // An action only some Systems can write makes no sense under another System.
     if (change.source !== undefined && next.action && options) {
@@ -102,7 +103,8 @@ export function SystemLogsView({ initial, options, defaultRange, load }: Props) 
     setFilters(next);
 
     if (next.from && next.to && next.from > next.to) {
-      // Show the message and leave the list alone rather than asking for a range the service rejects.
+      // Don't ask for a range the service rejects, and don't leave rows from another range on screen.
+      latest.current += 1;
       return;
     }
 
@@ -133,6 +135,7 @@ export function SystemLogsView({ initial, options, defaultRange, load }: Props) 
               type="search"
               aria-label="Search"
               placeholder="Search user or action"
+              maxLength={200}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
@@ -213,14 +216,14 @@ export function SystemLogsView({ initial, options, defaultRange, load }: Props) 
         ) : null}
       </form>
 
-      {loading ? (
+      {rangeInvalid ? null : loading ? (
         <p role="status" className="rounded-lg border border-border bg-surface p-6 text-sm text-on-surface-variant">
           Loading events…
         </p>
       ) : result.status === "error" ? (
         <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 text-sm">
           <p className="font-medium text-destructive">Couldn&apos;t load System logs</p>
-          <p className="mt-1 text-on-surface-variant">The audit-logs service couldn&apos;t be reached.</p>
+          <p className="mt-1 text-on-surface-variant">The audit-logs service couldn&apos;t be read right now. Try again.</p>
           <Button className="mt-4" variant="outline" size="sm" onClick={() => void open(filters, paging)}>
             Retry
           </Button>
@@ -267,7 +270,7 @@ export function SystemLogsView({ initial, options, defaultRange, load }: Props) 
         </section>
       )}
 
-      {result?.status === "ok" ? (
+      {!rangeInvalid && result?.status === "ok" ? (
         <nav aria-label="Pages" className="flex items-center justify-between gap-4">
           <p className="text-sm text-on-surface-variant">
             {result.entries.length > 0 ? `Showing ${start}-${start + result.entries.length - 1}` : null}

@@ -138,6 +138,16 @@ describe("SystemLogsView filters", () => {
     });
   });
 
+  it("applies text typed into Search together with the next filter change", async () => {
+    const { load, user } = setup();
+
+    await user.type(screen.getByRole("searchbox", { name: "Search" }), "ada");
+    await user.selectOptions(screen.getByLabelText("Outcome"), "FAILURE");
+
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+    expect(load).toHaveBeenCalledWith(expect.objectContaining({ q: "ada", outcome: "FAILURE" }));
+  });
+
   it("drops an action the new System cannot write", async () => {
     const { load, user } = setup();
 
@@ -168,6 +178,7 @@ describe("SystemLogsView filters", () => {
 
     expect(screen.getByText("From must be on or before To")).toBeTruthy();
     expect(load).not.toHaveBeenCalled();
+    expect(screen.queryByRole("table")).toBeNull();
   });
 
   it("shows the new result and goes back to the first page when a filter changes", async () => {
