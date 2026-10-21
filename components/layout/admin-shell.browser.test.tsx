@@ -54,7 +54,7 @@ describe("Administrator navigation journeys", () => {
     expect(screen.getByRole("link", { name: "Access" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "User management" }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByRole("link", { name: "System logs" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "My logs" }).getAttribute("href")).toBe("/my-logs");
+    expect(screen.getByRole("link", { name: "Activity log" }).getAttribute("href")).toBe("/my-logs");
     expect(screen.getByRole("button", { name: "Notifications" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Log out" })).toBeTruthy();
 

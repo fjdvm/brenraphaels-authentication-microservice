@@ -9,8 +9,11 @@ import { prisma } from "@/lib/db/prisma";
 
 import {
   createAuditClient,
+  readSystemLogOptions,
   readSystemLogs,
-  type AuditLogEntry,
+  type AuditFilterOptions,
+  type AuditLogFilters,
+  type AuditLogPage,
   type RequestContext,
   type UserDirectory,
 } from "./audit-logs";
@@ -58,6 +61,10 @@ export async function recordAuditEvent(event: AuditEventInput): Promise<void> {
   await client.record(event, await requestContext());
 }
 
-export async function listSystemLogEvents(): Promise<AuditLogEntry[]> {
-  return readSystemLogs(client, await getPortalUser());
+export async function listSystemLogEvents(filters: AuditLogFilters): Promise<AuditLogPage> {
+  return readSystemLogs(client, await getPortalUser(), filters);
+}
+
+export async function listSystemLogOptions(): Promise<AuditFilterOptions> {
+  return readSystemLogOptions(client, await getPortalUser());
 }

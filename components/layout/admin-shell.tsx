@@ -13,6 +13,8 @@ import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -20,7 +22,7 @@ import {
   SidebarProvider,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { SIDEBAR_NAVIGATION } from "@/lib/admin/navigation";
+import { SIDEBAR_SECTIONS } from "@/lib/admin/navigation";
 
 type AdminShellProps = {
   children: ReactNode;
@@ -37,24 +39,33 @@ function AdministrativeNavigation({ user }: { user: ShellUser }) {
   return (
     <>
       <SidebarContent className="px-3 py-4">
-        <SidebarMenu className="gap-0.5">
-          {SIDEBAR_NAVIGATION.map(({ href, icon: Icon, label }) => (
-            <SidebarMenuItem key={href}>
-              <SidebarMenuButton
-                asChild
-                className="h-auto gap-3 rounded-lg px-2.5 py-[9px] text-[15px] leading-[normal] font-medium text-nav-foreground data-[active=true]:font-medium [&>svg]:size-[18px]"
-                isActive={pathname === href}
-                onClick={() => setOpenMobile(false)}
-                tooltip={label}
-              >
-                <Link aria-current={pathname === href ? "page" : undefined} href={href}>
-                  <Icon aria-hidden="true" />
-                  <span>{label}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
+        {SIDEBAR_SECTIONS.map(({ label: sectionLabel, destinations }, index) => (
+          <SidebarGroup className="p-0" key={sectionLabel ?? index}>
+            {sectionLabel ? (
+              <SidebarGroupLabel className="mt-4 px-2.5 text-xs font-semibold tracking-wider text-muted-foreground">
+                {sectionLabel}
+              </SidebarGroupLabel>
+            ) : null}
+            <SidebarMenu className="gap-0.5">
+              {destinations.map(({ href, icon: Icon, label }) => (
+                <SidebarMenuItem key={href}>
+                  <SidebarMenuButton
+                    asChild
+                    className="h-auto gap-3 rounded-lg px-2.5 py-[9px] text-[15px] leading-[normal] font-medium text-nav-foreground data-[active=true]:font-medium [&>svg]:size-[18px]"
+                    isActive={pathname === href}
+                    onClick={() => setOpenMobile(false)}
+                    tooltip={label}
+                  >
+                    <Link aria-current={pathname === href ? "page" : undefined} href={href}>
+                      <Icon aria-hidden="true" />
+                      <span>{label}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
       <SidebarFooter className="gap-2.5 border-t border-border px-3 py-3.5">
         <UserCard user={user} />
