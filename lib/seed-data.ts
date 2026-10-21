@@ -21,11 +21,11 @@ export const SEED_SYSTEMS: SeedSystem[] = [
       "http://localhost:3000/api/portal/callback", // ignored in production
     ],
     iconName: "users",
-    description: "Customer profiles, campaigns, conversations and support tickets.",
+    description: "Customer profiles, marketing, conversations and support tickets.",
     modules: [
       "Dashboard",
       "Customer Profiles",
-      "Campaigns",
+      "Marketing",
       "Conversations",
       "Tickets",
     ],
@@ -89,6 +89,13 @@ export const SEED_ROLES = [
   "Staff/Employee",
   "Cashier",
 ] as const;
+
+/** Modules renamed since first seeded: system name -> current name -> former name. Renamed in place. */
+export const SEED_MODULE_FORMER_NAMES: Readonly<
+  Record<string, Readonly<Record<string, string>>>
+> = {
+  CRMS: { Marketing: "Campaigns" },
+};
 
 /** Roles renamed since first seeded: current name -> former name. Renamed in place. */
 export const SEED_ROLE_FORMER_NAMES: Readonly<Record<string, string>> = {

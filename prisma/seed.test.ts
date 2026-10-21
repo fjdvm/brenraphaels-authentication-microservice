@@ -41,8 +41,14 @@ function createStores() {
       systems.set(system.name, id);
       return { id };
     },
-    async upsertModule(systemId, name) {
+    async upsertModule(systemId, name, formerName) {
       const key = `${systemId}:${name}`;
+      const formerKey = `${systemId}:${formerName}`;
+      if (formerName && !modules.has(key) && modules.has(formerKey)) {
+        // Mirrors the real store: rename in place so the id, and every grant on it, carries over.
+        modules.set(key, modules.get(formerKey)!);
+        modules.delete(formerKey);
+      }
       const id = modules.get(key) ?? `module-${modules.size + 1}`;
       modules.set(key, id);
       return { id };
@@ -144,5 +150,37 @@ describe("seedPortal", () => {
 
     expect(once).toEqual(["https://operator.example/cb", ...seeded]);
     expect(mergeCallbackUrls(once, seeded)).toEqual(once);
+  });
+
+  it("seeds the CRMS Marketing Module, not Campaigns, and no longer describes campaigns", () => {
+    const crms = SEED_SYSTEMS.find((system) => system.name === "CRMS")!;
+
+    expect(crms.modules).toContain("Marketing");
+    expect(crms.modules).not.toContain("Campaigns");
+    expect(crms.description).not.toMatch(/campaign/i);
+  });
+
+  it("keeps a Staff member's grant on the old Campaigns Module as Marketing, however often it is seeded", async () => {
+    const stores = createStores();
+    const superAdmin = {
+      username: "2026-ADMIN-001",
+      firstName: "Jude",
+      lastName: "Nitram",
+      email: "jude.nitram08@gmail.com",
+      password: "not-a-real-password",
+    };
+    stores.systems.set("CRMS", "system-legacy");
+    stores.modules.set("system-legacy:Campaigns", "module-campaigns");
+    stores.accessGrants.add("staff-member:module-campaigns");
+
+    await seedPortal(stores.portal, stores.auth, superAdmin);
+    await seedPortal(stores.portal, stores.auth, superAdmin);
+
+    expect(stores.modules.get("system-legacy:Marketing")).toBe("module-campaigns");
+    expect(stores.modules.has("system-legacy:Campaigns")).toBe(false);
+    expect(stores.accessGrants.has("staff-member:module-campaigns")).toBe(true);
+    expect(
+      [...stores.modules.keys()].filter((key) => key.endsWith(":Marketing")),
+    ).toHaveLength(1);
   });
 });
