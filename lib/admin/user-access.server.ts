@@ -85,39 +85,31 @@ export const prismaAccessStore: AccessStore = {
       const toGrant = moduleIds.filter((id) => !activeIds.has(id));
 
       // Revoking only stamps revokedAt, so the grant stays as history.
-      const revokedCount = toRevoke.length
-        ? (
-            await transaction.accessGrant.updateMany({
-              where: { userId, moduleId: { in: toRevoke }, revokedAt: null },
-              data: { revokedAt: new Date() },
-            })
-          ).count
-        : 0;
-
-      // skipDuplicates is ON CONFLICT DO NOTHING: if a concurrent save already
-      // created the active grant, the partial unique index makes this a no-op.
-      const grantedCount = toGrant.length
-        ? (
-            await transaction.accessGrant.createMany({
-              data: toGrant.map((moduleId) => ({ userId, moduleId, grantedBy: actorId })),
-              skipDuplicates: true,
-            })
-          ).count
-        : 0;
-
-      const changed = [...(revokedCount > 0 ? toRevoke : []), ...(grantedCount > 0 ? toGrant : [])];
-      const modules = changed.length
-        ? await transaction.module.findMany({
-            where: { id: { in: changed } },
-            select: { id: true, name: true, system: { select: { name: true } } },
+      const revoked = toRevoke.length
+        ? await transaction.accessGrant.updateManyAndReturn({
+            where: { userId, moduleId: { in: toRevoke }, revokedAt: null },
+            data: { revokedAt: new Date() },
+            select: { module: { select: { name: true, system: { select: { name: true } } } } },
           })
         : [];
-      const label = new Map(modules.map((module) => [module.id, `${module.system.name} ${module.name}`]));
-      const names = (ids: string[]) => ids.map((id) => label.get(id) ?? id).sort();
-      const granted = grantedCount > 0 ? names(toGrant) : [];
-      const revoked = revokedCount > 0 ? names(toRevoke) : [];
 
-      return { roleChange, granted, revoked };
+      // skipDuplicates is ON CONFLICT DO NOTHING: if a concurrent save already
+      // created the active grant, the partial unique index makes this a no-op
+      // and the grant is not returned, so it is not reported as this save's.
+      const granted = toGrant.length
+        ? await transaction.accessGrant.createManyAndReturn({
+            data: toGrant.map((moduleId) => ({ userId, moduleId, grantedBy: actorId })),
+            skipDuplicates: true,
+            select: { module: { select: { name: true, system: { select: { name: true } } } } },
+          })
+        : [];
+
+      const toModuleRef = ({ module }: { module: { name: string; system: { name: string } } }) => ({
+        system: module.system.name,
+        name: module.name,
+      });
+
+      return { roleChange, granted: granted.map(toModuleRef), revoked: revoked.map(toModuleRef) };
     });
   },
 };

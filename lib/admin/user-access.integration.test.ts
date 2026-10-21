@@ -54,7 +54,7 @@ describe.skipIf(!testDatabaseUrl)("prismaAccessStore against a real database", (
     expect(grants).toHaveLength(2);
     expect(grants.filter((grant) => grant.revokedAt === null)).toHaveLength(1);
     expect(regrant.roleChange).not.toBeNull();
-    expect(regrant.granted).toEqual([expect.stringContaining(first.name)]);
+    expect(regrant.granted).toEqual([expect.objectContaining({ name: first.name })]);
     expect(roleOnly).toMatchObject({ granted: [], revoked: [] });
   });
 

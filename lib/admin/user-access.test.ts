@@ -7,10 +7,10 @@ import { stubNotificationsService } from "@/lib/notifications/test-support";
 
 const ADMIN = { id: "admin-1" };
 const TARGET = "user-2";
-const MODULES: Record<string, string> = {
-  m1: "CRMS Customer Profiles",
-  m2: "HRMS Payroll & ESS",
-  m3: "POS Sales",
+const MODULES: Record<string, { system: string; name: string }> = {
+  m1: { system: "CRMS", name: "Customer Profiles" },
+  m2: { system: "HRMS", name: "Payroll & ESS" },
+  m3: { system: "POS", name: "Sales" },
 };
 
 type Grant = { moduleId: string; grantedBy: string; revoked: boolean };

@@ -109,7 +109,7 @@ describe("notifications client", () => {
 });
 
 describe("createNotifier", () => {
-  const message = { userId: "u1", type: "role.changed", title: "Your Role changed", body: "Cashier → CEO" };
+  const message = { userId: "u1", type: "role.changed" as const, title: "Your Role changed", body: "Cashier → CEO" };
 
   it("sends one notification from the Portal to the User's Portal inbox", async () => {
     const { calls, client } = stubGateway(() => json({ notifications: [stored], stored: 1, connected: 0 }, 201));

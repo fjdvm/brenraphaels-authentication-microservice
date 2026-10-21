@@ -14,10 +14,13 @@ export type Inbox = {
   notifications: PortalNotification[];
 };
 
+/** What an Administrator did that the affected User is told about. */
+export type NotificationType = "access.changed" | "role.changed" | "credentials.resent";
+
 /** A notification the Portal sends to one User's Portal inbox. */
 export type OutgoingNotification = {
   userId: string;
-  type: string;
+  type: NotificationType;
   title: string;
   body: string;
 };

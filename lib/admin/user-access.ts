@@ -4,6 +4,8 @@ import type { SystemLogEventInput } from "@/lib/audit/system-log";
 import type { Notifier } from "@/lib/notifications/notifications";
 import type { FieldErrors } from "@/lib/validations/user";
 
+export type ModuleRef = { system: string; name: string };
+
 export type AccessStore = {
   findUser(id: string): Promise<{ id: string; roleId: string; isDeleted: boolean } | null>;
   roleExists(roleId: string): Promise<boolean>;
@@ -21,9 +23,9 @@ export type AccessStore = {
     actorId: string;
   }): Promise<{
     roleChange: { from: string; to: string } | null;
-    /** Names of the Modules newly granted and revoked, each prefixed with its System. */
-    granted: string[];
-    revoked: string[];
+    /** The Modules this save actually granted and revoked. */
+    granted: ModuleRef[];
+    revoked: ModuleRef[];
   }>;
 };
 
@@ -48,6 +50,12 @@ const updateAccessSchema = z.object({
   roleId: z.string().trim().min(1, "Choose a Role."),
   moduleIds: z.array(z.string().min(1)).transform((ids) => [...new Set(ids)]),
 });
+
+const moduleList = (modules: ModuleRef[]) =>
+  modules
+    .map((module) => `${module.system} ${module.name}`)
+    .sort()
+    .join(", ");
 
 const plural = (count: number) => `${count} Module${count === 1 ? "" : "s"}`;
 
@@ -136,8 +144,8 @@ export async function updateUserAccess(
         type: "access.changed",
         title: "Your access changed",
         body: [
-          granted.length > 0 ? `Granted: ${granted.join(", ")}.` : null,
-          revoked.length > 0 ? `Revoked: ${revoked.join(", ")}.` : null,
+          granted.length > 0 ? `Granted: ${moduleList(granted)}.` : null,
+          revoked.length > 0 ? `Revoked: ${moduleList(revoked)}.` : null,
         ]
           .filter(Boolean)
           .join(" "),
