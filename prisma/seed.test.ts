@@ -132,9 +132,9 @@ describe("seedPortal", () => {
       "http://localhost:3000/api/portal/callback",
     ]);
     expect(
-      SEED_SYSTEMS.filter((system) => system.name !== "CRMS").flatMap(
-        (system) => system.callbackUrls ?? [],
-      ),
+      SEED_SYSTEMS.filter(
+        (system) => system.name !== "CRMS" && system.name !== "HRMS",
+      ).flatMap((system) => system.callbackUrls ?? []),
     ).toEqual([]);
   });
 
@@ -144,6 +144,27 @@ describe("seedPortal", () => {
 
     expect(once).toEqual(["https://operator.example/cb", ...seeded]);
     expect(mergeCallbackUrls(once, seeded)).toEqual(once);
+  });
+
+  it("seeds the HRMS Attendance Module as a rename of Attendance Biometrics", async () => {
+    const stores = createStores();
+    const renames: string[] = [];
+    const upsertModule = stores.portal.upsertModule;
+    stores.portal.upsertModule = async (systemId, name, formerName) => {
+      if (formerName) renames.push(`${formerName} -> ${name}`);
+      return upsertModule(systemId, name, formerName);
+    };
+
+    await seedPortal(stores.portal, stores.auth, {
+      username: "2026-ADMIN-001",
+      firstName: "Jude",
+      lastName: "Nitram",
+      email: "jude.nitram08@gmail.com",
+      password: "not-a-real-password",
+    });
+
+    expect(renames).toEqual(["Attendance Biometrics -> Attendance"]);
+    expect(SEED_SYSTEMS.find((system) => system.name === "HRMS")?.modules).toContain("Attendance");
   });
 
   it("seeds a Tickets Module under CRMS that CREOMS validates sessions against", () => {
