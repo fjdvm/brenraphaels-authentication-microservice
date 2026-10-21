@@ -7,6 +7,7 @@ import { createPortal, useFormStatus } from "react-dom";
 import { logoutAction } from "@/actions/auth";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils/cn";
 
 export { NotificationBell as NotificationButton };
 
@@ -21,13 +22,13 @@ function LogoutSubmitButton() {
   );
 }
 
-export function PortalActions({
-  compact = false,
-  showNotifications = true,
-}: {
-  compact?: boolean;
-  showNotifications?: boolean;
-}) {
+// Figma "btn/Log out": full width at the foot of the sidebar, inline in the Staff header.
+const LOGOUT_LAYOUTS = {
+  sidebar: "w-full py-2.5",
+  header: "px-3.5 py-[9px]",
+} as const;
+
+export function LogoutButton({ layout }: { layout: keyof typeof LOGOUT_LAYOUTS }) {
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -43,11 +44,14 @@ export function PortalActions({
 
   return (
     <>
-      {showNotifications ? (
-        <NotificationBell />
-      ) : null}
-      <Button aria-label={compact ? "Log out" : undefined} onClick={() => setIsLogoutDialogOpen(true)} size={compact ? "icon" : "default"} type="button" variant="outline">
-        {compact ? <LogOut aria-hidden="true" /> : "Log out"}
+      <Button
+        className={cn("h-auto rounded-lg leading-[normal] text-foreground", LOGOUT_LAYOUTS[layout])}
+        onClick={() => setIsLogoutDialogOpen(true)}
+        type="button"
+        variant="outline"
+      >
+        <LogOut aria-hidden="true" />
+        Log out
       </Button>
 
       {isLogoutDialogOpen

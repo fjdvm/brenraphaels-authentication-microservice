@@ -1,4 +1,5 @@
 import type { AuditEventInput } from "@/lib/audit/events";
+import type { Notifier } from "@/lib/notifications/notifications";
 
 import type { CredentialsMailer } from "./user-provisioning";
 
@@ -26,6 +27,7 @@ export type ResendPorts = {
   deliveryProblem(): string | null;
   audit(event: AuditEventInput): Promise<void>;
   generatePassword(): string;
+  notify: Notifier;
 };
 
 export type ResendResult = { ok: true; username: string } | { ok: false; error: string };
@@ -106,5 +108,16 @@ export async function resendCredentials(
   }
 
   await record("SUCCESS", `Resent credentials to ${user.username}`, user.id);
+
+  // The User hears about an Administrator's resend, never about their own.
+  if (user.id !== actorId) {
+    await ports.notify({
+      userId: user.id,
+      type: "credentials.resent",
+      title: "New sign-in credentials sent",
+      body: `An Administrator emailed you a new Temporary password to ${user.email}. You will be asked to change it when you next sign in.`,
+    });
+  }
+
   return { ok: true, username: user.username };
 }

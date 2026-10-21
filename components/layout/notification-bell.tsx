@@ -103,11 +103,19 @@ async function post(path: string) {
   }
 }
 
+// Figma: a 32px bell in the admin top bar and a 36px one in the Staff header.
+const BELL_SIZES = {
+  md: "size-8",
+  lg: "size-9",
+} as const;
+
 export function NotificationBell({
   className,
+  size = "md",
   navigate = (link: string) => window.location.assign(link),
 }: {
   className?: string;
+  size?: keyof typeof BELL_SIZES;
   navigate?: (link: string) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -170,7 +178,7 @@ export function NotificationBell({
         aria-expanded={isOpen}
         aria-haspopup="dialog"
         aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
-        className="relative"
+        className={cn("relative text-foreground [&_svg:not([class*='size-'])]:size-[18px]", BELL_SIZES[size])}
         onClick={() => setIsOpen((current) => !current)}
         size="icon"
         title="Notifications"
@@ -190,7 +198,7 @@ export function NotificationBell({
       {isOpen ? (
         <section
           aria-labelledby="notifications-title"
-          className="absolute right-0 top-11 z-20 w-80 overflow-hidden rounded-lg border border-border bg-surface shadow-lg"
+          className="absolute right-0 top-full z-20 mt-2 w-80 overflow-hidden rounded-lg border border-border bg-surface shadow-lg"
           role="dialog"
         >
           <div className="flex items-center justify-between px-5 py-3">

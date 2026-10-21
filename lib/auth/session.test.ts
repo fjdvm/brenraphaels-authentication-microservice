@@ -28,7 +28,7 @@ const activeUser = {
   email: "admin@example.com",
   mustChangePassword: false,
   isDeleted: false,
-  role: { isAdministrator: true },
+  role: { isAdministrator: true, name: "Super Admin" },
 };
 
 describe("requirePortalUser", () => {
@@ -67,6 +67,7 @@ describe("requirePortalUser", () => {
       id: "portal-user",
       username: "2026-ADMIN-001",
       isAdministrator: true,
+      roleName: "Super Admin",
     });
   });
 

@@ -6,7 +6,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/actions/auth", () => ({ logoutAction: vi.fn() }));
 
-import { NotificationButton } from "./portal-actions";
+import { LogoutButton, NotificationButton } from "./portal-actions";
+
+afterEach(cleanup);
 
 describe("NotificationButton", () => {
   afterEach(() => {
@@ -24,5 +26,18 @@ describe("NotificationButton", () => {
     expect(screen.getByRole("dialog", { name: "Notifications" })).toBeTruthy();
     expect(screen.getByText("No notifications yet.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Mark all read" })).toBeTruthy();
+  });
+});
+
+describe("LogoutButton", () => {
+  it("asks for confirmation before logging out", async () => {
+    const user = userEvent.setup();
+    render(<LogoutButton layout="header" />);
+
+    await user.click(screen.getByRole("button", { name: "Log out" }));
+
+    expect(screen.getByRole("dialog", { name: "Log out?" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog", { name: "Log out?" })).toBeNull();
   });
 });
