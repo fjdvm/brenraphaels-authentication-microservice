@@ -31,6 +31,3 @@ export type AuditEventInput = {
   /** Short human-readable context. Never pass credentials; common secret shapes are redacted as a backstop. */
   detail?: string | null;
 };
-
-/** The audit-writing port the admin flows and integration endpoints are given. Never throws. */
-export type AuditPort = (event: AuditEventInput) => Promise<void>;

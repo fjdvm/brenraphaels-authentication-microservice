@@ -78,7 +78,6 @@ const CATALOG: Record<AuditAction, { action: string; label: string }> = {
 const ACTION_LABELS: Record<string, string> = {
   ...Object.fromEntries(Object.values(CATALOG).map(({ action, label }) => [action, label])),
   "user.login_failed": "Failed sign-in",
-  "audit_log.exported": "Exported System logs",
 };
 
 const ANONYMOUS_ACTOR = { type: "anonymous", id: "unauthenticated", display_name: "Unauthenticated visitor" };
@@ -116,13 +115,17 @@ function describe(event: AuditEventInput, actor: string, target: string | null):
   return `${actor}: ${label}${onUser}${failed}${detail ? ` - ${detail}` : ""}.`;
 }
 
-async function describeUsers(users: UserDirectory, ids: string[]): Promise<Map<string, string>> {
+async function describeUsers(users: UserDirectory, ids: string[], timeoutMs: number): Promise<Map<string, string>> {
   if (ids.length === 0) {
     return new Map();
   }
 
   try {
-    return await users(ids);
+    // A slow lookup must not hold up the flow being audited; fall back to the ids instead.
+    return await Promise.race([
+      users(ids),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("User lookup timed out")), timeoutMs)),
+    ]);
   } catch (error) {
     console.error("Audit: could not resolve User names", error);
     return new Map();
@@ -172,7 +175,7 @@ export function createAuditClient(config: ClientConfig): AuditClient {
     async record(event, context = {}) {
       try {
         const ids = [event.actorId, event.targetUserId].filter((id): id is string => Boolean(id));
-        const names = await describeUsers(config.users, [...new Set(ids)]);
+        const names = await describeUsers(config.users, [...new Set(ids)], config.timeoutMs ?? DEFAULT_TIMEOUT_MS);
         const person = (id: string) => ({ type: "user", id, display_name: names.get(id) ?? id });
 
         const actor = event.actorId ? person(event.actorId) : ANONYMOUS_ACTOR;

@@ -92,7 +92,7 @@ describe("recording events", () => {
     expect(calls[0].body.description).toContain("Deleted 2026-SS-002");
   });
 
-  it("records an unauthenticated failed sign-in with a placeholder actor and no User id", async () => {
+  it("records an unauthenticated failed sign-in with a placeholder actor (no User id as actor), keeping the attempted account as target", async () => {
     const { calls, client: audit } = client(created);
 
     await audit.record({ action: "auth.login", outcome: "FAILURE", targetUserId: "staff", detail: "Incorrect password" });
@@ -234,6 +234,18 @@ describe("recording events", () => {
 
     expect(calls).toHaveLength(1);
     expect(calls[0].body.actor).toMatchObject({ id: "staff", display_name: "staff" });
+  });
+
+  it("stops waiting for a slow User lookup and records with the id", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { calls, client: audit } = client(created, {
+      timeoutMs: 20,
+      users: () => new Promise(() => {}),
+    });
+
+    await audit.record({ action: "auth.logout", outcome: "SUCCESS", actorId: "staff", targetUserId: "staff" });
+
+    expect(calls[0].body.actor.display_name).toBe("staff");
   });
 
   it("redacts credential-looking material from the description", async () => {
