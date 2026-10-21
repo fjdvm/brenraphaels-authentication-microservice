@@ -1,8 +1,13 @@
 "use client";
 
+import { ArrowRight } from "lucide-react";
 import { useFormStatus } from "react-dom";
 
 import { Spinner } from "./spinner";
+
+/** Figma primary button; also used for links styled as the primary action. */
+export const primaryButtonClass =
+  "flex w-full items-center justify-center gap-2 rounded-lg bg-identity py-3 text-sm/[normal] font-semibold text-identity-foreground transition-colors hover:bg-identity/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-identity/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
 
 type SubmitButtonProps = {
   label: string;
@@ -18,12 +23,12 @@ export function SubmitButton({ label, pendingLabel }: SubmitButtonProps) {
 
   return (
     <button
-      className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-on-primary transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+      className={primaryButtonClass}
       disabled={pending}
       type="submit"
     >
-      {pending ? pendingLabel : label}{" "}
-      {pending ? <Spinner /> : <span aria-hidden="true">→</span>}
+      {pending ? pendingLabel : label}
+      {pending ? <Spinner /> : <ArrowRight aria-hidden="true" className="size-4" />}
     </button>
   );
 }

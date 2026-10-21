@@ -32,6 +32,23 @@
   --identity-foreground: #ffffff;
   --identity-badge: #efeaf5;
   --identity-border: #e6e1ee;
+  /* Figma "Portal UI/UX" auth screens and loading card */
+  --auth-panel: #2a1540;
+  --auth-panel-circle-top: #452067;
+  --auth-panel-circle-left: #3e1e6b;
+  --auth-panel-circle-right: #472f67;
+  --auth-panel-subtitle: #c9b3e6;
+  --auth-panel-body: #d9cdea;
+  --auth-panel-icon: #e0d2ef;
+  --auth-panel-note: #b9a8d6;
+  --auth-panel-copyright: #8c7aae;
+  --field-label: #27272a;
+  --placeholder: #a1a1aa;
+  --success: #16a34a;
+  --success-soft: #f0fdf4;
+  --loader-border: #ece6f2;
+  --loader-track: #f1ebf8;
+  --loader-overlay: rgb(250 247 252 / 0.55);
   --sidebar: #fafafa;
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--primary);
@@ -71,6 +88,22 @@
   --color-identity-foreground: var(--identity-foreground);
   --color-identity-badge: var(--identity-badge);
   --color-identity-border: var(--identity-border);
+  --color-auth-panel: var(--auth-panel);
+  --color-auth-panel-circle-top: var(--auth-panel-circle-top);
+  --color-auth-panel-circle-left: var(--auth-panel-circle-left);
+  --color-auth-panel-circle-right: var(--auth-panel-circle-right);
+  --color-auth-panel-subtitle: var(--auth-panel-subtitle);
+  --color-auth-panel-body: var(--auth-panel-body);
+  --color-auth-panel-icon: var(--auth-panel-icon);
+  --color-auth-panel-note: var(--auth-panel-note);
+  --color-auth-panel-copyright: var(--auth-panel-copyright);
+  --color-field-label: var(--field-label);
+  --color-placeholder: var(--placeholder);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-loader-border: var(--loader-border);
+  --color-loader-track: var(--loader-track);
+  --color-loader-overlay: var(--loader-overlay);
   --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -81,6 +114,18 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
+}
+
+/* LoadingCard: hidden (and out of the accessibility tree) until its delay passes. */
+@keyframes loading-card-in {
+  from {
+    opacity: 0;
+    visibility: hidden;
+  }
+  to {
+    opacity: 1;
+    visibility: visible;
+  }
 }
 
 body {
