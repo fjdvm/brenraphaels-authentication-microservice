@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, LogOut } from "lucide-react";
+import { Loader2, LogOut, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal, useFormStatus } from "react-dom";
 
@@ -15,7 +15,7 @@ function LogoutSubmitButton() {
   const { pending } = useFormStatus();
 
   return (
-    <Button aria-busy={pending} disabled={pending} type="submit">
+    <Button aria-busy={pending} disabled={pending} size="cta" type="submit" variant="identity">
       {pending ? <Loader2 aria-hidden="true" className="animate-spin" /> : null}
       {pending ? "Logging out…" : "Log out"}
     </Button>
@@ -28,7 +28,13 @@ const LOGOUT_LAYOUTS = {
   header: "px-3.5 py-[9px]",
 } as const;
 
-export function LogoutButton({ layout }: { layout: keyof typeof LOGOUT_LAYOUTS }) {
+type LogoutButtonProps = {
+  layout: keyof typeof LOGOUT_LAYOUTS;
+  /** What logging out ends, under the dialog's title. */
+  description: string;
+};
+
+export function LogoutButton({ layout, description }: LogoutButtonProps) {
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -60,18 +66,39 @@ export function LogoutButton({ layout }: { layout: keyof typeof LOGOUT_LAYOUTS }
               aria-describedby="logout-dialog-description"
               aria-labelledby="logout-dialog-title"
               aria-modal="true"
-              className="fixed inset-0 z-50 flex items-center justify-center bg-primary/30 p-4"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4"
               role="dialog"
             >
-              <div className="w-full max-w-sm rounded-lg border border-border bg-surface p-6 shadow-lg">
-                <h2 className="text-lg font-semibold text-primary" id="logout-dialog-title">
-                  Log out?
-                </h2>
-                <p className="mt-2 text-sm text-on-surface-variant" id="logout-dialog-description">
-                  Are you sure you want to log out of the Enterprise Suite?
-                </p>
-                <div className="mt-6 flex justify-end gap-3">
-                  <Button onClick={() => setIsLogoutDialogOpen(false)} type="button" variant="outline">
+              <div className="w-full max-w-[440px] overflow-hidden rounded-2xl bg-surface leading-[normal] shadow-[0_20px_48px_0_rgba(0,0,0,0.2)]">
+                <div className="flex items-start gap-3 py-5 pl-6 pr-[18px]">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-badge">
+                    <LogOut aria-hidden="true" className="size-5 text-identity" />
+                  </span>
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <h2 className="text-lg font-semibold text-foreground" id="logout-dialog-title">
+                      Log out?
+                    </h2>
+                    <p className="text-[13px] text-on-surface-variant" id="logout-dialog-description">
+                      {description}
+                    </p>
+                  </div>
+                  <button
+                    aria-label="Close"
+                    className="rounded-md p-1 text-on-surface-variant outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={() => setIsLogoutDialogOpen(false)}
+                    type="button"
+                  >
+                    <X aria-hidden="true" className="size-[18px]" />
+                  </button>
+                </div>
+                <div className="flex justify-end gap-2 border-t border-dialog-divider bg-dialog-footer px-6 py-3.5">
+                  <Button
+                    className="text-foreground"
+                    onClick={() => setIsLogoutDialogOpen(false)}
+                    size="cta"
+                    type="button"
+                    variant="row-action"
+                  >
                     Cancel
                   </Button>
                   <form action={logoutAction}>

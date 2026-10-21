@@ -10,6 +10,8 @@ export type AccessibleSystem = {
   description: string | null;
   /** Distinct Modules in this System the User holds an active AccessGrant for. */
   grantedModules: number;
+  /** Their names, alphabetically. */
+  grantedModuleNames: string[];
   /** Every Module the System has. */
   totalModules: number;
 };
@@ -28,6 +30,7 @@ export async function listAccessibleSystems(userId: string): Promise<AccessibleS
       module: {
         select: {
           id: true,
+          name: true,
           system: {
             select: {
               id: true,
@@ -43,11 +46,11 @@ export async function listAccessibleSystems(userId: string): Promise<AccessibleS
     },
   });
 
-  const systems = new Map<string, { system: (typeof grants)[number]["module"]["system"]; modules: Set<string> }>();
+  const systems = new Map<string, { system: (typeof grants)[number]["module"]["system"]; modules: Map<string, string> }>();
   for (const { revokedAt, user, module } of grants) {
     if (revokedAt === null && !user.isDeleted) {
-      const entry = systems.get(module.system.id) ?? { system: module.system, modules: new Set<string>() };
-      entry.modules.add(module.id);
+      const entry = systems.get(module.system.id) ?? { system: module.system, modules: new Map<string, string>() };
+      entry.modules.set(module.id, module.name);
       systems.set(module.system.id, entry);
     }
   }
@@ -56,7 +59,14 @@ export async function listAccessibleSystems(userId: string): Promise<AccessibleS
     .map(({ system: { _count, ...system }, modules }) => ({
       ...system,
       grantedModules: modules.size,
+      grantedModuleNames: [...modules.values()].sort((a, b) => a.localeCompare(b)),
       totalModules: _count.modules,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Every System's name, alphabetically, whether or not the User can open it. */
+export async function listSystemNames(): Promise<string[]> {
+  const systems = await prisma.system.findMany({ select: { name: true }, orderBy: { name: "asc" } });
+  return systems.map(({ name }) => name);
 }
