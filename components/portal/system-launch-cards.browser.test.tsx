@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AccessibleSystem } from "@/lib/portal/accessible-systems";
 
@@ -79,7 +79,11 @@ describe("SystemLaunchCards", () => {
 });
 
 describe("Opening a System", () => {
-  afterEach(cleanup);
+  beforeEach(() => vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {}))));
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
 
   // jsdom can't navigate; stop the browser leaving so the card can be inspected.
   const clickOpen = (name: string, init?: MouseEventInit) => {
@@ -107,14 +111,16 @@ describe("Opening a System", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 
-  it("clears the card when the browser comes back to this page from its history", () => {
+  it("opens the System in a new tab and clears the card once the System responds", async () => {
+    let respond!: () => void;
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<void>((resolve) => (respond = resolve))));
     render(<SystemLaunchCards systems={[pos]} />);
+
+    expect(screen.getByRole("link", { name: "Open POS" }).getAttribute("target")).toBe("_blank");
     clickOpen("Open POS");
+    expect(screen.getByRole("status")).toBeTruthy();
 
-    const restored = new Event("pageshow");
-    Object.defineProperty(restored, "persisted", { value: true });
-    fireEvent(window, restored);
-
+    await act(async () => respond());
     expect(screen.queryByRole("status")).toBeNull();
   });
 });
