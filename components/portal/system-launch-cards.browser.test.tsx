@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { SystemLaunchCards } from "./system-launch-cards";
 
@@ -32,6 +32,32 @@ describe("SystemLaunchCards", () => {
     expect(screen.queryByText("ims.example.com")).toBeNull();
     expect(screen.getByRole("link", { name: /POS/ }).getAttribute("href")).toBe("https://pos.example.com");
     expect(screen.getAllByRole("link")).toHaveLength(2);
+  });
+
+  it("opens each System in a new tab and shows loading on its card until the System responds", async () => {
+    let respond!: () => void;
+    const fetchMock = vi.fn(() => new Promise<void>((resolve) => (respond = resolve)));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.useFakeTimers();
+
+    render(<SystemLaunchCards systems={[ims, pos]} />);
+    const imsLink = screen.getByRole("link", { name: /IMS/ });
+    expect(imsLink.getAttribute("target")).toBe("_blank");
+    expect(imsLink.getAttribute("rel")).toContain("noopener");
+
+    fireEvent.click(imsLink);
+    expect(screen.getByText("Opening IMS…")).toBeTruthy();
+    expect(screen.queryByText("Opening POS…")).toBeNull();
+    expect(fetchMock).toHaveBeenCalledWith(ims.url, expect.objectContaining({ mode: "no-cors" }));
+
+    await act(async () => {
+      respond();
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    expect(screen.queryByText("Opening IMS…")).toBeNull();
+
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   it("lays out at most two columns, and a single column for a single card", () => {
