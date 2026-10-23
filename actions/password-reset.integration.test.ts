@@ -141,6 +141,21 @@ describe.skipIf(!databaseUrl)("password recovery through Server Actions on dispo
     expect(await status()).toBe(true);
   });
 
+  it("expires outstanding and newly requested provider tokens for a Deleted User", async () => {
+    await prisma.user.update({ where: { id: userId }, data: { isDeleted: true } });
+    const reissued = `reset-password:${randomUUID()}`;
+    await prisma.$executeRaw`
+      INSERT INTO neon_auth.verification (id, identifier, value, "createdAt", "updatedAt", "expiresAt")
+      VALUES (${randomUUID()}::uuid, ${reissued}, ${neonId}, now(), now(), now() + interval '1 hour')
+    `;
+    const rows = await prisma.$queryRaw<{ expired: boolean }[]>`
+      SELECT "expiresAt" <= now() AS expired FROM neon_auth.verification
+      WHERE identifier IN (${`reset-password:${token}`}, ${reissued})
+    `;
+    expect(rows).toHaveLength(2);
+    expect(rows.every((row) => row.expired)).toBe(true);
+  });
+
   it.each([
     ["too short", { password: "short", confirmation: "short" }, "Use at least 8 characters."],
     ["mismatch", { confirmation: "different-password" }, "The new passwords don't match."],
