@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   findUnique: vi.fn(),
+  queryRaw: vi.fn(),
   update: vi.fn(),
   updateMany: vi.fn(),
   signInEmail: vi.fn(),
@@ -21,6 +22,7 @@ vi.mock("server-only", () => ({}));
 
 vi.mock("@/lib/db/prisma", () => ({
   prisma: {
+    $queryRaw: mocks.queryRaw,
     user: {
       findUnique: mocks.findUnique,
       update: mocks.update,
@@ -362,6 +364,16 @@ describe("forgotPasswordAction", () => {
       );
     },
   );
+  it("keeps the confirmation identical when the email provider is unavailable", async () => {
+    mocks.findUnique.mockResolvedValue({ id: "person-id", isDeleted: false });
+    mocks.requestPasswordReset.mockRejectedValue(new Error("provider unavailable"));
+    await expect(forgotPasswordAction({ error: null }, formFor("person@example.test")))
+      .resolves.toMatchObject({ error: null, message: expect.stringContaining("If a User exists") });
+    expect(mocks.record).toHaveBeenCalledWith(expect.objectContaining({
+      action: "auth.password_reset_request", outcome: "FAILURE",
+    }));
+  });
+
 });
 
 describe("resetPasswordAction", () => {
@@ -380,6 +392,7 @@ describe("resetPasswordAction", () => {
     mocks.resetPassword.mockResolvedValue({ error: null });
     mocks.updateMany.mockResolvedValue({ count: 1 });
     mocks.findUnique.mockResolvedValue({ id: "person-id" });
+    mocks.queryRaw.mockResolvedValue([{ id: "person-id", email: "person@example.test", isDeleted: false }]);
   });
 
   it("shows a clear error when Neon Auth rejects an expired or invalid token", async () => {
@@ -419,7 +432,7 @@ describe("resetPasswordAction", () => {
       token: "valid-reset-token",
     });
     expect(mocks.updateMany).toHaveBeenCalledWith({
-      where: { email },
+      where: { id: "person-id", isDeleted: false },
       data: { mustChangePassword: false },
     });
     expect(mocks.record).toHaveBeenCalledWith({
@@ -429,6 +442,28 @@ describe("resetPasswordAction", () => {
       targetUserId: "person-id",
     });
     expect(JSON.stringify(mocks.record.mock.calls)).not.toMatch(/valid-reset-token|new-password/);
+  });
+
+  it.each([{ rows: [] }, { rows: [{ id: "person-id", email: "person@example.test", isDeleted: true }] }])(
+    "rejects an expired, consumed or Deleted User's token before changing credentials",
+    async ({ rows }) => {
+      mocks.queryRaw.mockResolvedValue(rows);
+      await expect(resetPasswordAction({ error: null }, validReset())).resolves.toEqual({
+        error: "This reset link is invalid or has expired. Request a new one.",
+      });
+      expect(mocks.resetPassword).not.toHaveBeenCalled();
+      expect(mocks.updateMany).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not activate another User when a valid signature is paired with someone else's token", async () => {
+    const { e, s } = resetLinkParams("someone-else@example.test");
+    await expect(resetPasswordAction({ error: null }, validReset({ e, s })))
+      .rejects.toThrow("redirect:/login?reset=1");
+    expect(mocks.updateMany).not.toHaveBeenCalled();
+    expect(mocks.record).toHaveBeenCalledWith(expect.objectContaining({
+      action: "auth.password_reset", outcome: "SUCCESS", actorId: undefined,
+    }));
   });
 
   it("records a failed reset against the signed User without an actor", async () => {

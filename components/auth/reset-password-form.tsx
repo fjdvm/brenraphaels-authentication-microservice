@@ -53,7 +53,14 @@ export function ResetPasswordForm({ token, email, signature }: ResetPasswordForm
           minLength={MIN_PASSWORD_LENGTH}
           name="confirmation"
         />
-        {state.error ? <FormAlert tone="error">{state.error}</FormAlert> : null}
+        {state.error ? (
+          <FormAlert tone="error">
+            {state.error}{" "}
+            <Link className={authLinkClass} href="/forgot-password">
+              Request a new link
+            </Link>
+          </FormAlert>
+        ) : null}
         <SubmitButton label="Reset password" pendingLabel="Saving…" />
       </div>
       <BackToLogIn />
