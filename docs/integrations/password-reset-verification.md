@@ -39,9 +39,9 @@ No production User credentials were changed.
 `20261023000000_password_reset_expiry` adds a trigger on
 `neon_auth.verification` that caps `reset-password:` rows at creation plus 15
 minutes, including outstanding links. Deleted Users' new tokens expire immediately;
-   a second trigger invalidates outstanding tokens when a User becomes Deleted.
-   This also protects the provider's public API from bypassing the Portal action.
-   Other verification lifetimes are untouched.
+a second trigger invalidates outstanding tokens when a User becomes Deleted.
+This also protects the provider's public API from bypassing the Portal action.
+Other verification lifetimes are untouched.
 Neon Auth continues to issue, email, validate, and consume tokens. The Portal also
 checks token ownership, lifetime, and the Deleted flag on page load and submission.
 A verifying signature activates only the User who owns that token. A missing,
@@ -58,10 +58,10 @@ The trigger relies on the current managed Neon verification schema. Recheck this
 flow when upgrading the provider. Plain Postgres databases without Neon Auth skip
 the trigger installation; they cannot run the password-recovery integration suite.
 Both functions use `SECURITY DEFINER` with `search_path = pg_catalog` and qualified
-   table names because the provider's restricted role cannot read Portal Users.
-   Rollback: drop `limit_password_reset_expiry` on `neon_auth.verification` and
-   `expire_deleted_user_password_resets` on `public."User"`, then drop their matching
-   functions in `public`. Previously shortened links stay shortened.
+table names because the provider's restricted role cannot read Portal Users.
+Rollback: drop `limit_password_reset_expiry` on `neon_auth.verification` and
+`expire_deleted_user_password_resets` on `public."User"`, then drop their matching
+functions in `public`. Previously shortened links stay shortened.
 
 ## Automated checks
 
@@ -75,3 +75,14 @@ The full database suite must run with a direct test URL and `--no-file-paralleli
 because existing suites each invoke Prisma Migrate and share advisory locks.
 The Vitest configuration transforms the Neon SDK so its extensionless Next.js
 imports resolve when these integration suites load server modules.
+
+A two-connection concurrency check held token insertion uncommitted while deleting
+the same User. Deletion waited for the User row lock; after both commits the token
+was expired. Final validation: 502 tests passed, two environment-dependent tests
+skipped; lint, typechecking and production build passed. Standards and spec reviews
+have no remaining findings.
+
+Applied only this migration to the configured production database on 2026-10-23
+using `prisma db execute` followed by `prisma migrate resolve --applied`; verified
+both triggers are enabled. The unrelated pending `20261021000000_remove_system_log`
+migration was left pending. No production User credentials were changed.
