@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { recordAuditEvent } from "@/lib/audit/audit-logs.server";
 import { resetLinkParams, verifyResetLinkEmail } from "@/lib/auth/reset-link";
 import { auth } from "@/lib/auth/server";
+import { getResetTokenUser } from "@/lib/auth/reset-token.server";
 import { getPortalUser, requirePasswordChangeUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { currentCentralSessionId, revokeIntegrationHandles } from "@/lib/integrations/revocation.server";
@@ -197,12 +198,18 @@ export async function forgotPasswordAction(
       redirectTo.searchParams.set(key, value);
     }
 
-    const { error } =
-      (await auth.requestPasswordReset({ email, redirectTo: redirectTo.toString() })) ?? {};
+    let failed = false;
+    try {
+      const result = await auth.requestPasswordReset({ email, redirectTo: redirectTo.toString() });
+      failed = Boolean(result?.error);
+    } catch {
+      // Provider outages must not disclose whether the Email has a portal User.
+      failed = true;
+    }
 
     await recordAuditEvent({
       action: "auth.password_reset_request",
-      outcome: error ? "FAILURE" : "SUCCESS",
+      outcome: failed ? "FAILURE" : "SUCCESS",
       targetUserId: user.id,
     });
   } else {
@@ -239,14 +246,17 @@ export async function resetPasswordAction(
     return { error: firstError(parsed.error) };
   }
 
-  // Only a signed link identifies whose password this is; anything else stays unattributed.
+  const tokenUser = await getResetTokenUser(parsed.data.token);
+  if (!tokenUser || tokenUser.isDeleted) {
+    return { error: "This reset link is invalid or has expired. Request a new one." };
+  }
+
+  // A signed Email must also belong to the token's actual owner.
   const email = verifyResetLinkEmail(
     formData.get("e")?.toString(),
     formData.get("s")?.toString(),
   );
-  const target = email
-    ? await prisma.user.findUnique({ where: { email }, select: { id: true } })
-    : null;
+  const target = email === tokenUser.email ? tokenUser : null;
 
   const { error } = await auth.resetPassword({
     newPassword: parsed.data.password,
@@ -264,9 +274,9 @@ export async function resetPasswordAction(
   }
 
   // Completing a reset leaves the User Active, not Awaiting first login.
-  if (email) {
+  if (target) {
     await prisma.user.updateMany({
-      where: { email },
+      where: { id: target.id, isDeleted: false },
       data: { mustChangePassword: false },
     });
   }
