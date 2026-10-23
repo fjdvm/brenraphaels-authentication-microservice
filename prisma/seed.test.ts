@@ -16,6 +16,7 @@ type StoredUser = {
   roleName: string;
   neonAuthUserId: string;
   mustChangePassword: boolean;
+  isDeleted?: boolean;
 };
 
 function createStores() {
@@ -67,6 +68,11 @@ function createStores() {
     },
     async upsertAccessGrant(userId, moduleId) {
       accessGrants.add(`${userId}:${moduleId}`);
+    },
+    async findAdministratorUsers() {
+      return [...users.values()].filter((user) =>
+        !user.isDeleted && roles.get(user.roleName)?.isAdministrator,
+      );
     },
     async setUsernameSequence(year, lastNumber) {
       sequences.set(year, lastNumber);
@@ -129,6 +135,82 @@ describe("seedPortal", () => {
     expect(stores.sequences.get(2026)).toBe(1);
   });
 
+  it("registers IMS's seven sidebar Modules and exact production and HTTPS dev callbacks", () => {
+    const ims = SEED_SYSTEMS.find((system) => system.name === "IMS");
+    expect(ims?.url).toBe("https://br-sims.vercel.app");
+    expect(ims?.callbackUrls).toEqual([
+      "https://localhost:3003/api/portal/callback",
+      "https://br-sims.vercel.app/api/portal/callback",
+    ]);
+    expect(ims?.modules).toEqual([
+      "Dashboard", "Resources & Suppliers", "Orders & Procurement", "Goods Receiving",
+      "Inventory", "Production & Quality", "Stock Transfer",
+    ]);
+  });
+
+  it("renames IMS placeholders in place, preserving Staff grants and templates on repeat seeding", async () => {
+    const stores = createStores();
+    stores.systems.set("IMS", "system-ims");
+    const renames = [
+      ["Inventory Module", "Inventory", "old-inventory"],
+      ["Production and Quality", "Production & Quality", "old-production"],
+      ["Distribution", "Stock Transfer", "old-distribution"],
+    ];
+    for (const [former, , id] of renames) {
+      stores.modules.set(`system-ims:${former}`, id);
+      stores.accessGrants.add(`staff:${id}`);
+      stores.accessTemplates.add(`manager:${id}`);
+    }
+    const admin = {
+      username: "2026-ADMIN-001", firstName: "Test", lastName: "Admin",
+      email: "admin@example.test", password: "not-a-real-password",
+    };
+    await seedPortal(stores.portal, stores.auth, admin);
+    await seedPortal(stores.portal, stores.auth, admin);
+    for (const [former, current, id] of renames) {
+      expect(stores.modules.has(`system-ims:${former}`)).toBe(false);
+      expect(stores.modules.get(`system-ims:${current}`)).toBe(id);
+      expect(stores.accessGrants.has(`staff:${id}`)).toBe(true);
+      expect(stores.accessTemplates.has(`manager:${id}`)).toBe(true);
+    }
+    expect([...stores.modules.keys()].filter((key) => key.startsWith("system-ims:"))).toHaveLength(7);
+  });
+
+  it("fills IMS grants for every existing active Administrator, without granting Staff or other Systems", async () => {
+    const stores = createStores();
+    for (const [username, roleName, isDeleted] of [
+      ["existing-ceo", "CEO", false], ["existing-admin", "Super Admin", false],
+      ["staff", "Staff/Employee", false], ["deleted-admin", "CEO", true],
+    ] as const) {
+      stores.users.set(username, {
+        id: username, username, roleName, isDeleted, email: `${username}@example.test`,
+        neonAuthUserId: username, mustChangePassword: false,
+      });
+    }
+    stores.systems.set("IMS", "system-ims");
+    stores.modules.set("system-ims:Inventory Module", "old-inventory");
+    stores.accessGrants.add("existing-ceo:old-inventory");
+    const admin = {
+      username: "2026-ADMIN-001", firstName: "Test", lastName: "Admin",
+      email: "admin@example.test", password: "not-a-real-password",
+    };
+    await seedPortal(stores.portal, stores.auth, admin);
+    const once = [...stores.accessGrants].sort();
+    await seedPortal(stores.portal, stores.auth, admin);
+    expect([...stores.accessGrants].sort()).toEqual(once);
+    for (const username of ["existing-ceo", "existing-admin"]) {
+      const grantedModules = [...stores.modules.entries()]
+        .filter(([, id]) => stores.accessGrants.has(`${username}:${id}`))
+        .map(([name]) => name).sort();
+      expect(grantedModules).toEqual([
+        "system-ims:Dashboard", "system-ims:Goods Receiving", "system-ims:Inventory",
+        "system-ims:Orders & Procurement", "system-ims:Production & Quality",
+        "system-ims:Resources & Suppliers", "system-ims:Stock Transfer",
+      ]);
+    }
+    expect([...stores.accessGrants].some((grant) => grant.startsWith("staff:") || grant.startsWith("deleted-admin:"))).toBe(false);
+  });
+
   it("registers CRMS at its real origin with exact callbacks and trusts no placeholder System", () => {
     const crms = SEED_SYSTEMS.find((system) => system.name === "CRMS");
 
@@ -139,7 +221,7 @@ describe("seedPortal", () => {
     ]);
     expect(
       SEED_SYSTEMS.filter(
-        (system) => system.name !== "CRMS" && system.name !== "HRMS",
+        (system) => system.name !== "CRMS" && system.name !== "HRMS" && system.name !== "IMS",
       ).flatMap((system) => system.callbackUrls ?? []),
     ).toEqual([]);
   });
@@ -189,7 +271,7 @@ describe("seedPortal", () => {
     const renames: string[] = [];
     const upsertModule = stores.portal.upsertModule;
     stores.portal.upsertModule = async (systemId, name, formerName) => {
-      if (formerName) renames.push(`${formerName} -> ${name}`);
+      if (formerName && ["Campaigns", "Attendance Biometrics"].includes(formerName)) renames.push(`${formerName} -> ${name}`);
       return upsertModule(systemId, name, formerName);
     };
 
