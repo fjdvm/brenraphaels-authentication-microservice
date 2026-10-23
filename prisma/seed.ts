@@ -35,6 +35,7 @@ export type SeedPortalStore = {
   upsertAccessTemplate(roleId: string, moduleId: string): Promise<void>;
   upsertUser(user: Omit<SeedSuperAdmin, "password"> & { roleId: string; neonAuthUserId: string; mustChangePassword: boolean }): Promise<SeededRecord>;
   upsertAccessGrant(userId: string, moduleId: string): Promise<void>;
+  findAdministratorUsers(): Promise<SeededRecord[]>;
   setUsernameSequence(year: number, lastNumber: number): Promise<void>;
 };
 
@@ -73,17 +74,18 @@ export async function seedPortal(
   }
 
   const modules: SeededRecord[] = [];
+  const imsModules: SeededRecord[] = [];
   for (const system of SEED_SYSTEMS) {
     const seededSystem = await portal.upsertSystem(system);
 
     for (const moduleName of system.modules) {
-      modules.push(
-        await portal.upsertModule(
-          seededSystem.id,
-          moduleName,
-          SEED_MODULE_FORMER_NAMES[system.name]?.[moduleName],
-        ),
+      const seededModule = await portal.upsertModule(
+        seededSystem.id,
+        moduleName,
+        SEED_MODULE_FORMER_NAMES[system.name]?.[moduleName],
       );
+      modules.push(seededModule);
+      if (system.name === "IMS") imsModules.push(seededModule);
     }
   }
 
@@ -116,6 +118,13 @@ export async function seedPortal(
     await portal.upsertAccessGrant(user.id, seededModule.id);
   }
 
+  // Existing Administrator Users need IMS access at cutover, beyond the bootstrap User.
+  for (const administrator of await portal.findAdministratorUsers()) {
+    for (const seededModule of imsModules) {
+      await portal.upsertAccessGrant(administrator.id, seededModule.id);
+    }
+  }
+
   await portal.setUsernameSequence(yearFromUsername(superAdmin.username), 1);
   await auth.disablePublicSignUpAndGoogleSignIn();
 }
@@ -138,7 +147,7 @@ function superAdminFromEnvironment(): SeedSuperAdmin {
   };
 }
 
-function createPortalStore(prisma: PrismaClient): SeedPortalStore {
+export function createPortalStore(prisma: PrismaClient): SeedPortalStore {
   return {
     async upsertRole(name, isAdministrator) {
       const formerName = SEED_ROLE_FORMER_NAMES[name];
@@ -238,6 +247,12 @@ function createPortalStore(prisma: PrismaClient): SeedPortalStore {
         VALUES (${randomUUID()}, ${userId}, ${moduleId}, ${userId})
         ON CONFLICT DO NOTHING
       `;
+    },
+    async findAdministratorUsers() {
+      return prisma.user.findMany({
+        where: { isDeleted: false, role: { isAdministrator: true } },
+        select: { id: true },
+      });
     },
     async setUsernameSequence(year, lastNumber) {
       await prisma.usernameSequence.upsert({

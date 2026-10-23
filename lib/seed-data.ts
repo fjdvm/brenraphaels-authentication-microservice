@@ -11,7 +11,7 @@ export type SeedSystem = {
   modules: string[];
 };
 
-// CRMS (CREOMS) and HRMS are deployed; POS/IMS URLs are placeholders pending real deployment.
+// POS retains a placeholder URL pending real deployment.
 export const SEED_SYSTEMS: SeedSystem[] = [
   {
     name: "CRMS",
@@ -71,16 +71,21 @@ export const SEED_SYSTEMS: SeedSystem[] = [
   {
     name: "IMS",
     formerName: "SCMS",
-    url: "https://br-ims.jude-nitram08.workers.dev", // placeholder, pending real deployment
+    url: "https://br-sims.vercel.app",
+    callbackUrls: [
+      "https://localhost:3003/api/portal/callback",
+      "https://br-sims.vercel.app/api/portal/callback",
+    ],
     iconName: "package",
     description: "Suppliers, procurement, inventory, production and distribution.",
     modules: [
       "Dashboard",
       "Resources & Suppliers",
       "Orders & Procurement",
-      "Inventory Module",
-      "Production and Quality",
-      "Distribution",
+      "Goods Receiving",
+      "Inventory",
+      "Production & Quality",
+      "Stock Transfer",
     ],
   },
 ];
@@ -105,6 +110,11 @@ export const SEED_MODULE_FORMER_NAMES: Readonly<
 > = {
   CRMS: { Marketing: "Campaigns" },
   HRMS: { Attendance: "Attendance Biometrics" },
+  IMS: {
+    Inventory: "Inventory Module",
+    "Production & Quality": "Production and Quality",
+    "Stock Transfer": "Distribution",
+  },
 };
 
 /** Roles renamed since first seeded: current name -> former name. Renamed in place. */
