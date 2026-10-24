@@ -74,6 +74,9 @@ function createStores() {
         !user.isDeleted && roles.get(user.roleName)?.isAdministrator,
       );
     },
+    async findUsersByRole(roleName) {
+      return [...users.values()].filter((user) => !user.isDeleted && user.roleName === roleName);
+    },
     async setUsernameSequence(year, lastNumber) {
       sequences.set(year, lastNumber);
     },
@@ -258,6 +261,41 @@ describe("seedPortal", () => {
     expect(stores.accessTemplates.has(`${stores.roles.get("Super Admin")!.id}:old-location`)).toBe(true);
     expect(afterFirst).toHaveLength(7);
     expect([...stores.modules.keys()].filter((key) => key.startsWith("system-pos:"))).toEqual(afterFirst);
+  });
+
+  it("grants Location Management to every POS Manager lacking it, leaving existing grants and other Roles alone, however often it is seeded", async () => {
+    const stores = createStores();
+    for (const [username, roleName, isDeleted] of [
+      ["manager-lacking", "POS Manager", false], ["manager-holding", "POS Manager", false],
+      ["manager-deleted", "POS Manager", true], ["cashier", "Cashier", false],
+      ["crms-manager", "CRMS Manager", false],
+    ] as const) {
+      stores.users.set(username, {
+        id: username, username, roleName, isDeleted, email: `${username}@example.test`,
+        neonAuthUserId: username, mustChangePassword: false,
+      });
+    }
+    stores.roles.set("POS Manager", { id: "role-pos-manager", isAdministrator: false });
+    stores.roles.set("Cashier", { id: "role-cashier", isAdministrator: false });
+    stores.roles.set("CRMS Manager", { id: "role-crms-manager", isAdministrator: false });
+    stores.systems.set("POS", "system-pos");
+    stores.modules.set("system-pos:Location/Branch Management", "old-location");
+    stores.accessGrants.add("manager-holding:old-location");
+    const admin = {
+      username: "2026-ADMIN-001", firstName: "Test", lastName: "Admin",
+      email: "admin@example.test", password: "not-a-real-password",
+    };
+
+    await seedPortal(stores.portal, stores.auth, admin);
+    const once = [...stores.accessGrants].sort();
+    await seedPortal(stores.portal, stores.auth, admin);
+
+    expect(stores.accessGrants.has("manager-lacking:old-location")).toBe(true);
+    expect(stores.accessGrants.has("manager-holding:old-location")).toBe(true);
+    for (const username of ["manager-deleted", "cashier", "crms-manager"]) {
+      expect([...stores.accessGrants].some((grant) => grant.startsWith(`${username}:`))).toBe(false);
+    }
+    expect([...stores.accessGrants].sort()).toEqual(once);
   });
 
   it("registers CRMS at its real origin with exact callbacks and trusts no placeholder System", () => {
