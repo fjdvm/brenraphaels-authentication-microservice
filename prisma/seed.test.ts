@@ -255,6 +255,7 @@ describe("seedPortal", () => {
     expect(stores.accessGrants.has("staff:old-location")).toBe(true);
     expect(stores.accessTemplates.has("manager:old-location")).toBe(true);
     expect(stores.accessGrants.has("portal-user:old-location")).toBe(true);
+    expect(stores.accessTemplates.has(`${stores.roles.get("Super Admin")!.id}:old-location`)).toBe(true);
     expect(afterFirst).toHaveLength(7);
     expect([...stores.modules.keys()].filter((key) => key.startsWith("system-pos:"))).toEqual(afterFirst);
   });
