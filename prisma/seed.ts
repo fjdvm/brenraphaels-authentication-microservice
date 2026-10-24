@@ -10,6 +10,8 @@ import {
   SEED_MODULE_FORMER_NAMES,
   SEED_ROLES,
   SEED_ROLE_FORMER_NAMES,
+  POS_LOCATION_MANAGEMENT_MODULE,
+  POS_MANAGER_ROLE_NAME,
   SEED_SYSTEMS,
   SUPER_ADMIN_ROLE_NAME,
   type SeedSystem,
@@ -36,6 +38,7 @@ export type SeedPortalStore = {
   upsertUser(user: Omit<SeedSuperAdmin, "password"> & { roleId: string; neonAuthUserId: string; mustChangePassword: boolean }): Promise<SeededRecord>;
   upsertAccessGrant(userId: string, moduleId: string): Promise<void>;
   findAdministratorUsers(): Promise<SeededRecord[]>;
+  findUsersByRole(roleName: string): Promise<SeededRecord[]>;
   setUsernameSequence(year: number, lastNumber: number): Promise<void>;
 };
 
@@ -75,6 +78,7 @@ export async function seedPortal(
 
   const modules: SeededRecord[] = [];
   const imsModules: SeededRecord[] = [];
+  let posLocationManagement: SeededRecord | undefined;
   for (const system of SEED_SYSTEMS) {
     const seededSystem = await portal.upsertSystem(system);
 
@@ -86,6 +90,9 @@ export async function seedPortal(
       );
       modules.push(seededModule);
       if (system.name === "IMS") imsModules.push(seededModule);
+      if (system.name === "POS" && moduleName === POS_LOCATION_MANAGEMENT_MODULE) {
+        posLocationManagement = seededModule;
+      }
     }
   }
 
@@ -122,6 +129,14 @@ export async function seedPortal(
   for (const administrator of await portal.findAdministratorUsers()) {
     for (const seededModule of imsModules) {
       await portal.upsertAccessGrant(administrator.id, seededModule.id);
+    }
+  }
+
+  // POS used to open Locations to Managers by Role; the Module keeps them in. Grants
+  // are only ever added, so an existing grant is left as it is.
+  if (posLocationManagement) {
+    for (const manager of await portal.findUsersByRole(POS_MANAGER_ROLE_NAME)) {
+      await portal.upsertAccessGrant(manager.id, posLocationManagement.id);
     }
   }
 
@@ -251,6 +266,12 @@ export function createPortalStore(prisma: PrismaClient): SeedPortalStore {
     async findAdministratorUsers() {
       return prisma.user.findMany({
         where: { isDeleted: false, role: { isAdministrator: true } },
+        select: { id: true },
+      });
+    },
+    async findUsersByRole(roleName) {
+      return prisma.user.findMany({
+        where: { isDeleted: false, role: { name: roleName } },
         select: { id: true },
       });
     },

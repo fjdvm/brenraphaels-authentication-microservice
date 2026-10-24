@@ -133,3 +133,6 @@ export const SEED_ROLE_FORMER_NAMES: Readonly<Record<string, string>> = {
 export const SUPER_ADMIN_ROLE_NAME = "Super Admin" satisfies (typeof SEED_ROLES)[number];
 
 export const ADMINISTRATOR_ROLE_NAMES: readonly string[] = [SUPER_ADMIN_ROLE_NAME, "CEO"];
+
+export const POS_MANAGER_ROLE_NAME = "POS Manager";
+export const POS_LOCATION_MANAGEMENT_MODULE = "Location Management";
