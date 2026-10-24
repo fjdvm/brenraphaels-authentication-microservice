@@ -211,7 +211,7 @@ describe("seedPortal", () => {
     expect([...stores.accessGrants].some((grant) => grant.startsWith("staff:") || grant.startsWith("deleted-admin:"))).toBe(false);
   });
 
-  it("registers POS at its real origin with exact callbacks and seeds its six Modules in POS's sidebar order", () => {
+  it("registers POS at its real origin with exact callbacks and seeds its seven Modules in POS's sidebar order", () => {
     const pos = SEED_SYSTEMS.find((system) => system.name === "POS");
 
     expect(pos?.url).toBe("https://web-pos-alpha-vert.vercel.app");
@@ -226,11 +226,38 @@ describe("seedPortal", () => {
       "Product Management",
       "Stock Management",
       "Sales Reports",
+      "Location Management",
     ]);
     expect(SEED_MODULE_FORMER_NAMES.POS).toEqual({
       "Product Management": "Product Management/Price Configuration",
       "Sales Reports": "Sales Report Analytics",
+      "Location Management": "Location/Branch Management",
     });
+  });
+
+  it("renames POS's Location/Branch Management in place, keeping its id and grants, and gives Super Admin the Module", async () => {
+    const stores = createStores();
+    stores.systems.set("POS", "system-pos");
+    stores.modules.set("system-pos:Location/Branch Management", "old-location");
+    stores.accessGrants.add("staff:old-location");
+    stores.accessTemplates.add("manager:old-location");
+    const admin = {
+      username: "2026-ADMIN-001", firstName: "Test", lastName: "Admin",
+      email: "admin@example.test", password: "not-a-real-password",
+    };
+
+    await seedPortal(stores.portal, stores.auth, admin);
+    const afterFirst = [...stores.modules.keys()].filter((key) => key.startsWith("system-pos:"));
+    await seedPortal(stores.portal, stores.auth, admin);
+
+    expect(stores.modules.has("system-pos:Location/Branch Management")).toBe(false);
+    expect(stores.modules.get("system-pos:Location Management")).toBe("old-location");
+    expect(stores.accessGrants.has("staff:old-location")).toBe(true);
+    expect(stores.accessTemplates.has("manager:old-location")).toBe(true);
+    expect(stores.accessGrants.has("portal-user:old-location")).toBe(true);
+    expect(stores.accessTemplates.has(`${stores.roles.get("Super Admin")!.id}:old-location`)).toBe(true);
+    expect(afterFirst).toHaveLength(7);
+    expect([...stores.modules.keys()].filter((key) => key.startsWith("system-pos:"))).toEqual(afterFirst);
   });
 
   it("registers CRMS at its real origin with exact callbacks and trusts no placeholder System", () => {

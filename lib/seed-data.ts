@@ -68,6 +68,7 @@ export const SEED_SYSTEMS: SeedSystem[] = [
       "Product Management",
       "Stock Management",
       "Sales Reports",
+      "Location Management",
     ],
   },
   {
@@ -115,6 +116,7 @@ export const SEED_MODULE_FORMER_NAMES: Readonly<
   POS: {
     "Product Management": "Product Management/Price Configuration",
     "Sales Reports": "Sales Report Analytics",
+    "Location Management": "Location/Branch Management",
   },
   IMS: {
     Inventory: "Inventory Module",
