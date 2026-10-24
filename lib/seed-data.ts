@@ -11,7 +11,6 @@ export type SeedSystem = {
   modules: string[];
 };
 
-// POS retains a placeholder URL pending real deployment.
 export const SEED_SYSTEMS: SeedSystem[] = [
   {
     name: "CRMS",
@@ -55,7 +54,11 @@ export const SEED_SYSTEMS: SeedSystem[] = [
   },
   {
     name: "POS",
-    url: "https://br-pos.jude-nitram08.workers.dev", // placeholder, pending real deployment
+    url: "https://web-pos-alpha-vert.vercel.app",
+    callbackUrls: [
+      "https://web-pos-alpha-vert.vercel.app/api/portal/callback",
+      "https://localhost:3002/api/portal/callback",
+    ],
     iconName: "store",
     description: "Sales, orders, products, branches and stock at the point of sale.",
     modules: [
