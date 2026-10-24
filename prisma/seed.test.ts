@@ -7,7 +7,7 @@ import {
 } from "./seed";
 
 import { mergeCallbackUrls } from "../lib/integrations/callbacks";
-import { SEED_ROLES, SEED_SYSTEMS } from "../lib/seed-data";
+import { SEED_MODULE_FORMER_NAMES, SEED_ROLES, SEED_SYSTEMS } from "../lib/seed-data";
 
 type StoredUser = {
   id: string;
@@ -211,7 +211,7 @@ describe("seedPortal", () => {
     expect([...stores.accessGrants].some((grant) => grant.startsWith("staff:") || grant.startsWith("deleted-admin:"))).toBe(false);
   });
 
-  it("registers POS at its real origin with exact callbacks and leaves its Modules unchanged", () => {
+  it("registers POS at its real origin with exact callbacks and seeds its six Modules in POS's sidebar order", () => {
     const pos = SEED_SYSTEMS.find((system) => system.name === "POS");
 
     expect(pos?.url).toBe("https://web-pos-alpha-vert.vercel.app");
@@ -223,11 +223,14 @@ describe("seedPortal", () => {
       "Dashboard",
       "Sales Processing",
       "Order Management",
-      "Product Management/Price Configuration",
-      "Sales Report Analytics",
-      "Location/Branch Management",
+      "Product Management",
       "Stock Management",
+      "Sales Reports",
     ]);
+    expect(SEED_MODULE_FORMER_NAMES.POS).toEqual({
+      "Product Management": "Product Management/Price Configuration",
+      "Sales Reports": "Sales Report Analytics",
+    });
   });
 
   it("registers CRMS at its real origin with exact callbacks and trusts no placeholder System", () => {

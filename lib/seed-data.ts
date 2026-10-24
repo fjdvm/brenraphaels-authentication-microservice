@@ -65,10 +65,9 @@ export const SEED_SYSTEMS: SeedSystem[] = [
       "Dashboard",
       "Sales Processing",
       "Order Management",
-      "Product Management/Price Configuration",
-      "Sales Report Analytics",
-      "Location/Branch Management",
+      "Product Management",
       "Stock Management",
+      "Sales Reports",
     ],
   },
   {
@@ -113,6 +112,10 @@ export const SEED_MODULE_FORMER_NAMES: Readonly<
 > = {
   CRMS: { Marketing: "Campaigns" },
   HRMS: { Attendance: "Attendance Biometrics" },
+  POS: {
+    "Product Management": "Product Management/Price Configuration",
+    "Sales Reports": "Sales Report Analytics",
+  },
   IMS: {
     Inventory: "Inventory Module",
     "Production & Quality": "Production and Quality",
