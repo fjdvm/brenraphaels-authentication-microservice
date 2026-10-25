@@ -12,7 +12,21 @@ export type ManagedUser = {
   /** Whether the User's Role confers administrative authority (Super Admin or CEO). */
   isAdministrator: boolean;
   status: UserStatus;
+  /** Whether the User has yet to sign in; a restored User returns to Awaiting first login. */
+  mustChangePassword: boolean;
 };
+
+/** A Delete or Restore the Administrator has asked for, to show before the server confirms it. */
+export type LifecycleChange = { userId: string; to: "deleted" | "restored" };
+
+export function applyLifecycleChange(users: ManagedUser[], { userId, to }: LifecycleChange): ManagedUser[] {
+  return users.map((user) => {
+    if (user.id !== userId) return user;
+    if (to === "deleted") return { ...user, status: "Deleted" };
+
+    return { ...user, status: user.mustChangePassword ? "Awaiting first login" : "Active" };
+  });
+}
 
 export type UserSummary = { total: number; active: number; superAdmins: number; deleted: number };
 

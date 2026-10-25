@@ -11,6 +11,7 @@ const user = (username: string, overrides: Partial<Parameters<typeof filterUsers
   roleName: "Staff / Employee",
   isAdministrator: false,
   status: "Active" as const,
+  mustChangePassword: false,
   ...overrides,
 });
 

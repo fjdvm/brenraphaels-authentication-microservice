@@ -40,5 +40,6 @@ export async function listUsers(): Promise<ManagedUser[]> {
     roleName: user.role.name,
     isAdministrator: user.role.isAdministrator,
     status: getUserStatus(user),
+    mustChangePassword: user.mustChangePassword,
   }));
 }
