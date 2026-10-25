@@ -1,13 +1,23 @@
+import { Suspense, type ReactNode } from "react";
 import { connection } from "next/server";
 
 import { AdminShell } from "@/components/layout/admin-shell";
 import { PortalShell } from "@/components/layout/portal-shell";
+import { ShellSkeleton } from "@/components/layout/shell-skeleton";
 import { requirePortalUser, toShellUser } from "@/lib/auth/session";
 
 // One shell for every signed-in page, so moving between them keeps the sidebar and header
 // in place and only the page below swaps. Each page still guards itself: layouts don't
 // re-render on client navigation.
-export default async function ProtectedLayout({ children }: LayoutProps<"/">) {
+export default function ProtectedLayout({ children }: LayoutProps<"/">) {
+  return (
+    <Suspense fallback={<ShellSkeleton />}>
+      <Shell>{children}</Shell>
+    </Suspense>
+  );
+}
+
+async function Shell({ children }: { children: ReactNode }) {
   await connection();
   const user = await requirePortalUser({ allowMustChangePassword: true });
 

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 
 import type { Metadata } from "next";
 import { Geist_Mono, Inter } from "next/font/google";
+import { PageSkeleton } from "@/components/layout/shell-skeleton";
 import "./globals.css";
 
 const inter = Inter({
@@ -26,7 +27,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <Suspense fallback={<p role="status" className="p-6 text-sm">Loading portal…</p>}>
+        <Suspense fallback={<PageSkeleton />}>
           {children}
         </Suspense>
       </body>
