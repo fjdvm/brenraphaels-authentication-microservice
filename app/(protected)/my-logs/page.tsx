@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 
 import { loadMyLogsAction } from "@/actions/my-logs";
+import { MyLogsHeading } from "@/components/admin/page-headings";
 import { SystemLogsView } from "@/components/admin/system-logs-view";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { PortalShell } from "@/components/layout/portal-shell";
@@ -28,14 +29,7 @@ export default async function MyLogsPage() {
   const content = (
     <main className="flex w-full flex-1 flex-col gap-5 px-6 py-7 md:px-8">
       <SystemLogsView
-        heading={
-          <>
-            <h1 className="text-2xl font-semibold text-foreground">Activity log</h1>
-            <p className="text-sm text-on-surface-variant">
-              Your own sign-ins and actions, in the Portal and every System. Times are shown in Philippine time (UTC+8).
-            </p>
-          </>
-        }
+        heading={<MyLogsHeading />}
         initial={initial}
         options={null}
         defaultRange={defaultRange}
