@@ -46,7 +46,10 @@ function renderDirectory(overrides: { remove?: Action; restore?: Action } = {}) 
     restore: overrides.restore ?? vi.fn<Action>(async () => ({ error: null })),
   };
 
-  render(<UserDirectory actions={actions} signedInUserId="u1" users={[admin, staff, newcomer, deleted, deletedNewcomer]} />);
+  const view = (users: ManagedUser[]) => <UserDirectory actions={actions} signedInUserId="u1" users={users} />;
+  const { rerender } = render(view([admin, staff, newcomer, deleted, deletedNewcomer]));
+
+  return { showConfirmed: (users: ManagedUser[]) => rerender(view(users)) };
 }
 
 const row = (username: string) => screen.getByRole("row", { name: new RegExp(username) });
@@ -74,6 +77,20 @@ describe("Deleting a User", () => {
     expect(within(row("2026-FM-003")).getByRole("button", { name: "Restore 2026-FM-003" })).toBeTruthy();
     expect(summary("Deleted")).toBe("3");
     expect(summary("Active")).toBe("2");
+  });
+
+  it("keeps the User Deleted, with no alert, once the server confirms and the list refreshes", async () => {
+    const { action, settle } = hangingAction();
+    const { showConfirmed } = renderDirectory({ remove: action });
+
+    await confirmDelete("2026-FM-003");
+    await act(async () => {
+      settle({ error: null });
+      showConfirmed([admin, { ...staff, status: "Deleted" }, newcomer, deleted, deletedNewcomer]);
+    });
+
+    expect(within(row("2026-FM-003")).getByText("Deleted")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("rolls the User back and says why when the server refuses", async () => {

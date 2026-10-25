@@ -206,7 +206,7 @@ export function UserDirectory({ users: confirmedUsers, signedInUserId, actions }
                       {isDeleted ? (
                         <UserLifecycleButton
                           mode="restore"
-                          onConfirm={(userId) => change("live", userId)}
+                          onConfirm={(userId) => change("restored", userId)}
                           name={`${user.firstName} ${user.lastName}`}
                           userId={user.id}
                           username={user.username}

@@ -17,7 +17,7 @@ export type ManagedUser = {
 };
 
 /** A Delete or Restore the Administrator has asked for, to show before the server confirms it. */
-export type LifecycleChange = { userId: string; to: "deleted" | "live" };
+export type LifecycleChange = { userId: string; to: "deleted" | "restored" };
 
 export function applyLifecycleChange(users: ManagedUser[], { userId, to }: LifecycleChange): ManagedUser[] {
   return users.map((user) => {
