@@ -69,7 +69,9 @@ const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ?
 
 /** Figma "Portal · Add new user": User information, System access and the action bar. */
 export function CreateUserForm({ action, roles, systems }: CreateUserFormProps) {
-  const [state, formAction, isPending] = useActionState(action, initialCreateUserFormState);
+  const [settled, formAction, isPending] = useActionState(action, initialCreateUserFormState);
+  // An earlier result is not shown while the next submission is waiting on the server.
+  const state = isPending ? initialCreateUserFormState : settled;
   // Controlled, so a failed submission never wipes what the Administrator entered.
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");

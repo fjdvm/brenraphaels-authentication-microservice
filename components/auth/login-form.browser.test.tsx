@@ -53,4 +53,20 @@ describe("LoginForm signing-in card", () => {
     expect((await screen.findByRole("alert")).textContent).toBe("Invalid credentials");
     await waitFor(() => expect(screen.queryByRole("status", { name: /signing you in/i })).toBeNull());
   });
+
+  it("hides the earlier error while the next attempt is being checked", async () => {
+    loginAction.mockResolvedValueOnce({ error: "Invalid credentials" });
+    render(<LoginForm passwordWasReset={false} />);
+    await submitCredentials();
+    expect((await screen.findByRole("alert")).textContent).toBe("Invalid credentials");
+
+    holdSignIn();
+    // The form clears the password after an attempt, so it is typed again.
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText("Password"), "another-password");
+    await user.click(screen.getByRole("button", { name: /log in/i }));
+
+    await screen.findByRole("status", { name: /signing you in/i });
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
 });

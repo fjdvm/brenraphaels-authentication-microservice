@@ -20,7 +20,7 @@ import {
 const initialState: FormState = { error: null };
 
 export function ForgotPasswordForm() {
-  const [state, formAction] = useActionState(forgotPasswordAction, initialState);
+  const [state, formAction, isPending] = useActionState(forgotPasswordAction, initialState);
   // Kept in state so the sent screen can name the address after the form action resets the form.
   const [email, setEmail] = useState("");
 
@@ -48,7 +48,7 @@ export function ForgotPasswordForm() {
             value={email}
           />
         </AuthField>
-        {state.error ? <FormAlert tone="error">{state.error}</FormAlert> : null}
+        {state.error && !isPending ? <FormAlert tone="error">{state.error}</FormAlert> : null}
         <SubmitButton label="Send reset link" pendingLabel="Sending…" />
       </div>
       <BackToLogIn />
