@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("server-only", () => ({}));
+vi.mock("next/cache", () => ({ cacheLife: vi.fn(), cacheTag: vi.fn() }));
 
 vi.mock("@/lib/db/prisma", () => ({
   prisma: { user: { findMany: mocks.findMany } },

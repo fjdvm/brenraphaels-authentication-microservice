@@ -4,10 +4,11 @@ const mocks = vi.hoisted(() => ({
   requireAdministrator: vi.fn(),
   resendCredentials: vi.fn(),
   revalidatePath: vi.fn(),
+  revalidateTag: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
-vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
+vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath, revalidateTag: mocks.revalidateTag }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("@/lib/auth/session", () => ({ requireAdministrator: mocks.requireAdministrator }));
 vi.mock("@/lib/admin/credential-resend", () => ({ resendCredentials: mocks.resendCredentials }));

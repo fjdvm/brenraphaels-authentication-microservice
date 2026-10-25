@@ -1,5 +1,9 @@
 import "server-only";
 
+import { cacheLife, cacheTag } from "next/cache";
+
+import { PORTAL_READS_TAG } from "@/lib/cache/portal-reads";
+
 import { prisma } from "@/lib/db/prisma";
 
 import type { ManagedUser, UserStatus } from "./user-directory";
@@ -17,6 +21,10 @@ function getUserStatus(user: {
 
 /** Returns every User retained by the portal, including Deleted Users. */
 export async function listUsers(): Promise<ManagedUser[]> {
+  "use cache: remote";
+  cacheLife({ stale: 0, revalidate: 150, expire: 180 });
+  cacheTag(PORTAL_READS_TAG);
+
   const users = await prisma.user.findMany({
     select: {
       id: true,

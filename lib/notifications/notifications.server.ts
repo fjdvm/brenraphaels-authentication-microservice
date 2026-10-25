@@ -1,5 +1,6 @@
 import "server-only";
 
+import { invalidatePortalReads } from "@/lib/cache/portal-reads";
 import { getPortalUser } from "@/lib/auth/session";
 
 import { createNotificationsClient, createNotifier, type NotificationsClient } from "./notifications";
@@ -17,7 +18,23 @@ const client: NotificationsClient = createNotificationsClient({
 
 export const notificationsDeps = {
   resolveUser: getPortalUser,
-  client,
+  client: {
+    ...client,
+    async markRead(userId: string, notificationId: string) {
+      try {
+        await client.markRead(userId, notificationId);
+      } finally {
+        invalidatePortalReads();
+      }
+    },
+    async markAllRead(userId: string) {
+      try {
+        await client.markAllRead(userId);
+      } finally {
+        invalidatePortalReads();
+      }
+    },
+  },
 };
 
 /** Sends to a User's Portal inbox on a best-effort basis; a failure never reaches the caller. */
