@@ -31,7 +31,7 @@ export function LoginForm({
   passwordWasReset,
   ...returnRequest
 }: { passwordWasReset: boolean } & ReturnRequestProps) {
-  const [state, formAction] = useActionState(loginAction, initialState);
+  const [state, formAction, isPending] = useActionState(loginAction, initialState);
   const [username, setUsername] = useState("");
 
   return (
@@ -68,7 +68,7 @@ export function LoginForm({
           label="Password"
           name="password"
         />
-        {state.error ? <FormAlert tone="error">{state.error}</FormAlert> : null}
+        {state.error && !isPending ? <FormAlert tone="error">{state.error}</FormAlert> : null}
         <SubmitButton label="Log in" pendingLabel="Logging in…" />
       </div>
       <Link className={authLinkClass} href="/forgot-password">

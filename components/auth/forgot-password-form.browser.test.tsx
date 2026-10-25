@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -39,5 +39,18 @@ describe("ForgotPasswordForm", () => {
     expect((await screen.findByRole("alert")).textContent).toBe("Enter a valid email.");
     expect(screen.getByRole("heading", { name: "Forgot your password?" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Check your email" })).toBeNull();
+  });
+
+  it("shows a spinner and does not claim the link was sent until the server answers", async () => {
+    let settle: (state: { error: string | null; message?: string }) => void = () => {};
+    forgotPasswordAction.mockReturnValue(new Promise((resolve) => (settle = resolve)));
+
+    await requestLink("someone@company.com");
+
+    expect((await screen.findByRole("button", { name: /sending/i })).hasAttribute("disabled")).toBe(true);
+    expect(screen.queryByRole("heading", { name: "Check your email" })).toBeNull();
+
+    await act(async () => settle({ error: null, message: "sent" }));
+    expect(await screen.findByRole("heading", { name: "Check your email" })).toBeTruthy();
   });
 });

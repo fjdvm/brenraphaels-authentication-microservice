@@ -27,7 +27,7 @@ type ResetPasswordFormProps = {
 
 // Figma has no frame for the reset link's destination; it follows Forgot password.
 export function ResetPasswordForm({ token, email, signature }: ResetPasswordFormProps) {
-  const [state, formAction] = useActionState(resetPasswordAction, initialState);
+  const [state, formAction, isPending] = useActionState(resetPasswordAction, initialState);
 
   return (
     <form action={formAction} className={authFormClass}>
@@ -53,7 +53,7 @@ export function ResetPasswordForm({ token, email, signature }: ResetPasswordForm
           minLength={MIN_PASSWORD_LENGTH}
           name="confirmation"
         />
-        {state.error ? (
+        {state.error && !isPending ? (
           <FormAlert tone="error">
             {state.error}{" "}
             <Link className={authLinkClass} href="/forgot-password">

@@ -37,10 +37,14 @@ const USER_MANAGEMENT = "/admin/users";
  */
 export function EditUserAccessForm({ action, user, roles, systems }: EditUserAccessFormProps) {
   const router = useRouter();
-  const [state, formAction, isPending] = useActionState(action, initialEditUserAccessFormState);
+  const [settled, formAction, isPending] = useActionState(action, initialEditUserAccessFormState);
+  // An earlier result is not shown while the next save is waiting on the server.
+  const state = isPending ? initialEditUserAccessFormState : settled;
   const [roleId, setRoleId] = useState(user.roleId);
   // Changing the Role deliberately leaves the checkboxes alone: only grants decide access.
   const [moduleIds, setModuleIds] = useState(user.activeModuleIds);
+  // "Access saved." describes the last submission, so it goes once the Administrator edits again.
+  const [editedSinceSave, setEditedSinceSave] = useState(false);
   const { fieldErrors } = state;
   const savedRoleName = roles.find((role) => role.id === user.roleId)?.name;
 
@@ -53,6 +57,7 @@ export function EditUserAccessForm({ action, user, roles, systems }: EditUserAcc
   function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
+    setEditedSinceSave(false);
     startTransition(() => formAction(formData));
   }
 
@@ -88,7 +93,7 @@ export function EditUserAccessForm({ action, user, roles, systems }: EditUserAcc
                   {state.error}
                 </p>
               ) : null}
-              {state.saved ? (
+              {state.saved && !editedSinceSave ? (
                 <p className="rounded-lg bg-badge-success px-4 py-3 text-sm text-badge-success-foreground" role="status">
                   Access saved.
                 </p>
@@ -105,7 +110,10 @@ export function EditUserAccessForm({ action, user, roles, systems }: EditUserAcc
                     className="w-60 appearance-none rounded-lg border border-input bg-surface py-2 pr-9 pl-3 text-sm leading-[normal] text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive"
                     id="roleId"
                     name="roleId"
-                    onChange={(event) => setRoleId(event.target.value)}
+                    onChange={(event) => {
+                      setRoleId(event.target.value);
+                      setEditedSinceSave(true);
+                    }}
                     value={roleId}
                   >
                     {roles.map((role) => (
@@ -134,7 +142,11 @@ export function EditUserAccessForm({ action, user, roles, systems }: EditUserAcc
                   {fieldErrors.moduleIds}
                 </p>
               ) : null}
-              <ModuleAccessMatrix density="dialog" setSelected={setModuleIds} selected={moduleIds} systems={systems} />
+              <ModuleAccessMatrix density="dialog" setSelected={(next) => {
+                  setModuleIds(next);
+                  setEditedSinceSave(true);
+                }}
+                selected={moduleIds} systems={systems} />
             </DialogBody>
             <DialogFooter>
               {cancelButton}

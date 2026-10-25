@@ -20,7 +20,7 @@ const initialState: FormState = { error: null };
 
 // Figma has no Change password frame; it follows the Log in frame.
 export function ChangePasswordForm(returnRequest: ReturnRequestProps) {
-  const [state, formAction] = useActionState(changePasswordAction, initialState);
+  const [state, formAction, isPending] = useActionState(changePasswordAction, initialState);
 
   return (
     <form action={formAction} className={authFormClass}>
@@ -50,7 +50,7 @@ export function ChangePasswordForm(returnRequest: ReturnRequestProps) {
           minLength={MIN_PASSWORD_LENGTH}
           name="confirmation"
         />
-        {state.error ? <FormAlert tone="error">{state.error}</FormAlert> : null}
+        {state.error && !isPending ? <FormAlert tone="error">{state.error}</FormAlert> : null}
         <SubmitButton label="Change password" pendingLabel="Saving…" />
       </div>
     </form>

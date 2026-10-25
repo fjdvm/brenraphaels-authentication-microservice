@@ -112,6 +112,26 @@ describe("Create user form", () => {
     expect((systemGroup("POS").getByRole("checkbox", { name: "Sales Processing" }) as HTMLInputElement).checked).toBe(true);
   });
 
+  it("shows a spinner at once and hides the previous error while a retry is pending", async () => {
+    const user = userEvent.setup();
+    const action = vi.fn<(previous: CreateUserFormState, data: FormData) => Promise<CreateUserFormState>>();
+    let finish: (state: CreateUserFormState) => void = () => {};
+    action
+      .mockResolvedValueOnce({ error: "Check the highlighted fields and try again.", fieldErrors: {} })
+      .mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+    render(<CreateUserForm action={action} roles={roles} systems={systems} />);
+
+    await user.click(screen.getByRole("button", { name: /create user/i }));
+    expect((await screen.findByRole("alert")).textContent).toContain("Check the highlighted fields");
+    await user.click(screen.getByRole("button", { name: /create user/i }));
+
+    expect((screen.getByRole("button", { name: /creating/i }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByText(/check the highlighted fields/i)).toBeNull();
+
+    finish({ error: "The email could not be sent.", fieldErrors: {} });
+    expect((await screen.findByRole("alert")).textContent).toContain("could not be sent");
+  });
+
   it("counts each System's ticked Modules and marks a partial Select all", async () => {
     const user = userEvent.setup();
     renderForm();

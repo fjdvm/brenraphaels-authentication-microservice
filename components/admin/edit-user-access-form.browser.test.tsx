@@ -95,6 +95,58 @@ describe("Edit user access form", () => {
     expect((await screen.findByRole("status")).textContent).toContain("Access saved");
   });
 
+  it("shows a spinner at once and no earlier result while a second save is pending", async () => {
+    const person = userEvent.setup();
+    const saved: EditUserAccessFormState = { error: null, saved: true, fieldErrors: {} };
+    const action = vi.fn<(previous: EditUserAccessFormState, data: FormData) => Promise<EditUserAccessFormState>>();
+    let finish: (state: EditUserAccessFormState) => void = () => {};
+    action.mockResolvedValueOnce(saved).mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+    render(<EditUserAccessForm action={action} roles={roles} systems={systems} user={user} />);
+
+    await person.click(screen.getByRole("button", { name: /save access/i }));
+    expect((await screen.findByRole("status")).textContent).toContain("Access saved");
+
+    await person.click(box("CRMS", "Dashboard"));
+    await person.click(screen.getByRole("button", { name: /save access/i }));
+
+    expect((screen.getByRole("button", { name: /saving/i }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByRole("status")).toBeNull();
+
+    finish({ error: null, saved: true, fieldErrors: {} });
+    expect((await screen.findByRole("status")).textContent).toContain("Access saved");
+  });
+
+  it("does not show the previous error while a retry is pending", async () => {
+    const person = userEvent.setup();
+    const failed: EditUserAccessFormState = { error: "The changes were not saved.", saved: false, fieldErrors: {} };
+    const action = vi.fn<(previous: EditUserAccessFormState, data: FormData) => Promise<EditUserAccessFormState>>();
+    let finish: (state: EditUserAccessFormState) => void = () => {};
+    action.mockResolvedValueOnce(failed).mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+    render(<EditUserAccessForm action={action} roles={roles} systems={systems} user={user} />);
+
+    await person.click(screen.getByRole("button", { name: /save access/i }));
+    expect((await screen.findByRole("alert")).textContent).toContain("not saved");
+    await person.click(screen.getByRole("button", { name: /save access/i }));
+
+    expect(screen.getByRole("button", { name: /saving/i })).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    finish({ error: null, saved: true, fieldErrors: {} });
+    expect((await screen.findByRole("status")).textContent).toContain("Access saved");
+  });
+
+  it("stops saying Access saved once the Administrator edits again", async () => {
+    const person = userEvent.setup();
+    renderForm();
+
+    await person.click(screen.getByRole("button", { name: /save access/i }));
+    expect((await screen.findByRole("status")).textContent).toContain("Access saved");
+
+    await person.click(box("CRMS", "Dashboard"));
+
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
   it("shows the User's current grants grouped by System with Select all", () => {
     renderForm();
 
