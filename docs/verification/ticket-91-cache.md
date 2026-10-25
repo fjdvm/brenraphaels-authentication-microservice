@@ -78,3 +78,12 @@ PASS compiled Next: warm Module 200 → revoked 403; retained Module 200 → rev
 This exercises real Next compilation/caching and the real database adapter;
 it complements the faster Vitest checks, where cache directives are not compiled.
 It does not measure Vercel cache hit rates or deployment latency.
+
+## Existing migration status
+
+The migration-status check found `20261021000000_remove_system_log` pending on
+production. It drops `SystemLogEvent` and `SystemLogOutcome`, including the old
+local audit history, with no backfill. This predates #91 and is not required for
+its cache changes. It was applied successfully on the disposable branch and the
+compiled-runtime check passed again afterwards. It remains unapplied on
+production; a production rollout of that destructive cleanup is outside #91.
