@@ -76,7 +76,13 @@ export async function recordAuditEvent(event: AuditEventInput): Promise<void> {
   } finally {
     // Also expires Users and templates on authentication/administrative writes,
     // even if delivery to the audit service failed.
-    invalidatePortalReads();
+    try {
+      invalidatePortalReads();
+    } catch (error) {
+      // Scripts have no Next.js request/cache context. Audit delivery stays
+      // best effort there too; invalidation must never prevent authentication.
+      console.error("Could not expire Portal display reads after audit write", error);
+    }
   }
 }
 

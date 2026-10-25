@@ -55,3 +55,26 @@ used for the baseline:
 No live timings are claimed by the unit suite. Regression tests exercise revoked
 sessions at the session guard and repeated Module/session validation through the
 production Prisma adapter, with the database/provider boundaries simulated.
+
+## Compiled-runtime regression evidence
+
+Run `npm run build`, then
+`SEED_TEST_DATABASE_URL=<disposable-branch-url> npm run test:access-cache`.
+The script launches the compiled Next production server against that branch,
+creates isolated fixtures, sends repeated identical HTTP validation requests,
+revokes the Module directly in the branch without cache invalidation, and checks
+that access is denied immediately. It also checks a retained Module and central
+session revocation. Fixtures are removed and the server is stopped afterwards.
+The branch must already have the repo's migrations and Neon Auth schema.
+
+Passed on 2026-10-25 against the isolated Neon branch
+`ticket-91-cache-verification` (`br-polished-glitter-b3zm1tne`), configured to expire
+on 2026-10-26. Output:
+
+```text
+PASS compiled Next: warm Module 200 → revoked 403; retained Module 200 → revoked session 401; all no-store
+```
+
+This exercises real Next compilation/caching and the real database adapter;
+it complements the faster Vitest checks, where cache directives are not compiled.
+It does not measure Vercel cache hit rates or deployment latency.
