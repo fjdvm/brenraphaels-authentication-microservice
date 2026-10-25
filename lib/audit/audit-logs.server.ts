@@ -2,9 +2,11 @@ import "server-only";
 
 import { isIP } from "node:net";
 
+import { cacheLife, cacheTag } from "next/cache";
 import { headers } from "next/headers";
 
 import { getPortalUser } from "@/lib/auth/session";
+import { invalidatePortalReads, PORTAL_READS_TAG } from "@/lib/cache/portal-reads";
 import { prisma } from "@/lib/db/prisma";
 
 import {
@@ -14,6 +16,7 @@ import {
   exportSystemLogs,
   readSystemLogOptions,
   readSystemLogs,
+  type AuditClient,
   type AuditExport,
   type AuditExportFilters,
   type AuditFilterOptions,
@@ -68,20 +71,44 @@ async function requestContext(): Promise<RequestContext> {
 
 /** The audit-writing port. Never throws and never blocks a flow beyond a short timeout and one retry. */
 export async function recordAuditEvent(event: AuditEventInput): Promise<void> {
-  await client.record(event, await requestContext());
+  try {
+    await client.record(event, await requestContext());
+  } finally {
+    // Also expires Users and templates on authentication/administrative writes,
+    // even if delivery to the audit service failed.
+    invalidatePortalReads();
+  }
 }
 
+// Cache the service data below the live viewer checks, including the Actor in
+// My Logs' cache key. Dates retain their type through RSC cache serialization.
+async function cachedLogPage(query: Parameters<AuditClient["listPage"]>[0]): Promise<AuditLogPage> {
+  "use cache: remote";
+  cacheLife({ stale: 0, revalidate: 15, expire: 30 });
+  cacheTag(PORTAL_READS_TAG);
+  return client.listPage(query);
+}
+
+async function cachedLogOptions(): Promise<AuditFilterOptions> {
+  "use cache: remote";
+  cacheLife({ stale: 0, revalidate: 15, expire: 30 });
+  cacheTag(PORTAL_READS_TAG);
+  return client.filterOptions();
+}
+
+const displayClient: AuditClient = { ...client, listPage: cachedLogPage, filterOptions: cachedLogOptions };
+
 export async function listSystemLogEvents(filters: AuditLogFilters): Promise<AuditLogPage> {
-  return readSystemLogs(client, await getPortalUser(), filters);
+  return readSystemLogs(displayClient, await getPortalUser(), filters);
 }
 
 export async function listSystemLogOptions(): Promise<AuditFilterOptions> {
-  return readSystemLogOptions(client, await getPortalUser());
+  return readSystemLogOptions(displayClient, await getPortalUser());
 }
 
 /** My Logs: the signed-in User's own events. The Actor is the session's User, never a request value. */
 export async function listMyLogEvents(filters: AuditLogFilters): Promise<AuditLogPage> {
-  return readMyLogs(client, await getPortalUser(), filters);
+  return readMyLogs(displayClient, await getPortalUser(), filters);
 }
 
 

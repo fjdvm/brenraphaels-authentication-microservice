@@ -71,6 +71,17 @@ describe("requirePortalUser", () => {
     });
   });
 
+  it("rejects a revoked central session even while the browser's cached identity remains valid", async () => {
+    mocks.getSession.mockImplementation(async (options) =>
+      options?.query?.disableCookieCache === "true"
+        ? { data: null }
+        : { data: { user: { id: "neon-user" } } },
+    );
+    const { requirePortalUser } = await import("./session");
+
+    await expect(requirePortalUser()).rejects.toThrow("redirect:/login");
+  });
+
   it("allows an awaiting User onto the change-password route", async () => {
     mocks.findUnique.mockResolvedValue({ ...activeUser, mustChangePassword: true });
     const { requirePortalUser } = await import("./session");

@@ -3,8 +3,6 @@ import { ChangePasswordForm } from "@/components/auth/change-password-form";
 import { requirePasswordChangeUser } from "@/lib/auth/session";
 import { viewReturnIntent } from "@/lib/integrations/return-intent";
 
-export const dynamic = "force-dynamic";
-
 export default async function ChangePasswordPage({
   searchParams,
 }: {
