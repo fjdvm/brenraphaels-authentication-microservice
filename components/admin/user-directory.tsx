@@ -9,9 +9,12 @@ import { UserLifecycleButton } from "@/components/admin/user-lifecycle-button";
 import { UserAvatar } from "@/components/layout/user-identity";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useOptimisticUpdate } from "@/hooks/use-optimistic-update";
 import {
+  applyLifecycleChange,
   filterUsers,
   summarizeUsers,
+  type LifecycleChange,
   type ManagedUser,
   type UserStatus,
   type UserTab,
@@ -44,7 +47,8 @@ const panel = "rounded-xl border border-panel-border bg-surface";
 const field = "flex items-center gap-2 rounded-lg border border-input bg-surface px-3 py-[9px] text-sm leading-[normal]";
 
 /** Figma "Portal · User management": summary, filters and the Users table. */
-export function UserDirectory({ users, signedInUserId, actions }: Props) {
+export function UserDirectory({ users: confirmedUsers, signedInUserId, actions }: Props) {
+  const { value: users, refusal, run } = useOptimisticUpdate(confirmedUsers, applyLifecycleChange);
   const [tab, setTab] = useState<UserTab>("all");
   const [query, setQuery] = useState("");
   const [role, setRole] = useState("");
@@ -53,6 +57,16 @@ export function UserDirectory({ users, signedInUserId, actions }: Props) {
 
   const summary = summarizeUsers(users);
   const shown = filterUsers(users, { tab, query, role });
+  const refusedUser = refusal && users.find((user) => user.id === refusal.change.userId);
+
+  function change(to: LifecycleChange["to"], userId: string) {
+    const action = to === "deleted" ? actions.remove : actions.restore;
+    const data = new FormData();
+    data.set("userId", userId);
+
+    run({ userId, to }, () => action({ error: null }, data));
+  }
+
   const roles = [...new Set(users.map((user) => user.roleName))].sort((a, b) => a.localeCompare(b));
 
   const stats = [
@@ -78,6 +92,13 @@ export function UserDirectory({ users, signedInUserId, actions }: Props) {
           </li>
         ))}
       </ul>
+
+      {refusal ? (
+        <p className="rounded-lg bg-badge-danger px-4 py-3 text-sm text-badge-danger-foreground" role="alert">
+          {refusal.change.to === "deleted" ? "Could not delete" : "Could not restore"}{" "}
+          {refusedUser ? refusedUser.username : "the user"}: {refusal.reason}
+        </p>
+      ) : null}
 
       <div className="flex min-h-25 flex-wrap items-center gap-3">
         <div aria-label="Filter by status" className="flex gap-1" role="tablist">
@@ -184,8 +205,8 @@ export function UserDirectory({ users, signedInUserId, actions }: Props) {
                       </Button>
                       {isDeleted ? (
                         <UserLifecycleButton
-                          action={actions.restore}
                           mode="restore"
+                          onConfirm={(userId) => change("live", userId)}
                           name={`${user.firstName} ${user.lastName}`}
                           userId={user.id}
                           username={user.username}
@@ -195,8 +216,8 @@ export function UserDirectory({ users, signedInUserId, actions }: Props) {
                       )}
                       {canDelete ? (
                         <UserLifecycleButton
-                          action={actions.remove}
                           mode="delete"
+                          onConfirm={(userId) => change("deleted", userId)}
                           name={`${user.firstName} ${user.lastName}`}
                           userId={user.id}
                           username={user.username}

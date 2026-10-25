@@ -15,6 +15,7 @@ const user = (overrides: Partial<ManagedUser> & Pick<ManagedUser, "id" | "userna
   roleName: "Staff / Employee",
   isAdministrator: false,
   status: "Active",
+  mustChangePassword: false,
   ...overrides,
 });
 
