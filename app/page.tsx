@@ -9,8 +9,6 @@ import { listAccessibleSystems, listSystemNames } from "@/lib/portal/accessible-
 import { greetingFor } from "@/lib/portal/greeting";
 import { formatSignInTime } from "@/lib/portal/sign-in-time";
 
-export const dynamic = "force-dynamic";
-
 function accessSummary(count: number) {
   if (count === 0) return "You don't have access to any systems yet.";
   return count === 1 ? "You have access to 1 system. Open it below." : `You have access to ${count} systems. Open one below.`;

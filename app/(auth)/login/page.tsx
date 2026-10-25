@@ -5,8 +5,6 @@ import { LoginForm } from "@/components/auth/login-form";
 import { getPortalUser } from "@/lib/auth/session";
 import { viewReturnIntent, withReturnIntent } from "@/lib/integrations/return-intent";
 
-export const dynamic = "force-dynamic";
-
 export default async function LoginPage({
   searchParams,
 }: {

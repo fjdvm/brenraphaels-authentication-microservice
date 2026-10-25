@@ -10,7 +10,8 @@
     "db:seed": "prisma db seed",
     "system:register": "tsx scripts/register-system.ts",
     "system:simulate": "tsx reference/system-consumer/server.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:access-cache": "tsx scripts/verify-access-cache.ts"
   },
   "dependencies": {
     "@neondatabase/auth": "^0.5.0-beta",

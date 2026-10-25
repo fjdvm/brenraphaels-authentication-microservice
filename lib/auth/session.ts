@@ -25,7 +25,8 @@ export type PortalUser = {
  * authority only when its current isAdministrator flag is set.
  */
 export const getPortalUser = cache(async (): Promise<PortalUser | null> => {
-  const { data: session } = await auth.getSession();
+  // A signed session_data cookie can outlive revocation at the provider.
+  const { data: session } = await auth.getSession({ query: { disableCookieCache: "true" } });
 
   if (!session?.user) {
     return null;

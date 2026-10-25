@@ -1,5 +1,9 @@
 import "server-only";
 
+import { cacheLife, cacheTag } from "next/cache";
+
+import { PORTAL_READS_TAG } from "@/lib/cache/portal-reads";
+
 import { prisma } from "@/lib/db/prisma";
 
 import type { SelectableSystem } from "./module-selection";
@@ -17,6 +21,10 @@ export type UserFormOptions = {
 };
 
 export async function loadUserFormOptions(): Promise<UserFormOptions> {
+  "use cache: remote";
+  cacheLife({ stale: 0, revalidate: 150, expire: 180 });
+  cacheTag(PORTAL_READS_TAG);
+
   const [roles, systems] = await Promise.all([
     prisma.role.findMany({
       select: { id: true, name: true, accessTemplates: { select: { moduleId: true } } },
