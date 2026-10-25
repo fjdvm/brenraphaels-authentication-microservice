@@ -3,16 +3,18 @@ import { connection } from "next/server";
 import { loadMyLogsAction } from "@/actions/my-logs";
 import { MyLogsHeading } from "@/components/admin/page-headings";
 import { SystemLogsView } from "@/components/admin/system-logs-view";
+import { AdminShell } from "@/components/layout/admin-shell";
+import { PortalShell } from "@/components/layout/portal-shell";
 import { listMyLogEvents } from "@/lib/audit/audit-logs.server";
 import { dayRangeBounds, defaultDayRange, type SystemLogsResult } from "@/lib/audit/system-logs-query";
-import { requirePortalUser } from "@/lib/auth/session";
+import { requirePortalUser, toShellUser } from "@/lib/auth/session";
 
 // My Logs: every User's own activity, across every Source. Built from the System logs
 // design without the User column, Export, or the System, Action and Outcome filters
 // (Spec#51; Figma has no frame for it).
 export default async function MyLogsPage() {
   await connection();
-  await requirePortalUser();
+  const user = await requirePortalUser();
 
   const defaultRange = defaultDayRange();
 
@@ -24,7 +26,7 @@ export default async function MyLogsPage() {
     },
   );
 
-  return (
+  const content = (
     <main className="flex w-full flex-1 flex-col gap-5 px-6 py-7 md:px-8">
       <SystemLogsView
         heading={<MyLogsHeading />}
@@ -35,5 +37,11 @@ export default async function MyLogsPage() {
         scope="mine"
       />
     </main>
+  );
+
+  return user.isAdministrator ? (
+    <AdminShell user={toShellUser(user)}>{content}</AdminShell>
+  ) : (
+    <PortalShell user={user}>{content}</PortalShell>
   );
 }
