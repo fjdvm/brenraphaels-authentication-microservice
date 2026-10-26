@@ -333,7 +333,7 @@ describe("listing events", () => {
       outcome: "SUCCESS",
       description: "Ada Min signed in.",
     });
-    expect(page.entries[1]).toMatchObject({ system: "CRMS", action: "record.created", outcome: "FAILURE" });
+    expect(page.entries[1]).toMatchObject({ system: "CRMS", action: "Created record", outcome: "FAILURE" });
   });
 
   it("sends each filter and the cursor to the service, and only those set", async () => {
@@ -403,7 +403,7 @@ describe("filter options", () => {
       { value: "Authentication", label: "Portal" },
     ]);
     expect(options.actions).toEqual([
-      { value: "record.created", label: "record.created", systems: ["CRMS"] },
+      { value: "record.created", label: "Created record", systems: ["CRMS"] },
       { value: "user.login", label: "Signed in", systems: ["Authentication"] },
       { value: "user.login_failed", label: "Failed sign-in", systems: ["Authentication"] },
       { value: "audit_log.exported", label: "Exported System logs", systems: ["Authentication"] },
@@ -413,7 +413,7 @@ describe("filter options", () => {
   });
 
   it("labels CRMS Staff actions readably, in the dropdown and on rows", async () => {
-    const crms = ["order.confirmed", "order.delivery_fee_quoted", "return.refunded", "ticket.priority_changed", "walk_in_customer.created", "customer_profile.viewed", "feedback.analysis_run", "crms.signed_in", "crms.access_denied"];
+    const crms = ["record.created", "record.updated", "record.deleted", "record.viewed", "order.confirmed", "order.delivery_fee_quoted", "return.refunded", "ticket.priority_changed", "walk_in_customer.created", "customer_profile.viewed", "feedback.analysis_run", "crms.signed_in", "crms.access_denied"];
     const { client: audit } = client(({ url }) =>
       url.pathname === "/events/valid-values"
         ? Response.json({ sources: [{ source: "CRMS", modules: [], actions: crms }] })
@@ -423,7 +423,7 @@ describe("filter options", () => {
     const labels = (await audit.filterOptions()).actions.map((action) => action.label);
     const page = await audit.listPage({ limit: 25 });
 
-    expect(labels).toEqual(["Confirmed Order", "Quoted Delivery fee", "Refunded Return", "Changed Ticket Priority", "Added Walk-in Customer", "Opened Customer Profile", "Ran Feedback analysis", "Signed in to CREOMS", "Refused a CREOMS Module"]);
+    expect(labels).toEqual(["Created record", "Updated record", "Deleted record", "Viewed record", "Confirmed Order", "Quoted Delivery fee", "Refunded Return", "Changed Ticket Priority", "Added Walk-in Customer", "Opened Customer Profile", "Ran Feedback analysis", "Signed in to CREOMS", "Refused a CREOMS Module"]);
     expect(page.entries[0].action).toBe("Confirmed Order");
   });
 
@@ -728,5 +728,42 @@ describe("reading My Logs", () => {
 
     await expect(readMyLogs(audit, { id: "staff" }, {})).resolves.toEqual({ entries: [], nextCursor: null });
     expect(calls).toHaveLength(1);
+  });
+});
+
+
+describe("CREOMS Marketing and Feedback logs (#262)", () => {
+  it.each([
+    ["Marketing", "record.created", "Created record", 'Sam Staff saved the Draft "Ube restock".'],
+    ["Feedback", "feedback.analysis_run", "Ran Feedback analysis", "Sam Staff ran Feedback analysis."],
+  ])("reads %s events with readable detail and scopes My Logs to the session Actor", async (module, action, label, description) => {
+    const { calls, client: audit } = client(({ url }) => {
+      // Model the service's Actor filter with the same event across both screens.
+      const actorId = url.searchParams.get("actor_id");
+      return Response.json({
+        events: actorId && actorId !== "staff" ? [] : [{
+          id: "fresh-event", source: "CRMS", module, action, outcome: "success",
+          actor: { type: "user", id: "staff", display_name: people.staff },
+          description, occurred_at: "2026-10-27T00:00:00Z",
+        }],
+        next_cursor: null,
+      });
+    });
+
+    const system = await readSystemLogs(audit, { isAdministrator: true }, { source: "CRMS", module });
+    expect(Object.fromEntries(calls[0].url.searchParams)).toMatchObject({ source: "CRMS", module });
+    expect(system.entries).toEqual([expect.objectContaining({
+      id: "fresh-event", system: "CRMS", action: label, actor: people.staff, description, outcome: "SUCCESS",
+    })]);
+    expect((await readMyLogs(audit, { id: "staff" }, {})).entries).toEqual(system.entries);
+    expect((await readMyLogs(audit, { id: "another-user" }, {})).entries).toEqual([]);
+    expect(calls.slice(1).map(({ url }) => Object.fromEntries(url.searchParams))).toEqual([
+      { limit: String(SYSTEM_LOG_PAGE_SIZE), actor_type: "user", actor_id: "staff" },
+      { limit: String(SYSTEM_LOG_PAGE_SIZE), actor_type: "user", actor_id: "another-user" },
+    ]);
+
+    const before = calls.length;
+    await expect(readSystemLogs(audit, { isAdministrator: false }, { source: "CRMS", module })).rejects.toThrow("Administrators only");
+    expect(calls).toHaveLength(before);
   });
 });

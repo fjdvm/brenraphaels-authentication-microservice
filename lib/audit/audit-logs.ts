@@ -164,6 +164,10 @@ const ACTION_LABELS: Record<string, string> = {
   ...Object.fromEntries(Object.values(CATALOG).map(({ action, label }) => [action, label])),
   "user.login_failed": "Failed sign-in",
   "audit_log.exported": "Exported System logs",
+  "record.created": "Created record",
+  "record.updated": "Updated record",
+  "record.deleted": "Deleted record",
+  "record.viewed": "Viewed record",
   // CREOMS Staff actions, written by CREOMS under the CRMS Source.
   "order.delivery_fee_quoted": "Quoted Delivery fee",
   "order.confirmed": "Confirmed Order",

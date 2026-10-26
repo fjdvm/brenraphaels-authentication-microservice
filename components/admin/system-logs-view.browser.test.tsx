@@ -88,6 +88,28 @@ describe("SystemLogsView rows", () => {
     expect(within(rows[0]).getByRole("time").getAttribute("datetime")).toBe("2026-10-06T01:00:00.000Z");
   });
 
+  it.each(["all", "mine"] as const)("renders Announcement and Feedback events in %s logs", (scope) => {
+    render(<SystemLogsView
+      initial={ok([
+        entry({ id: "announcement", system: "CRMS", action: "Created record", actionValue: "record.created", actor: "Sam Staff", description: 'Sam Staff saved the Draft "Ube restock".' }),
+        entry({ id: "analysis", system: "CRMS", action: "Ran Feedback analysis", actionValue: "feedback.analysis_run", actor: "Sam Staff", outcome: "FAILURE", description: "Sam Staff could not run Feedback analysis." }),
+      ])}
+      options={options}
+      defaultRange={range}
+      load={vi.fn()}
+      scope={scope}
+    />);
+
+    const rows = screen.getAllByRole("row").slice(1);
+    expect(within(rows[0]).getByText("Created record")).toBeTruthy();
+    expect(within(rows[0]).getByText('Sam Staff saved the Draft "Ube restock".')).toBeTruthy();
+    expect(within(rows[0]).getByText("Success")).toBeTruthy();
+    expect(within(rows[1]).getByText("Ran Feedback analysis")).toBeTruthy();
+    expect(within(rows[1]).getByText("Sam Staff could not run Feedback analysis.")).toBeTruthy();
+    expect(within(rows[1]).getByText("Failed")).toBeTruthy();
+    if (scope === "all") expect(within(rows[0]).getByText("Sam Staff")).toBeTruthy();
+  });
+
   it("shows times in Philippine time, naming today and yesterday", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     // 7:30 AM on Oct 7 in Manila: the first event is yesterday there, though still Oct 6 in UTC.
