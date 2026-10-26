@@ -115,6 +115,7 @@ type Filters = {
   action: string;
   outcome: "" | "SUCCESS" | "FAILURE";
   source: string;
+  module: string;
 };
 
 type Paging = {
@@ -133,6 +134,7 @@ function toQuery(filters: Filters, cursor: string | null): AuditLogFilters {
     ...(filters.action ? { action: filters.action } : {}),
     ...(filters.outcome ? { outcome: filters.outcome } : {}),
     ...(filters.source ? { source: filters.source } : {}),
+    ...(filters.module ? { module: filters.module } : {}),
     ...(cursor ? { cursor } : {}),
   };
 }
@@ -187,7 +189,7 @@ export function SystemLogsView({
   const personal = scope === "mine";
   const showActor = !personal;
   const canExport = canExportProp && !personal;
-  const [filters, setFilters] = useState<Filters>({ q: "", ...defaultRange, action: "", outcome: "", source: "" });
+  const [filters, setFilters] = useState<Filters>({ q: "", ...defaultRange, action: "", outcome: "", source: "", module: "" });
   const [search, setSearch] = useState("");
   const [paging, setPaging] = useState<Paging>({ ...FIRST_PAGE, sizes: [initial.status === "ok" ? initial.entries.length : 0] });
   const [result, setResult] = useState<SystemLogsResult | null>(initial);
@@ -228,6 +230,12 @@ export function SystemLogsView({
       if (next.source && action && !action.systems.includes(next.source)) next.action = "";
     }
 
+    // Likewise a Module belongs to certain Systems.
+    if (change.source !== undefined && next.module && options) {
+      const known = options.modules.find((m) => m.value === next.module);
+      if (next.source && known && !known.systems.includes(next.source)) next.module = "";
+    }
+
     setFilters(next);
     setExportProblem(null);
 
@@ -257,6 +265,7 @@ export function SystemLogsView({
   }
 
   const actionOptions = options?.actions.filter((a) => !filters.source || a.systems.includes(filters.source)) ?? [];
+  const moduleOptions = options?.modules.filter((m) => !filters.source || m.systems.includes(filters.source)) ?? [];
   const loading = result === null;
   const nextCursor = result?.status === "ok" ? result.nextCursor : null;
   const start = paging.sizes.slice(0, paging.index).reduce((sum, n) => sum + n, 0) + 1;
@@ -381,7 +390,14 @@ export function SystemLogsView({
                 </option>
               ))}
             </FilterSelect>
-
+            <FilterSelect label="Module" value={filters.module} onChange={(module) => refilter({ module })}>
+              <option value="">All modules</option>
+              {moduleOptions.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.value}
+                </option>
+              ))}
+            </FilterSelect>
           </>
         )}
 

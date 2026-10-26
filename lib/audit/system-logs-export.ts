@@ -34,7 +34,7 @@ export async function handleSystemLogsExport(deps: Deps, url: URL): Promise<Resp
   }
 
   // Any cursor is ignored: an export covers every page of the shown filters.
-  const { q, from, to, action, outcome, source } = parseSystemLogFilters(Object.fromEntries(url.searchParams));
+  const { q, from, to, action, outcome, source, module } = parseSystemLogFilters(Object.fromEntries(url.searchParams));
 
   if (!from || !to) {
     return json("Choose a From and To date to export", 400);
@@ -42,7 +42,7 @@ export async function handleSystemLogsExport(deps: Deps, url: URL): Promise<Resp
 
   let result: AuditExport;
   try {
-    result = await deps.exportCsv({ q, from, to, action, outcome, source });
+    result = await deps.exportCsv({ q, from, to, action, outcome, source, module });
   } catch (error) {
     console.error("Failed to export System Logs", error);
 
