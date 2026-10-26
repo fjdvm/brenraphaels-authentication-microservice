@@ -37,6 +37,8 @@ export type AuditLogFilters = {
   outcome?: AuditOutcome;
   /** The service's Source value, for example "Authentication". */
   source?: string;
+  /** The service's Module value, for example "Marketing". */
+  module?: string;
   /** The `nextCursor` of the previous page, with the same filters. */
   cursor?: string | null;
 };
@@ -52,6 +54,8 @@ export type AuditFilterOptions = {
   systems: { value: string; label: string }[];
   /** `systems` lists the Sources that can write the action. */
   actions: { value: string; label: string; systems: string[] }[];
+  /** `systems` lists the Sources that use the Module. */
+  modules: { value: string; systems: string[] }[];
 };
 
 /** Who performed an event, as the service stores it. Portal Users are `{ type: "user", id: User id }`. */
@@ -209,6 +213,7 @@ function filterParams(filters: AuditLogFilters, params = new URLSearchParams()):
   set("to", filters.to);
   set("action", filters.action);
   set("source", filters.source);
+  set("module", filters.module);
   set("outcome", filters.outcome?.toLowerCase());
   set("cursor", filters.cursor);
 
@@ -397,10 +402,18 @@ export function createAuditClient(config: ClientConfig): AuditClient {
         throw new Error(`Audit-logs service answered ${response.status}`);
       }
 
-      const { sources } = (await response.json()) as { sources: { source: string; actions: string[] }[] };
+      const { sources } = (await response.json()) as { sources: { source: string; modules?: string[]; actions: string[] }[] };
       const actions = new Map<string, { value: string; label: string; systems: string[] }>();
+      const modules = new Map<string, { value: string; systems: string[] }>();
 
-      for (const { source, actions: names } of sources) {
+      for (const { source, modules: moduleNames = [], actions: names } of sources) {
+        for (const value of moduleNames) {
+          const known = modules.get(value);
+
+          if (known) known.systems.push(source);
+          else modules.set(value, { value, systems: [source] });
+        }
+
         for (const value of names) {
           const known = actions.get(value);
 
@@ -415,6 +428,7 @@ export function createAuditClient(config: ClientConfig): AuditClient {
       return {
         systems: sources.map(({ source }) => ({ value: source, label: systemLabel(source) })),
         actions: [...actions.values()],
+        modules: [...modules.values()],
       };
     },
 

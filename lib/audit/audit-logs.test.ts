@@ -409,6 +409,7 @@ describe("filter options", () => {
       { value: "audit_log.exported", label: "Exported System logs", systems: ["Authentication"] },
       { value: "future.thing", label: "future.thing", systems: ["Authentication"] },
     ]);
+    expect(options.modules).toEqual([{ value: "Tickets", systems: ["CRMS"] }]);
   });
 
   it("labels CRMS Staff actions readably, in the dropdown and on rows", async () => {

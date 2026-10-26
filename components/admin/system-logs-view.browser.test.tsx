@@ -47,6 +47,10 @@ const options: AuditFilterOptions = {
     { value: "user.login", label: "Signed in", systems: ["Authentication"] },
     { value: "user.login_failed", label: "Failed sign-in", systems: ["Authentication"] },
   ],
+  modules: [
+    { value: "Marketing", systems: ["CRMS"] },
+    { value: "Feedback", systems: ["CRMS"] },
+  ],
 };
 
 const range = { from: "2026-10-15", to: "2026-10-21" };
@@ -163,6 +167,20 @@ describe("SystemLogsView filters", () => {
     await user.selectOptions(screen.getByLabelText("System"), "Authentication");
 
     expect(names()).toEqual(["All actions", "Signed in", "Failed sign-in"]);
+  });
+
+  it("filters CRMS events by Module, and drops it under a System that has none", async () => {
+    const { load, user } = setup();
+    const module = screen.getByLabelText("Module");
+
+    expect(within(module).getAllByRole("option").map((o) => o.textContent)).toEqual(["All modules", "Marketing", "Feedback"]);
+
+    await user.selectOptions(screen.getByLabelText("System"), "CRMS");
+    await user.selectOptions(module, "Marketing");
+    await waitFor(() => expect(load).toHaveBeenLastCalledWith(expect.objectContaining({ source: "CRMS", module: "Marketing" })));
+
+    await user.selectOptions(screen.getByLabelText("System"), "Authentication");
+    await waitFor(() => expect(load).toHaveBeenLastCalledWith(expect.not.objectContaining({ module: "Marketing" })));
   });
 
   it("narrows by each filter, and the filters combine", async () => {
