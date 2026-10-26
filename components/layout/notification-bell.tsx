@@ -233,6 +233,7 @@ export function NotificationBell({
                     />
                     <span className="min-w-0">
                       <span className={`block truncate text-sm text-foreground ${notification.read ? "" : "font-semibold"}`}>
+                        {notification.sendingApp === "CREOMS" ? <span className="mr-2 rounded bg-accent px-1 text-xs">CREOMS</span> : null}{" "}
                         {notification.title}
                       </span>
                       <span className="block text-xs text-on-surface-variant">
