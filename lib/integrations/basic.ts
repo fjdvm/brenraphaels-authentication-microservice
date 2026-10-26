@@ -14,4 +14,3 @@ export function parseBasicCredentials(header: string | null): { name: string; se
 
   return { name: decoded.slice(0, separator), secret: decoded.slice(separator + 1) };
 }
-
