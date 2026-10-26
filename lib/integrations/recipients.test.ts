@@ -3,7 +3,7 @@ import { handleRecipients } from "./recipients";
 import { hashToken } from "./tokens";
 
 it("authenticates the System before returning only its eligible Staff and Modules", async () => {
-  const list = vi.fn(async () => [{ id: "portal-user-id", modules: ["Orders"] }]);
+  const list = vi.fn(async () => [{ id: "portal-user-id", username: "ada.staff", modules: ["Orders"] }]);
   const ports = {
     findSystemByName: vi.fn(async () => ({ id: "crms-system", backendSecretHash: hashToken("secret") })),
     listEligibleStaff: list,
@@ -14,7 +14,7 @@ it("authenticates the System before returning only its eligible Staff and Module
   expect((await handleRecipients(request("wrong"), ports)).status).toBe(401);
   expect(list).not.toHaveBeenCalled();
   const response = await handleRecipients(request("secret"), ports);
-  expect(await response.json()).toEqual({ staff: [{ id: "portal-user-id", modules: ["Orders"] }] });
+  expect(await response.json()).toEqual({ staff: [{ id: "portal-user-id", username: "ada.staff", modules: ["Orders"] }] });
   expect(list).toHaveBeenCalledWith("crms-system");
   expect(response.headers.get("cache-control")).toBe("no-store");
 });

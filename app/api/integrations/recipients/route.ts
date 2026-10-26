@@ -8,9 +8,9 @@ export async function POST(request: Request): Promise<Response> {
     async listEligibleStaff(systemId) {
       const users = await prisma.user.findMany({
         where: { isDeleted: false, mustChangePassword: false, accessGrants: { some: { revokedAt: null, module: { systemId } } } },
-        select: { id: true, accessGrants: { where: { revokedAt: null, module: { systemId } }, select: { module: { select: { name: true } } } } },
+        select: { id: true, username: true, accessGrants: { where: { revokedAt: null, module: { systemId } }, select: { module: { select: { name: true } } } } },
       });
-      return users.map(user => ({ id: user.id, modules: [...new Set(user.accessGrants.map(grant => grant.module.name))] }));
+      return users.map(user => ({ id: user.id, username: user.username, modules: [...new Set(user.accessGrants.map(grant => grant.module.name))] }));
     },
   });
 }
