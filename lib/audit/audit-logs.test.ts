@@ -767,3 +767,75 @@ describe("CREOMS Marketing and Feedback logs (#262)", () => {
     expect(calls).toHaveLength(before);
   });
 });
+
+describe("Every CREOMS Audit Event reads well (#263)", () => {
+  // The action and Module vocabulary CREOMS writes, as the audit-logs CRMS catalog accepts it.
+  const creoms: [module: string, action: string, label: string][] = [
+    ["Orders", "order.delivery_fee_quoted", "Quoted Delivery fee"],
+    ["Orders", "order.confirmed", "Confirmed Order"],
+    ["Orders", "order.cancelled", "Cancelled Order"],
+    ["Payments", "order.marked_paid", "Marked Order paid"],
+    ["Fulfilment", "order.preparing", "Started preparing Order"],
+    ["Fulfilment", "order.dispatched", "Dispatched Order"],
+    ["Fulfilment", "order.delivered", "Delivered Order"],
+    ["Fulfilment", "order.delivery_photo_attached", "Attached Delivery photo"],
+    ["Returns", "return.approved", "Approved Return"],
+    ["Returns", "return.declined", "Declined Return"],
+    ["Returns", "return.goods_received", "Received Return goods"],
+    ["Returns", "return.refunded", "Refunded Return"],
+    ["Returns", "return.replaced", "Replaced Return"],
+    ["Tickets", "ticket.claimed", "Claimed Ticket"],
+    ["Tickets", "ticket.released", "Released Ticket"],
+    ["Tickets", "ticket.status_changed", "Changed Ticket status"],
+    ["Tickets", "ticket.priority_changed", "Changed Ticket Priority"],
+    ["Customer Profiles", "walk_in_customer.created", "Added Walk-in Customer"],
+    ["Customer Profiles", "walk_in_customer.updated", "Edited Walk-in Customer"],
+    ["Customer Profiles", "customer_profile.viewed", "Opened Customer Profile"],
+    ["Marketing", "record.created", "Created record"],
+    ["Feedback", "feedback.analysis_run", "Ran Feedback analysis"],
+    ["Orders", "crms.access_denied", "Refused a CREOMS Module"],
+  ];
+
+  it("labels each event's action and keeps it in the acting Staff member's My Logs only", async () => {
+    const { client: audit } = client(({ url }) => {
+      const actorId = url.searchParams.get("actor_id");
+      const module = url.searchParams.get("module");
+
+      return Response.json({
+        events: (actorId && actorId !== "staff" ? [] : creoms)
+          .filter(([m]) => !module || m === module)
+          .map(([m, action], index) => ({
+            id: String(index), source: "CRMS", module: m, action, outcome: "success",
+            actor: { type: "user", id: "staff", display_name: people.staff },
+            description: `${people.staff}: ${action}.`, occurred_at: "2026-10-27T00:00:00Z",
+          })),
+        next_cursor: null,
+      });
+    });
+
+    const system = await readSystemLogs(audit, { isAdministrator: true }, { source: "CRMS" });
+    expect(system.entries.map((entry) => [entry.actionValue, entry.action])).toEqual(creoms.map(([, action, label]) => [action, label]));
+    expect(system.entries.every((entry) => entry.actor === people.staff)).toBe(true);
+
+    const mine = await readMyLogs(audit, { id: "staff" }, {});
+    expect(mine.entries).toEqual(system.entries);
+    expect((await readMyLogs(audit, { id: "another-user" }, {})).entries).toEqual([]);
+
+    const returns = await readSystemLogs(audit, { isAdministrator: true }, { source: "CRMS", module: "Returns" });
+    expect(returns.entries).toHaveLength(5);
+  });
+
+  it("offers every CREOMS action and Module in the filters", async () => {
+    const modules = [...new Set(creoms.map(([module]) => module))];
+    const { client: audit } = client(() =>
+      Response.json({ sources: [{ source: "CRMS", modules, actions: creoms.map(([, action]) => action) }] }),
+    );
+
+    const options = await audit.filterOptions();
+
+    expect(options.modules).toEqual(modules.map((value) => ({ value, systems: ["CRMS"] })));
+    expect(options.actions.map(({ value, label }) => [value, label])).toEqual(
+      [...new Map(creoms.map(([, action, label]) => [action, label]))].map(([action, label]) => [action, label]),
+    );
+  });
+});
