@@ -411,6 +411,21 @@ describe("filter options", () => {
     ]);
   });
 
+  it("labels CRMS Staff actions readably, in the dropdown and on rows", async () => {
+    const crms = ["order.confirmed", "order.delivery_fee_quoted", "return.refunded", "ticket.priority_changed", "walk_in_customer.created", "customer_profile.viewed", "feedback.analysis_run", "crms.signed_in", "crms.access_denied"];
+    const { client: audit } = client(({ url }) =>
+      url.pathname === "/events/valid-values"
+        ? Response.json({ sources: [{ source: "CRMS", modules: [], actions: crms }] })
+        : Response.json({ events: [{ id: "1", source: "CRMS", action: "order.confirmed", outcome: "success", actor: { display_name: "Ada" }, target: { display_name: "Order 12" }, description: "Ada confirmed Order 12.", occurred_at: "2026-10-27T00:00:00Z" }], next_cursor: null }),
+    );
+
+    const labels = (await audit.filterOptions()).actions.map((action) => action.label);
+    const page = await audit.listPage({ limit: 25 });
+
+    expect(labels).toEqual(["Confirmed Order", "Quoted Delivery fee", "Refunded Return", "Changed Ticket Priority", "Added Walk-in Customer", "Opened Customer Profile", "Ran Feedback analysis", "Signed in to CREOMS", "Refused a CREOMS Module"]);
+    expect(page.entries[0].action).toBe("Confirmed Order");
+  });
+
   it("rejects when the service cannot be read", async () => {
     const { client: audit } = client(() => new Response("nope", { status: 500 }));
 
