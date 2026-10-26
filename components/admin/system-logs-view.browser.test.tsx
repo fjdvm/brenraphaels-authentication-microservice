@@ -193,12 +193,12 @@ describe("SystemLogsView filters", () => {
 
   it("filters CRMS events by Module, and drops it under a System that has none", async () => {
     const { load, user } = setup();
-    const module = screen.getByLabelText("Module");
+    const moduleFilter = screen.getByLabelText("Module");
 
-    expect(within(module).getAllByRole("option").map((o) => o.textContent)).toEqual(["All modules", "Marketing", "Feedback"]);
+    expect(within(moduleFilter).getAllByRole("option").map((o) => o.textContent)).toEqual(["All modules", "Marketing", "Feedback"]);
 
     await user.selectOptions(screen.getByLabelText("System"), "CRMS");
-    await user.selectOptions(module, "Marketing");
+    await user.selectOptions(moduleFilter, "Marketing");
     await waitFor(() => expect(load).toHaveBeenLastCalledWith(expect.objectContaining({ source: "CRMS", module: "Marketing" })));
 
     await user.selectOptions(screen.getByLabelText("System"), "Authentication");
