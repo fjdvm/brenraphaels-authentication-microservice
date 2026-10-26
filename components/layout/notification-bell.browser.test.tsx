@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { NotificationBell } from "./notification-bell";
 
-type Item = { id: string; title: string; link: string | null; createdAt: string; read: boolean };
+type Item = { sendingApp?: string; id: string; title: string; link: string | null; createdAt: string; read: boolean };
 
 const newest: Item = { id: "n2", title: "Your Role changed", link: null, createdAt: "2026-10-20T08:00:00.000Z", read: false };
 const older: Item = { id: "n1", title: "Your access changed", link: "https://crms.test/home", createdAt: "2026-10-19T08:00:00.000Z", read: true };
@@ -202,4 +202,16 @@ describe("NotificationBell", () => {
 
     expect(inboxCalls()).toBe(before);
   });
+});
+
+ it("badges a CREOMS copy and opens its matching page after marking it read", async () => {
+  inbox.notifications = [{ ...newest, title: "Jane placed Order #7", sendingApp: "CREOMS", link: "https://creoms.test/orders/7" }];
+  const navigate = vi.fn();
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+  render(<NotificationBell navigate={navigate} />);
+  await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+  await user.click(screen.getByRole("button", { name: "Notifications, 1 unread" }));
+  await user.click(screen.getByRole("button", { name: /CREOMS Jane placed/ }));
+  expect(fetchMock).toHaveBeenCalledWith("/api/notifications/n2/read", expect.objectContaining({ method: "POST" }));
+  expect(navigate).toHaveBeenCalledWith("https://creoms.test/orders/7");
 });

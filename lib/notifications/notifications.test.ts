@@ -53,6 +53,7 @@ describe("notifications client", () => {
       {
         id: stored.id,
         title: "Your access changed",
+        sendingApp: "Portal",
         link: null,
         createdAt: "2026-10-20T01:00:00.000Z",
         read: false,

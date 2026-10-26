@@ -2,6 +2,7 @@
 export type PortalNotification = {
   id: string;
   title: string;
+  sendingApp?: string;
   link: string | null;
   createdAt: string;
   read: boolean;
@@ -91,6 +92,7 @@ export function createNotificationsClient(config: ClientConfig): NotificationsCl
       return (body.notifications as Array<Record<string, unknown>>).map((row) => ({
         id: String(row.id),
         title: String(row.title),
+        sendingApp: typeof row.sendingApp === "string" ? row.sendingApp : undefined,
         link: typeof row.link === "string" ? row.link : null,
         createdAt: String(row.createdAt),
         read: row.readAt != null,
