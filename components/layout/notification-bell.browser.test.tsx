@@ -202,16 +202,52 @@ describe("NotificationBell", () => {
 
     expect(inboxCalls()).toBe(before);
   });
-});
 
- it("badges a CREOMS copy and opens its matching page after marking it read", async () => {
-  inbox.notifications = [{ ...newest, title: "Jane placed Order #7", sendingApp: "CREOMS", link: "https://creoms.test/orders/7" }];
-  const navigate = vi.fn();
-  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-  render(<NotificationBell navigate={navigate} />);
-  await act(async () => { await vi.advanceTimersByTimeAsync(0); });
-  await user.click(screen.getByRole("button", { name: "Notifications, 1 unread" }));
-  await user.click(screen.getByRole("button", { name: /CREOMS Jane placed/ }));
-  expect(fetchMock).toHaveBeenCalledWith("/api/notifications/n2/read", expect.objectContaining({ method: "POST" }));
-  expect(navigate).toHaveBeenCalledWith("https://creoms.test/orders/7");
+  describe("CREOMS copies", () => {
+    const copy: Item = {
+      ...newest,
+      title: "Jane placed Order #7",
+      sendingApp: "CREOMS",
+      link: "https://creoms.test/orders/7",
+    };
+
+    it("badges a CREOMS copy and no other notification", async () => {
+      inbox = { available: true, unread: 1, notifications: [copy, older] };
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      await renderBell();
+
+      await user.click(screen.getByRole("button", { name: "Notifications, 1 unread" }));
+
+      expect(screen.getAllByText("CREOMS")).toHaveLength(1);
+      expect(within(screen.getByRole("button", { name: /Jane placed/ })).getByText("CREOMS")).toBeTruthy();
+    });
+
+    it("marks a copy read, un-highlights it and opens the CREOMS page when clicked", async () => {
+      inbox = { available: true, unread: 1, notifications: [copy] };
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const { navigate } = await renderBell();
+
+      await user.click(screen.getByRole("button", { name: "Notifications, 1 unread" }));
+      expect(screen.getByTitle("Unread")).toBeTruthy();
+      await user.click(screen.getByRole("button", { name: /CREOMS Jane placed/ }));
+
+      expect(fetchMock).toHaveBeenCalledWith("/api/notifications/n2/read", expect.objectContaining({ method: "POST" }));
+      expect(screen.queryByTitle("Unread")).toBeNull();
+      expect(screen.getByRole("button", { name: "Notifications" }).textContent).toBe("");
+      expect(navigate).toHaveBeenCalledWith("https://creoms.test/orders/7");
+    });
+
+    it("drops the badge number when the alert is read in CREOMS", async () => {
+      inbox = { available: true, unread: 1, notifications: [copy] };
+      await renderBell();
+      expect(screen.getByRole("button", { name: "Notifications, 1 unread" })).toBeTruthy();
+
+      inbox = { available: true, unread: 0, notifications: [{ ...copy, read: true }] };
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000);
+      });
+
+      expect(screen.getByRole("button", { name: "Notifications" }).textContent).toBe("");
+    });
+  });
 });
