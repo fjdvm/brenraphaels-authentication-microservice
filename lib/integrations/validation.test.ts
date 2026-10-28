@@ -225,6 +225,7 @@ describe("live session and Module validation", () => {
       system: "CRMS",
       module: "Dashboard",
       staff: {
+        id: "user-1",
         name: "Ada Okafor",
         username: "ada.okafor",
         email: "ada@example.com",

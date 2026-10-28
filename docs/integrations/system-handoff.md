@@ -97,11 +97,13 @@ Content-Type: application/json
   "user_id": "…",
   "system": "CRMS",
   "module": "Customer Profiles",
-  "staff": { "name": "Ada Okafor", "username": "ada.okafor", "email": "ada@example.com", "role": "Customer Support" }
+  "staff": { "id": "…", "name": "Ada Okafor", "username": "ada.okafor", "email": "ada@example.com", "role": "Customer Support" }
 }
 ```
 
-`staff` is the User's current display details, so a System can show who is signed in. The Role is for display only; it never decides access.
+`staff.id` is the User's Portal user id, identical to the existing top-level `user_id`. Systems can use it to attribute audit events to the signed-in User. This is an additive field; callers that only read the existing profile fields keep working.
+
+`staff` also contains the User's current display details, so a System can show who is signed in. The Role is for display only; it never decides access.
 
 Anything else is a denial. Do not serve the request, and do not cache a `200` for later requests: the next request must validate again.
 
