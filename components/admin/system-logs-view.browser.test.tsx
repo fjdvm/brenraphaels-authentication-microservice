@@ -162,6 +162,29 @@ describe("SystemLogsView rows", () => {
 });
 
 describe("SystemLogsView filters", () => {
+  it("shows HRMS events and narrows the action filter to HRMS", async () => {
+    const load = vi.fn().mockResolvedValue(ok([]));
+    render(<SystemLogsView
+      initial={ok([entry({ system: "HRMS", action: "Published job posting", actor: "Ada Min", target: "Warehouse assistant", description: "" })])}
+      options={{
+        ...options,
+        systems: [...options.systems, { value: "HRMS", label: "HRMS" }],
+        actions: [...options.actions, { value: "job_posting.published", label: "Published job posting", systems: ["HRMS"] }],
+      }}
+      defaultRange={range}
+      load={load}
+    />);
+    const row = screen.getAllByRole("row")[1];
+    expect(within(row).getByText("Ada Min")).toBeTruthy();
+    expect(within(row).getByText("Warehouse assistant")).toBeTruthy();
+    expect(within(row).getByText("Published job posting")).toBeTruthy();
+
+    await userEvent.setup().selectOptions(screen.getByLabelText("System"), "HRMS");
+
+    expect(within(screen.getByLabelText("Action")).getAllByRole("option").map((o) => o.textContent)).toEqual(["All actions", "Published job posting"]);
+    await waitFor(() => expect(load).toHaveBeenLastCalledWith(expect.objectContaining({ source: "HRMS" })));
+  });
+
   it("starts on the last 7 days without asking the service again", () => {
     const { load } = setup();
 
