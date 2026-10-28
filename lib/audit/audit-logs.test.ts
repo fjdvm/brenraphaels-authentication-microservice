@@ -427,6 +427,38 @@ describe("filter options", () => {
     expect(page.entries[0].action).toBe("Confirmed Order");
   });
 
+  it("labels all eight HRMS actions and preserves the actor and target on rows", async () => {
+    const actions = [
+      "job_posting.created", "job_posting.updated", "job_posting.published",
+      "job_posting.closed", "job_posting.filled", "job_template.created",
+      "job_template.updated", "job_template.deleted",
+    ];
+    const { calls, client: audit } = client(({ url }) =>
+      url.pathname === "/events/valid-values"
+        ? Response.json({ sources: [{ source: "HRMS", actions }] })
+        : Response.json({ events: actions.map((action, index) => ({
+            id: String(index), source: "HRMS", action, outcome: "success",
+            actor: { display_name: "Ada Min" }, target: { display_name: "Warehouse assistant" },
+            occurred_at: "2026-10-28T00:00:00Z",
+          })), next_cursor: null }),
+    );
+
+    const options = await audit.filterOptions();
+    const page = await audit.listPage({ limit: 25, source: "HRMS", action: "job_posting.published" });
+    const labels = [
+      "Created job posting", "Updated job posting", "Published job posting",
+      "Closed job posting", "Filled job posting", "Created job template",
+      "Updated job template", "Deleted job template",
+    ];
+
+    expect(options.systems).toEqual([{ value: "HRMS", label: "HRMS" }]);
+    expect(options.actions).toEqual(actions.map((value, index) => ({ value, label: labels[index], systems: ["HRMS"] })));
+    expect(page.entries.map((entry) => entry.action)).toEqual(labels);
+    expect(page.entries[2]).toMatchObject({ system: "HRMS", actor: "Ada Min", target: "Warehouse assistant" });
+    expect(calls[1].url.searchParams.get("source")).toBe("HRMS");
+    expect(calls[1].url.searchParams.get("action")).toBe("job_posting.published");
+  });
+
   it("rejects when the service cannot be read", async () => {
     const { client: audit } = client(() => new Response("nope", { status: 500 }));
 

@@ -168,6 +168,15 @@ const ACTION_LABELS: Record<string, string> = {
   "record.updated": "Updated record",
   "record.deleted": "Deleted record",
   "record.viewed": "Viewed record",
+  // HRMS Recruitment and Hiring actions.
+  "job_posting.created": "Created job posting",
+  "job_posting.updated": "Updated job posting",
+  "job_posting.published": "Published job posting",
+  "job_posting.closed": "Closed job posting",
+  "job_posting.filled": "Filled job posting",
+  "job_template.created": "Created job template",
+  "job_template.updated": "Updated job template",
+  "job_template.deleted": "Deleted job template",
   // CREOMS Staff actions, written by CREOMS under the CRMS Source.
   "order.delivery_fee_quoted": "Quoted Delivery fee",
   "order.confirmed": "Confirmed Order",
