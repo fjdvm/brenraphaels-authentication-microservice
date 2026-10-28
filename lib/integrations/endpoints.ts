@@ -326,7 +326,7 @@ export async function handleValidate(
       user_id: result.userId,
       system: result.system,
       module: result.module,
-      staff: result.staff,
+      staff: { ...result.staff, id: result.userId },
     },
     { headers: NO_STORE },
   );
