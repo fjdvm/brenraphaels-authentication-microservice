@@ -19,7 +19,7 @@ def secret_name(key):
 manifest = {
     'location': 'indonesiacentral',
     'properties': {
-        'managedEnvironmentId': os.environ['CONTAINER_ENVIRONMENT_ID'],
+        'environmentId': os.environ['CONTAINER_ENVIRONMENT_ID'],
         'configuration': {
             'activeRevisionsMode': 'Single',
             'maxInactiveRevisions': 10,
