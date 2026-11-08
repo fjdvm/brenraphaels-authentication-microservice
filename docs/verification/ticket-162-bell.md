@@ -44,3 +44,9 @@ only the rendered page, for recipient isolation. The check now confirms receipt 
 the signed-in User's frame and absence of the other User's frame; re-review passed.
 
 Review summary: Standards 0 remaining findings; Spec 0 remaining findings.
+
+Final local validation: 519 tests passed, 21 skipped; TypeScript and changed-file
+ESLint checks passed. The final production image passed both HTTP and Chromium
+smoke checks, including idle silence, incoming-frame recipient isolation, and
+restart catch-up. Browser setup uses the cookie jar because a manually supplied
+Cookie header is replaced after middleware sets its session-data cookie.

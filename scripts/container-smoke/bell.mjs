@@ -5,8 +5,12 @@ const control = body => fetch('http://127.0.0.1:18080/control', { method: 'POST'
 const browser = await chromium.launch({ args: ['--host-resolver-rules=MAP gateway 127.0.0.1', '--no-proxy-server'] });
 try {
   const context = await browser.newContext();
-  // Send the provider fixture's session through the browser, just as the HTTP smoke does.
-  await context.setExtraHTTPHeaders({ Cookie: '__Secure-neon-auth.session_token=smoke-session' });
+  // Store a real session cookie; Chromium permits Secure cookies on loopback HTTP.
+  // An extra Cookie header is replaced once middleware populates the cookie jar.
+  await context.addCookies([{
+    name: '__Secure-neon-auth.session_token', value: 'smoke-session',
+    url: origin.replace('http:', 'https:'), secure: true, httpOnly: true, sameSite: 'Lax',
+  }]);
   const page = await context.newPage();
   const requests = [];
   page.on('request', req => requests.push(req.url()));
