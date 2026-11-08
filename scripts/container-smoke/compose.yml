@@ -1,0 +1,60 @@
+services:
+  postgres:
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    environment:
+      POSTGRES_USER: smoke
+      POSTGRES_PASSWORD: smoke
+      POSTGRES_DB: portal
+      # Match Neon's password challenge for the driver's pipelined connection.
+      POSTGRES_HOST_AUTH_METHOD: password
+    ports:
+      - "127.0.0.1::5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smoke -d portal"]
+      interval: 1s
+      timeout: 5s
+      retries: 30
+  wsproxy:
+    image: ghcr.io/neondatabase/wsproxy@sha256:7f2e2149aa6a57ba382a140102fba44f5053f3e44389ccc18adcecf896054efb
+    environment:
+      USE_HOST_HEADER: "true"
+      APPEND_PORT: ":5432"
+      ALLOW_ADDR_REGEX: "^postgres:5432$$"
+  db:
+    image: nginx:1.28-alpine@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ${SMOKE_CERT_DIR:?Run scripts/container-smoke/run.sh}:/certs:ro
+    depends_on:
+      - wsproxy
+  auth:
+    image: node:24-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9
+    command: ["node", "/fixture/auth.mjs"]
+    volumes:
+      - ./auth.mjs:/fixture/auth.mjs:ro
+  portal:
+    image: ${PORTAL_IMAGE:-portal:ticket142}
+    environment:
+      DATABASE_URL: postgresql://smoke:smoke@db:5432/portal?sslmode=disable
+      NEON_AUTH_BASE_URL: http://auth:8080
+      NEON_AUTH_COOKIE_SECRET: smoke-only-cookie-secret-at-least-32-characters
+      API_GATEWAY_URL: http://auth:8080
+      API_GATEWAY_KEY: smoke-caller
+      API_GATEWAY_AUDIT_READ_KEY: smoke-read-caller
+      SMTP_HOST: smtp.example.test
+      SMTP_PORT: "587"
+      SMTP_USER: smoke
+      SMTP_PASSWORD: smoke
+      EMAIL_FROM: smoke@example.test
+      NODE_EXTRA_CA_CERTS: /certs/cert.pem
+    ports:
+      - "127.0.0.1::3000"
+    volumes:
+      - ${SMOKE_CERT_DIR}:/certs:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      db:
+        condition: service_started
+      auth:
+        condition: service_started
