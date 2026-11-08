@@ -35,6 +35,7 @@ jobs:
           bytes=$(docker image inspect portal:ticket142 --format '{{.Size}}')
           echo "Portal image: $bytes bytes (limit 400 MiB)" | tee -a "$GITHUB_STEP_SUMMARY"
           test "$bytes" -lt 419430400
+      - run: npx playwright install --with-deps chromium
       - name: Smoke test against disposable PostgreSQL
         run: bash scripts/container-smoke/run.sh
 

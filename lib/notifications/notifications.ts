@@ -31,6 +31,7 @@ export type Notifier = (notification: OutgoingNotification) => Promise<void>;
 
 export type NotificationsClient = {
   send(notification: OutgoingNotification): Promise<void>;
+  liveUrl(userId: string): Promise<string>;
   list(userId: string): Promise<PortalNotification[]>;
   unreadCount(userId: string): Promise<number>;
   markRead(userId: string, notificationId: string): Promise<void>;
@@ -56,7 +57,7 @@ export function createNotificationsClient(config: ClientConfig): NotificationsCl
   const doFetch = config.fetch ?? fetch;
 
   async function call(path: string, init: { method: "GET" | "POST"; body?: unknown; query?: Record<string, string> }) {
-    const url = new URL(`${base}${path}`);
+    const url = new URL(path === "/live-tickets" ? `${config.baseUrl.replace(/\/+$/, "")}/live-tickets` : `${base}${path}`);
     for (const [key, value] of Object.entries(init.query ?? {})) {
       url.searchParams.set(key, value);
     }
@@ -80,6 +81,14 @@ export function createNotificationsClient(config: ClientConfig): NotificationsCl
   }
 
   return {
+    async liveUrl(userId) {
+      const { ticket } = await call("/live-tickets", { method: "POST", body: { userId } });
+      if (typeof ticket !== "string" || !ticket) throw new Error("Missing Live ticket");
+      const url = new URL(`${config.baseUrl.replace(/\/+$/, "")}/notifications/live`);
+      url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+      url.searchParams.set("ticket", ticket);
+      return url.toString();
+    },
     async send({ userId, ...message }) {
       await call("", {
         method: "POST",

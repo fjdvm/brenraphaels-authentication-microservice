@@ -47,3 +47,14 @@ export function handleMarkRead(notificationId: string, deps: Deps): Promise<Resp
 export function handleMarkAllRead(deps: Deps): Promise<Response> {
   return markRead(deps, (client, userId) => client.markAllRead(userId));
 }
+
+/** Ignores request-supplied identities: only the current session may obtain a pass. */
+export async function handleLive({ resolveUser, client }: Deps): Promise<Response> {
+  const user = await resolveUser();
+  if (!user) return json({ error: "Unauthorized" }, 401);
+  try {
+    return json({ url: await client.liveUrl(user.id) });
+  } catch {
+    return json({ error: "Notifications unavailable" }, 502);
+  }
+}
