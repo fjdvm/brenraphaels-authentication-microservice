@@ -30,7 +30,7 @@ try {
   const pass = await page.request.post(`${origin}/api/notifications/live?userId=victim`, { data: { userId: 'victim' } });
   assert.equal(pass.status(), 200);
   const { url } = await pass.json();
-  assert.ok(!JSON.stringify(await pass.allHeaders()).includes('smoke-caller'));
+  assert.ok(!JSON.stringify(pass.headers()).includes('smoke-caller'));
   const refused = await page.evaluate(url => new Promise(resolve => {
     const socket = new WebSocket(url + '&userId=victim');
     socket.onopen = () => { socket.close(); resolve(false); };
