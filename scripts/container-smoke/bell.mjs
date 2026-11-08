@@ -1,0 +1,51 @@
+import assert from 'node:assert/strict';
+import { chromium } from '@playwright/test';
+const origin = process.env.SMOKE_ORIGIN;
+const control = body => fetch('http://127.0.0.1:18080/control', { method: 'POST', body: JSON.stringify(body) });
+const browser = await chromium.launch({ args: ['--host-resolver-rules=MAP gateway 127.0.0.1', '--no-proxy-server'] });
+try {
+  const context = await browser.newContext();
+  // Send the provider fixture's session through the browser, just as the HTTP smoke does.
+  await context.setExtraHTTPHeaders({ Cookie: '__Secure-neon-auth.session_token=smoke-session' });
+  const page = await context.newPage();
+  const requests = [];
+  page.on('request', req => requests.push(req.url()));
+  let connections = 0;
+  page.on('websocket', () => connections++);
+  await page.goto(origin);
+  await page.getByRole('button', { name: 'Notifications', exact: true }).waitFor();
+  await page.waitForFunction(() => performance.getEntriesByType('resource').some(r => r.name.endsWith('/api/notifications')));
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  assert.equal(connections, 1, 'bell must open a WebSocket');
+  const idle = requests.length;
+  await new Promise(resolve => setTimeout(resolve, 6500));
+  assert.equal(requests.length, idle, 'idle tab must make no periodic HTTP requests');
+  await control({ notification: 'Live access changed' });
+  await page.getByRole('button', { name: 'Notifications, 1 unread', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Notifications, 1 unread', exact: true }).click();
+  await page.getByText('Live access changed', { exact: true }).waitFor();
+  await control({ notification: 'Another user only', userId: 'victim' });
+  await new Promise(resolve => setTimeout(resolve, 500));
+  assert.equal(await page.getByText('Another user only').count(), 0);
+  const pass = await page.request.post(`${origin}/api/notifications/live?userId=victim`, { data: { userId: 'victim' } });
+  assert.equal(pass.status(), 200);
+  const { url } = await pass.json();
+  assert.ok(!JSON.stringify(await pass.allHeaders()).includes('smoke-caller'));
+  const refused = await page.evaluate(url => new Promise(resolve => {
+    const socket = new WebSocket(url + '&userId=victim');
+    socket.onopen = () => { socket.close(); resolve(false); };
+    socket.onerror = () => resolve(true);
+  }), url);
+  assert.ok(refused, 'a session pass cannot open another User inbox');
+  await control({ restart: true });
+  await control({ notification: 'Missed during restart' });
+  await new Promise(resolve => setTimeout(resolve, 1600));
+  await control({ resume: true });
+  await page.getByRole('button', { name: 'Notifications, 2 unread', exact: true }).waitFor({ timeout: 40_000 });
+  await page.getByText('Missed during restart', { exact: true }).waitFor();
+  assert.ok(connections >= 2, 'bell reconnects after restart');
+  const anonymous = await browser.newContext();
+  const denied = await anonymous.request.post(`${origin}/api/notifications/live`, { maxRedirects: 0 });
+  assert.ok([401, 302, 307].includes(denied.status()));
+  console.log('Bell smoke passed: live delivery, idle silence, user isolation, restart and catch-up.');
+} finally { await browser.close(); }

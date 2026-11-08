@@ -25,3 +25,4 @@ DIRECT_URL="postgresql://smoke:smoke@${db_port}/portal?sslmode=disable" npx pris
 "${compose[@]}" up -d portal
 portal_port=$("${compose[@]}" port portal 3000)
 SMOKE_ORIGIN="http://${portal_port}" node scripts/container-smoke/check.mjs
+SMOKE_ORIGIN="http://${portal_port}" node scripts/container-smoke/bell.mjs

@@ -5,6 +5,7 @@ import type { NotificationsClient } from "./notifications";
 
 function setup(user: { id: string } | null = { id: "u1" }) {
   const client: NotificationsClient = {
+    liveUrl: vi.fn().mockResolvedValue("wss://gateway.test/notifications/live?ticket=pass"),
     send: vi.fn().mockResolvedValue(undefined),
     list: vi.fn().mockResolvedValue([
       { id: "n1", title: "Your access changed", link: null, createdAt: "2026-10-20T01:00:00.000Z", read: false },

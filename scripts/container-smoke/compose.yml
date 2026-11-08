@@ -32,13 +32,20 @@ services:
     command: ["node", "/fixture/auth.mjs"]
     volumes:
       - ./auth.mjs:/fixture/auth.mjs:ro
+  gateway:
+    image: node:24-bookworm-slim
+    command: ["node", "/fixture/gateway.mjs"]
+    volumes:
+      - ./gateway.mjs:/fixture/gateway.mjs:ro
+    ports:
+      - "127.0.0.1:18080:18080"
   portal:
     image: ${PORTAL_IMAGE:-portal:ticket142}
     environment:
       DATABASE_URL: postgresql://smoke:smoke@db:5432/portal?sslmode=disable
       NEON_AUTH_BASE_URL: http://auth:8080
       NEON_AUTH_COOKIE_SECRET: smoke-only-cookie-secret-at-least-32-characters
-      API_GATEWAY_URL: http://auth:8080
+      API_GATEWAY_URL: http://gateway:18080
       API_GATEWAY_KEY: smoke-caller
       API_GATEWAY_AUDIT_READ_KEY: smoke-read-caller
       SMTP_HOST: smtp.example.test
@@ -57,4 +64,6 @@ services:
       db:
         condition: service_started
       auth:
+        condition: service_started
+      gateway:
         condition: service_started

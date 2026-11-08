@@ -14,9 +14,14 @@ const older: Item = { id: "n1", title: "Your access changed", link: "https://crm
 let inbox: { available: boolean; unread: number; notifications: Item[] };
 let fetchMock: ReturnType<typeof vi.fn>;
 
-function setVisibility(state: "visible" | "hidden") {
-  Object.defineProperty(document, "visibilityState", { configurable: true, get: () => state });
-  document.dispatchEvent(new Event("visibilitychange"));
+let sockets: FakeSocket[];
+class FakeSocket {
+  onopen?: () => void;
+  onmessage?: (event: { data: string }) => void;
+  onerror?: () => void;
+  onclose?: () => void;
+  constructor() { sockets.push(this); }
+  close() { this.onclose?.(); }
 }
 
 const inboxCalls = () => fetchMock.mock.calls.filter(([url, init]) => url === "/api/notifications" && !init?.method).length;
@@ -25,10 +30,13 @@ beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
   inbox = { available: true, unread: 1, notifications: [newest, older] };
   fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+    if (url === "/api/notifications/live") return Response.json({ url: "wss://gateway.test/notifications/live?ticket=pass" });
     if (init?.method === "POST") return Response.json({ ok: true });
     return Response.json(inbox);
   });
   vi.stubGlobal("fetch", fetchMock);
+  sockets = [];
+  vi.stubGlobal("WebSocket", FakeSocket);
   Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
 });
 
@@ -156,51 +164,28 @@ describe("NotificationBell", () => {
     expect(screen.queryByTitle("Unread")).toBeNull();
   });
 
-  it("updates within the polling interval while the tab is visible", async () => {
+  it("updates on a live notification without idle polling", async () => {
     await renderBell();
-    expect(inboxCalls()).toBe(1);
-
+    await act(async () => sockets[0].onopen?.());
+    const before = inboxCalls();
+    await act(async () => { await vi.advanceTimersByTimeAsync(20_000); });
+    expect(inboxCalls()).toBe(before);
     inbox = { available: true, unread: 4, notifications: [newest, older] };
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(5000);
-    });
-
-    expect(inboxCalls()).toBe(2);
+    await act(async () => sockets[0].onmessage?.({ data: JSON.stringify({ type: "notification.created" }) }));
     expect(screen.getByRole("button", { name: "Notifications, 4 unread" })).toBeTruthy();
   });
 
-  it("does not poll while the tab is hidden, and refreshes at once when it returns", async () => {
-    await renderBell();
-    act(() => setVisibility("hidden"));
-    const before = inboxCalls();
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(20000);
-    });
-    expect(inboxCalls()).toBe(before);
-
-    await act(async () => {
-      setVisibility("visible");
-      await vi.advanceTimersByTimeAsync(0);
-    });
-    expect(inboxCalls()).toBe(before + 1);
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(5000);
-    });
-    expect(inboxCalls()).toBe(before + 2);
-  });
-
-  it("stops polling when removed", async () => {
+  it("reconnects with a fresh ticket and catches up, then stops on unmount", async () => {
     const { unmount } = await renderBell();
+    act(() => sockets[0].close());
+    inbox.unread = 2;
+    await act(async () => { await vi.advanceTimersByTimeAsync(1300); });
+    expect(sockets).toHaveLength(2);
+    await act(async () => sockets[1].onopen?.());
+    expect(screen.getByRole("button", { name: "Notifications, 2 unread" })).toBeTruthy();
     unmount();
-    const before = inboxCalls();
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(15000);
-    });
-
-    expect(inboxCalls()).toBe(before);
+    await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
+    expect(sockets).toHaveLength(2);
   });
 
   describe("CREOMS copies", () => {
@@ -244,7 +229,7 @@ describe("NotificationBell", () => {
 
       inbox = { available: true, unread: 0, notifications: [{ ...copy, read: true }] };
       await act(async () => {
-        await vi.advanceTimersByTimeAsync(5000);
+        sockets[0].onmessage?.({ data: JSON.stringify({ type: "notifications.read", ids: [copy.id] }) });
       });
 
       expect(screen.getByRole("button", { name: "Notifications" }).textContent).toBe("");
