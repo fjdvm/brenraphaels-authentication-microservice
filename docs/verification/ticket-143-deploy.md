@@ -4,7 +4,8 @@ Ticket: #143; parent: #138. No database migration is needed.
 
 Every push to main runs the existing container smoke suite before publishing a
 production image to ghcr.io/fjdvm/brenraphaels-authentication-microservice using
-GITHUB_TOKEN. The public URL build argument is https://portal.buildwrite.me.
+GITHUB_TOKEN. The public URL build argument and matching runtime environment value are
+https://portal.buildwrite.me (email code also reads it dynamically).
 Azure login uses the OIDC secrets from #141. Deployment uses the immutable image
 digest. PRs and manual smoke runs cannot deploy.
 

@@ -35,7 +35,8 @@ manifest = {
             'containers': [{
                 'name': 'portal', 'image': os.environ['PORTAL_IMAGE'],
                 'resources': {'cpu': 0.5, 'memory': '1Gi'},
-                'env': [{'name': k, 'secretRef': secret_name(k)} for k in keys],
+                'env': ([{'name': k, 'secretRef': secret_name(k)} for k in keys]
+                        + [{'name': 'NEXT_PUBLIC_APP_URL', 'value': os.environ['PORTAL_PUBLIC_URL']}]),
                 'probes': [{
                     'type': kind,
                     'httpGet': {'path': '/api/health', 'port': 3000, 'scheme': 'HTTP'},
