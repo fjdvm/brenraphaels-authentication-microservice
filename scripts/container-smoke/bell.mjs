@@ -11,7 +11,11 @@ try {
   const requests = [];
   page.on('request', req => requests.push(req.url()));
   let connections = 0;
-  page.on('websocket', () => connections++);
+  const frames = [];
+  page.on('websocket', socket => {
+    connections++;
+    socket.on('framereceived', frame => frames.push(String(frame.payload)));
+  });
   await page.goto(origin);
   await page.getByRole('button', { name: 'Notifications', exact: true }).waitFor();
   await page.waitForFunction(() => performance.getEntriesByType('resource').some(r => r.name.endsWith('/api/notifications')));
@@ -27,6 +31,8 @@ try {
   await control({ notification: 'Another user only', userId: 'victim' });
   await new Promise(resolve => setTimeout(resolve, 500));
   assert.equal(await page.getByText('Another user only').count(), 0);
+  assert.ok(frames.some(frame => frame.includes('Live access changed')), 'own notification reaches the socket');
+  assert.ok(frames.every(frame => !frame.includes('Another user only') && !frame.includes('victim')), 'another User notification never reaches the socket');
   const pass = await page.request.post(`${origin}/api/notifications/live?userId=victim`, { data: { userId: 'victim' } });
   assert.equal(pass.status(), 200);
   const { url } = await pass.json();
