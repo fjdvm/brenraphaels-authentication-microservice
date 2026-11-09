@@ -16,22 +16,28 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Classify PR changes
+      - name: Classify changes
         id: classify
         env:
           EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         shell: bash
         run: |
           set -euo pipefail
           classification=code
-          if [ "$EVENT_NAME" = pull_request ]; then
-            base=$(git merge-base "$BASE_SHA" "$HEAD_SHA")
-            # Include both sides of renames and deleted files; preserve unusual filenames.
-            git diff --name-only --no-renames -z "$base" "$HEAD_SHA" > "$RUNNER_TEMP/changed-paths"
-            mapfile -d '' -t changed_paths < "$RUNNER_TEMP/changed-paths"
-            classification=$(node scripts/ci/classify-changes.mjs "${changed_paths[@]}")
+          if [ "$EVENT_NAME" = pull_request ] || [ "$EVENT_NAME" = push ]; then
+            base="$BASE_SHA"
+            if [ "$EVENT_NAME" = pull_request ]; then
+              base=$(git merge-base "$BASE_SHA" "$HEAD_SHA")
+            fi
+            # New branches have no before commit; fail safe to full checks.
+            if [ "$base" != 0000000000000000000000000000000000000000 ]; then
+              # Include both sides of renames and deleted files; preserve unusual filenames.
+              git diff --name-only --no-renames -z "$base" "$HEAD_SHA" > "$RUNNER_TEMP/changed-paths"
+              mapfile -d '' -t changed_paths < "$RUNNER_TEMP/changed-paths"
+              classification=$(node scripts/ci/classify-changes.mjs "${changed_paths[@]}")
+            fi
           fi
           echo "classification=$classification" >> "$GITHUB_OUTPUT"
           echo "Change classification: $classification" >> "$GITHUB_STEP_SUMMARY"
@@ -55,7 +61,7 @@ jobs:
 
   container-smoke:
     needs: changes
-    if: needs.changes.outputs.classification == 'code'
+    if: needs.changes.outputs.classification == 'code' && github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -112,7 +118,7 @@ jobs:
   ci-gate:
     name: ci-gate
     if: always()
-    needs: [changes, checks, container-smoke]
+    needs: [changes, checks, container-smoke, production-image]
     runs-on: ubuntu-latest
     timeout-minutes: 1
     steps:
@@ -122,6 +128,8 @@ jobs:
           CLASSIFICATION: ${{ needs.changes.outputs.classification }}
           CHECKS_RESULT: ${{ needs.checks.result }}
           CONTAINER_RESULT: ${{ needs.container-smoke.result }}
+          IMAGE_RESULT: ${{ needs.production-image.result }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
           test "$CHANGES_RESULT" = success
@@ -129,36 +137,36 @@ jobs:
             docs-only)
               test "$CHECKS_RESULT" = skipped
               test "$CONTAINER_RESULT" = skipped
+              test "$IMAGE_RESULT" = skipped
               ;;
             code)
               test "$CHECKS_RESULT" = success
-              test "$CONTAINER_RESULT" = success
+              if [ "$EVENT_NAME" = push ]; then
+                test "$CONTAINER_RESULT" = skipped
+                test "$IMAGE_RESULT" = success
+              else
+                test "$CONTAINER_RESULT" = success
+                test "$IMAGE_RESULT" = skipped
+              fi
               ;;
             *) exit 1 ;;
           esac
 
-  deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: ci-gate
+  production-image:
+    needs: changes
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.classification == 'code'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
-    concurrency:
-      group: portal-production
-      cancel-in-progress: false
+    timeout-minutes: 20
     permissions:
       contents: read
       packages: write
-      id-token: write
-    env:
-      RESOURCE_GROUP: rg-brenraphaels
-      CONTAINER_APP: portal
-      PORTAL_PUBLIC_URL: https://portal.buildwrite.me
-      PORTAL_CUSTOM_DOMAIN: portal.buildwrite.me
+    outputs:
+      image: ${{ steps.image.outputs.name }}@${{ steps.build.outputs.digest }}
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-      # Post steps run in reverse order: extract the mount, then save it only
-      # after a successful deploy. PR jobs use restore-only above.
+      # Extract before saving in post steps after a successful main build.
+      # PR jobs use restore-only above; Docker cache still publishes after deploy.
       - name: Cache Next.js build data
         id: next-cache
         uses: actions/cache@v4
@@ -190,6 +198,25 @@ jobs:
           push: true
           tags: ${{ steps.image.outputs.name }}:${{ github.sha }}
           cache-from: type=gha,scope=portal-production
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.classification == 'code'
+    needs: [changes, checks, production-image, ci-gate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    concurrency:
+      group: portal-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      RESOURCE_GROUP: rg-brenraphaels
+      CONTAINER_APP: portal
+      PORTAL_PUBLIC_URL: https://portal.buildwrite.me
+      PORTAL_CUSTOM_DOMAIN: portal.buildwrite.me
+    steps:
+      - uses: actions/checkout@v4
       - uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -200,7 +227,7 @@ jobs:
         env:
           DEPLOY_SECRETS: ${{ toJSON(secrets) }}
           GHCR_USERNAME: ${{ vars.GHCR_USERNAME }}
-          PORTAL_IMAGE: ${{ steps.image.outputs.name }}@${{ steps.build.outputs.digest }}
+          PORTAL_IMAGE: ${{ needs.production-image.outputs.image }}
         run: |
           set -euo pipefail
           export AZURE_CORE_ONLY_SHOW_ERRORS=true
@@ -223,10 +250,10 @@ jobs:
           az containerapp create -g "$RESOURCE_GROUP" -n "$CONTAINER_APP" --yaml "$manifest" --output none
           revision="$CONTAINER_APP--$REVISION_SUFFIX"
           ready=false
-          for attempt in $(seq 1 60); do
+          for attempt in $(seq 1 200); do
             state=$(az containerapp revision show -g "$RESOURCE_GROUP" -n "$CONTAINER_APP" --revision "$revision" --query properties.healthState -o tsv)
             if [ "$state" = Healthy ]; then ready=true; break; fi
-            sleep 10
+            sleep 3
           done
           test "$ready" = true
           fqdn=$(az containerapp show -g "$RESOURCE_GROUP" -n "$CONTAINER_APP" --query properties.configuration.ingress.fqdn -o tsv)
@@ -248,6 +275,7 @@ jobs:
             echo '- Replicas: min 1, max 2; 0.5 vCPU / 1 GiB'
             echo '- Previous revisions retained inactive for rollback (up to 10).'
           } >> "$GITHUB_STEP_SUMMARY"
+      - uses: docker/setup-buildx-action@v3
       # Export the dependency target, not the runtime image: mode=min on the
       # runtime target would omit npm ci, because dependencies is an intermediate stage.
       - name: Publish dependency cache after deploy
