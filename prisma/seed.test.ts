@@ -54,6 +54,7 @@ function createStores() {
       modules.set(key, id);
       return { id };
     },
+    async findModules() { return [...modules.values()].map((id) => ({ id })); },
     async upsertAccessTemplate(roleId, moduleId) {
       accessTemplates.add(`${roleId}:${moduleId}`);
     },
@@ -120,7 +121,7 @@ describe("seedPortal", () => {
     expect(stores.roles.get("CEO")?.isAdministrator).toBe(true);
     expect(stores.systems).toHaveLength(SEED_SYSTEMS.length);
     expect(stores.modules).toHaveLength(moduleCount);
-    expect(stores.accessTemplates).toHaveLength(moduleCount);
+    expect(stores.accessTemplates).toHaveLength(moduleCount * 2);
     expect(stores.authUsers).toHaveLength(1);
     expect(stores.authUsers.get(superAdmin.email)?.password).toBe(
       superAdmin.password,
@@ -133,6 +134,25 @@ describe("seedPortal", () => {
     });
     expect(stores.accessGrants).toHaveLength(moduleCount);
     expect(stores.sequences.get(2026)).toBe(1);
+  });
+
+  it("adds General Manager after VP with every Module template and no administrative authority", async () => {
+    const stores = createStores();
+    stores.roles.set("Cashier", { id: "cashier", isAdministrator: false });
+    stores.accessTemplates.add("cashier:custom-module");
+    const admin = {
+      username: "2026-ADMIN-001", firstName: "Seed", lastName: "Admin",
+      email: "seed@example.test", password: "unused",
+    };
+    await seedPortal(stores.portal, stores.auth, admin);
+    const role = stores.roles.get("General Manager");
+    expect(role).toMatchObject({ isAdministrator: false });
+    expect(SEED_ROLES.slice(2, 4)).toEqual(["VP", "General Manager"]);
+    expect([...stores.accessTemplates].filter((entry) => entry.startsWith(`${role!.id}:`))).toHaveLength(29);
+    const before = { roles: [...stores.roles], templates: [...stores.accessTemplates], users: [...stores.users], grants: [...stores.accessGrants] };
+    await seedPortal(stores.portal, stores.auth, admin);
+    expect({ roles: [...stores.roles], templates: [...stores.accessTemplates], users: [...stores.users], grants: [...stores.accessGrants] }).toEqual(before);
+    expect(stores.accessTemplates.has("cashier:custom-module")).toBe(true);
   });
 
   it("registers IMS's seven sidebar Modules and exact production and HTTPS dev callbacks", () => {

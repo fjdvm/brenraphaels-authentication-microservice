@@ -94,12 +94,12 @@ export const SEED_SYSTEMS: SeedSystem[] = [
   },
 ];
 
-// All 9 Roles. "Super Admin" must stay first: it is the only Role seeded
-// with an AccessTemplate, and it is the seeded bootstrap User's Role.
+// Seed order carries no authority. Super Admin is the bootstrap User's Role.
 export const SEED_ROLES = [
   "Super Admin",
   "CEO",
   "VP",
+  "General Manager",
   "CRMS Manager",
   "IMS Manager",
   "HRMS Manager",

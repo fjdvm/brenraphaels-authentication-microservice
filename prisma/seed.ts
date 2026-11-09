@@ -32,6 +32,7 @@ export type SeedPortalStore = {
   upsertRole(name: string, isAdministrator: boolean): Promise<SeededRecord>;
   upsertSystem(system: SeedSystem): Promise<SeededRecord>;
   upsertModule(systemId: string, name: string, formerName?: string): Promise<SeededRecord>;
+  findModules(): Promise<SeededRecord[]>;
   upsertAccessTemplate(roleId: string, moduleId: string): Promise<void>;
   upsertUser(user: Omit<SeedSuperAdmin, "password"> & { roleId: string; neonAuthUserId: string; mustChangePassword: boolean }): Promise<SeededRecord>;
   upsertAccessGrant(userId: string, moduleId: string): Promise<void>;
@@ -86,7 +87,6 @@ export async function seedPortal(
       );
       modules.push(seededModule);
       if (system.name === "IMS") imsModules.push(seededModule);
-
     }
   }
 
@@ -97,6 +97,11 @@ export async function seedPortal(
 
   for (const seededModule of modules) {
     await portal.upsertAccessTemplate(superAdminRole.id, seededModule.id);
+  }
+
+  const generalManager = roles.get("General Manager")!;
+  for (const seededModule of await portal.findModules()) {
+    await portal.upsertAccessTemplate(generalManager.id, seededModule.id);
   }
 
   let authUser = await auth.findUserByEmail(superAdmin.email);
@@ -215,6 +220,9 @@ export function createPortalStore(prisma: PrismaClient): SeedPortalStore {
         update: {},
         create: { systemId, name },
       });
+    },
+    async findModules() {
+      return prisma.module.findMany({ select: { id: true } });
     },
     async upsertAccessTemplate(roleId, moduleId) {
       await prisma.accessTemplate.upsert({

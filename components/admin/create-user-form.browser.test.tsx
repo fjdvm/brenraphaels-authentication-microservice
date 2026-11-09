@@ -9,6 +9,7 @@ import type { CreateUserFormState } from "@/lib/admin/user-form-state";
 import { CreateUserForm } from "./create-user-form";
 
 const roles = [
+  { id: "r-general-manager", name: "General Manager", templateModuleIds: ["p-dash", "p-sales", "c-dash"] },
   { id: "r-cashier", name: "Cashier", templateModuleIds: ["p-sales"] },
   { id: "r-blank", name: "VP", templateModuleIds: [] },
 ];
@@ -66,6 +67,18 @@ describe("Create user form", () => {
 
     expect(sales.checked).toBe(false);
     expect((systemGroup("CRMS").getByRole("checkbox", { name: "Dashboard" }) as HTMLInputElement).checked).toBe(true);
+  });
+
+  it("pre-checks every System for General Manager and lets the Administrator untick a Module", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.selectOptions(screen.getByLabelText("Role"), "r-general-manager");
+    const sales = systemGroup("POS").getByRole("checkbox", { name: "Sales Processing" }) as HTMLInputElement;
+    expect(sales.checked).toBe(true);
+    expect((systemGroup("POS").getByRole("checkbox", { name: "Dashboard" }) as HTMLInputElement).checked).toBe(true);
+    expect((systemGroup("CRMS").getByRole("checkbox", { name: "Dashboard" }) as HTMLInputElement).checked).toBe(true);
+    await user.click(sales);
+    expect(sales.checked).toBe(false);
   });
 
   it("submits the entered details and the final Module selection", async () => {
@@ -152,7 +165,7 @@ describe("Create user form", () => {
   it("lists the Roles and marks every field as required", () => {
     renderForm();
 
-    expect(screen.getByText("Roles: Cashier, VP")).toBeTruthy();
+    expect(screen.getByText("Roles: General Manager, Cashier, VP")).toBeTruthy();
     for (const label of ["First name", "Last name", "Email", "Role"]) {
       expect(screen.getByLabelText(label).getAttribute("aria-required")).toBe("true");
     }
