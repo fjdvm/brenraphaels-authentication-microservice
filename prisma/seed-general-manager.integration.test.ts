@@ -44,7 +44,7 @@ describe.skipIf(!databaseUrl)("General Manager on a disposable database", () => 
       await seedPortal(store, auth, bootstrap);
       const existingManager = await prisma.user.create({ data: {
         username: tag, email: `${tag}-manager@example.test`, firstName: "Existing", lastName: "Manager",
-        roleId: manager.id, neonAuthUserId: tag, mustChangePassword: false,
+        roleId: manager.id, neonAuthUserId: `${tag}-manager`, mustChangePassword: false,
       } });
       const seeded = await snapshot();
       const system = await prisma.system.create({ data: { name: tag, url: "https://example.test", modules: { create: { name: "Custom Module" } } }, include: { modules: true } });
