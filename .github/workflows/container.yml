@@ -86,6 +86,21 @@ jobs:
           tags: portal:ticket142
           # PRs only read the dependency cache published by main.
           cache-from: type=gha,scope=portal-production
+      # Temporary acceptance measurements; removed after recording #235 results.
+      - name: Measure dependency-only export
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: dependencies
+          cache-from: type=gha,scope=portal-production
+          cache-to: type=gha,mode=min,scope=ticket235-measurement
+      - name: Measure unchanged-tree rebuild
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: portal:ticket142
+          cache-from: type=gha,scope=portal-production
       - name: Record and limit uncompressed image size
         run: |
           bytes=$(docker image inspect portal:ticket142 --format '{{.Size}}')
