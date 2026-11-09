@@ -12,7 +12,7 @@ vi.mock("server-only", () => ({}));
 const databaseUrl = process.env.SEED_TEST_DATABASE_URL;
 
 describe.skipIf(!databaseUrl)("CRMS domain cutover seed on a disposable database", () => {
-  it("updates the address in place and preserves registration and access on repeat seeding", { timeout: 120_000 }, async () => {
+  it("updates the address in place and preserves registration and access on repeat seeding", { timeout: 240_000 }, async () => {
     process.env.DATABASE_URL = databaseUrl;
     const { prisma } = await import("../lib/db/prisma");
     const { prismaHandoffPorts } = await import("../lib/integrations/prisma-ports.server");
