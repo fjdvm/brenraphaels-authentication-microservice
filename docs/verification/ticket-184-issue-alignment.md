@@ -16,6 +16,9 @@ with HRMS staying on Vercel under
 
 Each of the four tickets has a comment linking Spec#180. All four titles are
 preserved. The bodies of #146 and #161 are unchanged. #138 is untouched.
+A handoff comment on #198 carries over #163's gateway-update, Feedback email
+and live conversation checks without editing #198's existing body or title.
+
 Remaining Vercel references in these open tickets describe HRMS, the unavailable
 old Portal, or retirement of old hosts; none instructs the owner to deploy or
 configure ecommerce or CREOMS on Vercel.
