@@ -7,7 +7,38 @@ on:
 permissions:
   contents: read
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      classification: ${{ steps.classify.outputs.classification }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Classify PR changes
+        id: classify
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          classification=code
+          if [ "$EVENT_NAME" = pull_request ]; then
+            base=$(git merge-base "$BASE_SHA" "$HEAD_SHA")
+            # Include both sides of renames and deleted files; preserve unusual filenames.
+            git diff --name-only --no-renames -z "$base" "$HEAD_SHA" > "$RUNNER_TEMP/changed-paths"
+            mapfile -d '' -t changed_paths < "$RUNNER_TEMP/changed-paths"
+            classification=$(node scripts/ci/classify-changes.mjs "${changed_paths[@]}")
+          fi
+          echo "classification=$classification" >> "$GITHUB_OUTPUT"
+          echo "Change classification: $classification" >> "$GITHUB_STEP_SUMMARY"
+
   checks:
+    needs: changes
+    if: needs.changes.outputs.classification == 'code'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -23,6 +54,8 @@ jobs:
       - run: npm test
 
   container-smoke:
+    needs: changes
+    if: needs.changes.outputs.classification == 'code'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -66,17 +99,30 @@ jobs:
   ci-gate:
     name: ci-gate
     if: always()
-    needs: [checks, container-smoke]
+    needs: [changes, checks, container-smoke]
     runs-on: ubuntu-latest
     timeout-minutes: 1
     steps:
       - name: Require every check to pass
         env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          CLASSIFICATION: ${{ needs.changes.outputs.classification }}
           CHECKS_RESULT: ${{ needs.checks.result }}
           CONTAINER_RESULT: ${{ needs.container-smoke.result }}
         run: |
-          test "$CHECKS_RESULT" = success
-          test "$CONTAINER_RESULT" = success
+          set -euo pipefail
+          test "$CHANGES_RESULT" = success
+          case "$CLASSIFICATION" in
+            docs-only)
+              test "$CHECKS_RESULT" = skipped
+              test "$CONTAINER_RESULT" = skipped
+              ;;
+            code)
+              test "$CHECKS_RESULT" = success
+              test "$CONTAINER_RESULT" = success
+              ;;
+            *) exit 1 ;;
+          esac
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
