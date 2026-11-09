@@ -50,6 +50,25 @@ build uses unchanged application code. No probe merges into `main`.
   2026-11-09. Only a Markdown file changed. `changes` and `ci-gate` succeeded;
   `checks`, `container-smoke`, `production-image` and `deploy` all skipped.
 
+- [Failing-typecheck push run 42701876256](https://github.com/fjdvm/brenraphaels-authentication-microservice/actions/runs/42701876256),
+  commit `7d44f3b`: checks and production image started together at 21:22:35 UTC.
+  TypeScript rejected the intentional assignment and checks failed after **1m35s**.
+  Smoke skipped. The image build was cancelled after over twelve minutes because
+  its cached dependency layer downloaded at about 0.2 MB/s: only **153.09 MB of
+  549.56 MB** after **734.6 seconds**. The application build never started.
+  `ci-gate` failed; deploy was cancelled with no steps executed. This proves the
+  negative path did not deploy, but does **not** establish successful-image
+  failure gating or the target build/deploy duration. Repeat that acceptance run
+  when cache downloads are healthy.
+- Before the probe, production was `portal--gh-42700317063-1` with public health
+  passing. A later read showed `portal--gh-42702486318-1`, also with `SniEnabled`
+  custom-domain binding and public health `{ "status": "ok" }`. The probe ran no
+  Azure steps, but an independent rollout means unchanged-revision acceptance
+  cannot be claimed from these before/after snapshots.
+
+Temporary probe branches are removed after recording the runs. PR #247 was
+already merged before #236 began, so the implementation is in follow-up PR #251.
+
 ## Acceptance after merge
 
 A real code merge's merge-to-healthy duration (target 3–3.5 minutes), a real
