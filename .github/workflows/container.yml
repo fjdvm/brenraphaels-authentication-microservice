@@ -66,13 +66,26 @@ jobs:
           cache: npm
       - run: npm ci
       - uses: docker/setup-buildx-action@v3
+      - name: Restore Next.js build cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/next-build-cache
+          key: ${{ runner.os }}-portal-next-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-portal-next-${{ hashFiles('package-lock.json') }}-
+      - name: Inject Next.js cache mount
+        uses: reproducible-containers/buildkit-cache-dance@ca04d1a0e0018e28a060ec9f87518ddc453b4460 # v3.3.0
+        with:
+          cache-map: '{"${{ runner.temp }}/next-build-cache": "/app/.next/cache"}'
+          scratch-dir: ${{ runner.temp }}/cache-dance
+          skip-extraction: true
       - uses: docker/build-push-action@v6
         with:
           context: .
           load: true
           tags: portal:ticket142
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # PRs only read the dependency cache published by main.
+          cache-from: type=gha,scope=portal-production
       - name: Record and limit uncompressed image size
         run: |
           bytes=$(docker image inspect portal:ticket142 --format '{{.Size}}')
@@ -144,6 +157,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
+      # Post steps run in reverse order: extract the mount, then save it only
+      # after a successful deploy. PR jobs use restore-only above.
+      - name: Cache Next.js build data
+        id: next-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/next-build-cache
+          key: ${{ runner.os }}-portal-next-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-portal-next-${{ hashFiles('package-lock.json') }}-
+      - name: Persist Next.js cache mount
+        uses: reproducible-containers/buildkit-cache-dance@ca04d1a0e0018e28a060ec9f87518ddc453b4460 # v3.3.0
+        with:
+          cache-map: '{"${{ runner.temp }}/next-build-cache": "/app/.next/cache"}'
+          scratch-dir: ${{ runner.temp }}/cache-dance
+          skip-extraction: ${{ steps.next-cache.outputs.cache-hit == 'true' }}
       - name: Resolve image name
         id: image
         shell: bash
@@ -161,7 +190,6 @@ jobs:
           push: true
           tags: ${{ steps.image.outputs.name }}:${{ github.sha }}
           cache-from: type=gha,scope=portal-production
-          cache-to: type=gha,mode=max,scope=portal-production
       - uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -220,3 +248,12 @@ jobs:
             echo '- Replicas: min 1, max 2; 0.5 vCPU / 1 GiB'
             echo '- Previous revisions retained inactive for rollback (up to 10).'
           } >> "$GITHUB_STEP_SUMMARY"
+      # Export the dependency target, not the runtime image: mode=min on the
+      # runtime target would omit npm ci, because dependencies is an intermediate stage.
+      - name: Publish dependency cache after deploy
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: dependencies
+          cache-from: type=gha,scope=portal-production
+          cache-to: type=gha,mode=min,scope=portal-production
