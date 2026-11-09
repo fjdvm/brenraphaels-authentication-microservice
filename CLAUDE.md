@@ -1,10 +1,5 @@
 @AGENTS.md
 
-## Workflow rules
-
-- Don't implement a feature until a spec (`/to-spec`) and tickets (`/to-tickets`) exist for it and the user has approved them. Grilling and domain modeling come first, then the spec, then the tickets.
-- Implement one ticket at a time, against that ticket's acceptance criteria and its blockers. Don't start a ticket that is still blocked.
-
 ## Agent skills
 
 ### Issue tracker

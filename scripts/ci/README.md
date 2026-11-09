@@ -30,8 +30,14 @@ For docs-only PRs, `checks` and `container-smoke` are skipped. The always-runnin
 skipped. For code PRs, it requires both jobs to succeed. A failed classifier,
 unknown classification, failed check or cancelled check cannot pass the gate.
 
-Pushes to `main` and manual runs continue to run all checks; deploy classification
-is separate work under Spec#229.
+Pushes to `main` classify the complete `before`-to-`after` diff, including all
+commits in a push. A docs-only push skips checks, image build and deploy; the gate
+verifies the skips. For code pushes, checks and `production-image` run in parallel.
+The gate requires both to succeed and the smoke job to be skipped. Deploy requires
+the checks, image and gate, and uses the image digest returned by the build job.
+A failed or cancelled check blocks all Azure deployment steps. Manual runs retain
+full checks and container smoke, without publishing an image or deploying.
+An all-zero push `before` SHA falls back to code checks rather than skipping work.
 
 ## Image build caches
 
@@ -44,7 +50,11 @@ upload the application build layers on every change.
 The Dockerfile mounts `/app/.next/cache` for Next.js incremental builds. BuildKit's
 GitHub cache does not persist cache mounts, so `buildkit-cache-dance` injects the
 directory restored by `actions/cache`. PRs restore only. Production extracts and
-saves the mount in post steps after a successful deploy. The cache key includes
+saves the mount in post steps after a successful image build (before deployment),
+so the runner that owns the BuildKit mount can persist it. This disposable Next.js
+data is separate from the Docker dependency cache, which is still published only
+after successful deployment. The deploy runner restores that dependency cache
+before exporting the dependency target; it never rebuilds the application image. The cache key includes
 the OS, lockfile hash and commit; the restore prefix reuses the latest compatible
 cache when source files change. The directory and action scratch files live in
 the runner's temporary directory, outside the Docker build context.
