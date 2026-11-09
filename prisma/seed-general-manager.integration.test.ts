@@ -3,12 +3,12 @@ import { readFileSync } from "node:fs";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "@prisma/client";
 import { describe, expect, it } from "vitest";
-import { createPortalStore, seedPortal, type SeedAuthStore } from "./seed";
+import { createPortalStore, seedGeneralManager, seedPortal, type SeedAuthStore } from "./seed";
 
 const databaseUrl = process.env.SEED_TEST_DATABASE_URL;
 
 describe.skipIf(!databaseUrl)("General Manager on a disposable database", () => {
-  it("migrates additively, seeds every Module twice, and leaves existing Users and other templates untouched", { timeout: 120_000 }, async () => {
+  it("migrates additively, seeds every Module twice, and leaves existing Users and other templates untouched", { timeout: 240_000 }, async () => {
     const prisma = new PrismaClient({ adapter: new PrismaNeon({ connectionString: databaseUrl! }) });
     const tag = randomUUID();
     const auth: SeedAuthStore = {
@@ -27,6 +27,10 @@ describe.skipIf(!databaseUrl)("General Manager on a disposable database", () => 
     const migration = readFileSync("prisma/migrations/20261109000000_general_manager_role/migration.sql", "utf8");
     try {
       const before = await snapshot();
+      await seedGeneralManager(createPortalStore(prisma));
+      expect(await snapshot()).toEqual(before);
+      await seedGeneralManager(createPortalStore(prisma));
+      expect(await snapshot()).toEqual(before);
       for (let pass = 0; pass < 2; pass++) {
         for (const statement of migration.split(";").map((s) => s.trim()).filter(Boolean)) {
           await prisma.$executeRawUnsafe(statement);
@@ -38,6 +42,10 @@ describe.skipIf(!databaseUrl)("General Manager on a disposable database", () => 
       expect(await prisma.accessTemplate.count({ where: { roleId: manager.id } })).toBe(await prisma.module.count());
       const store = createPortalStore(prisma);
       await seedPortal(store, auth, bootstrap);
+      const existingManager = await prisma.user.create({ data: {
+        username: tag, email: `${tag}-manager@example.test`, firstName: "Existing", lastName: "Manager",
+        roleId: manager.id, neonAuthUserId: tag, mustChangePassword: false,
+      } });
       const seeded = await snapshot();
       const system = await prisma.system.create({ data: { name: tag, url: "https://example.test", modules: { create: { name: "Custom Module" } } }, include: { modules: true } });
       try {
@@ -50,6 +58,7 @@ describe.skipIf(!databaseUrl)("General Manager on a disposable database", () => 
         await prisma.accessTemplate.deleteMany({ where: { moduleId: system.modules[0].id } });
         await prisma.module.deleteMany({ where: { systemId: system.id } });
         await prisma.system.delete({ where: { id: system.id } });
+        await prisma.user.delete({ where: { id: existingManager.id } });
       }
     } finally {
       const user = await prisma.user.findUnique({ where: { username: bootstrap.username } });

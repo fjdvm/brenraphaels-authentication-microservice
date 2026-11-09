@@ -99,10 +99,7 @@ export async function seedPortal(
     await portal.upsertAccessTemplate(superAdminRole.id, seededModule.id);
   }
 
-  const generalManager = roles.get("General Manager")!;
-  for (const seededModule of await portal.findModules()) {
-    await portal.upsertAccessTemplate(generalManager.id, seededModule.id);
-  }
+  await seedGeneralManager(portal);
 
   let authUser = await auth.findUserByEmail(superAdmin.email);
   if (!authUser) {
@@ -133,6 +130,14 @@ export async function seedPortal(
 
   await portal.setUsernameSequence(yearFromUsername(superAdmin.username), 1);
   await auth.disablePublicSignUpAndGoogleSignIn();
+}
+
+/** Add the new Role defaults without running bootstrap or earlier cutover backfills. */
+export async function seedGeneralManager(portal: SeedPortalStore): Promise<void> {
+  const role = await portal.upsertRole("General Manager", false);
+  for (const seededModule of await portal.findModules()) {
+    await portal.upsertAccessTemplate(role.id, seededModule.id);
+  }
 }
 
 function requiredEnvironment(name: string): string {
