@@ -37,6 +37,8 @@ export type AuditLogFilters = {
   outcome?: AuditOutcome;
   /** The service's Source value, for example "Authentication". */
   source?: string;
+  /** The service's Module value, for example "Marketing". */
+  module?: string;
   /** The `nextCursor` of the previous page, with the same filters. */
   cursor?: string | null;
 };
@@ -52,6 +54,8 @@ export type AuditFilterOptions = {
   systems: { value: string; label: string }[];
   /** `systems` lists the Sources that can write the action. */
   actions: { value: string; label: string; systems: string[] }[];
+  /** `systems` lists the Sources that use the Module. */
+  modules: { value: string; systems: string[] }[];
 };
 
 /** Who performed an event, as the service stores it. Portal Users are `{ type: "user", id: User id }`. */
@@ -160,6 +164,44 @@ const ACTION_LABELS: Record<string, string> = {
   ...Object.fromEntries(Object.values(CATALOG).map(({ action, label }) => [action, label])),
   "user.login_failed": "Failed sign-in",
   "audit_log.exported": "Exported System logs",
+  "record.created": "Created record",
+  "record.updated": "Updated record",
+  "record.deleted": "Deleted record",
+  "record.viewed": "Viewed record",
+  // HRMS Recruitment and Hiring actions.
+  "job_posting.created": "Created job posting",
+  "job_posting.updated": "Updated job posting",
+  "job_posting.published": "Published job posting",
+  "job_posting.closed": "Closed job posting",
+  "job_posting.filled": "Filled job posting",
+  "job_template.created": "Created job template",
+  "job_template.updated": "Updated job template",
+  "job_template.deleted": "Deleted job template",
+  // CREOMS Staff actions, written by CREOMS under the CRMS Source.
+  "order.delivery_fee_quoted": "Quoted Delivery fee",
+  "order.confirmed": "Confirmed Order",
+  "order.cancelled": "Cancelled Order",
+  "order.marked_paid": "Marked Order paid",
+  "order.preparing": "Started preparing Order",
+  "order.dispatched": "Dispatched Order",
+  "order.delivered": "Delivered Order",
+  "order.delivery_photo_attached": "Attached Delivery photo",
+  "return.approved": "Approved Return",
+  "return.declined": "Declined Return",
+  "return.goods_received": "Received Return goods",
+  "return.refunded": "Refunded Return",
+  "return.replaced": "Replaced Return",
+  "ticket.opened": "Opened Ticket",
+  "ticket.claimed": "Claimed Ticket",
+  "ticket.released": "Released Ticket",
+  "ticket.status_changed": "Changed Ticket status",
+  "ticket.priority_changed": "Changed Ticket Priority",
+  "walk_in_customer.created": "Added Walk-in Customer",
+  "walk_in_customer.updated": "Edited Walk-in Customer",
+  "customer_profile.viewed": "Opened Customer Profile",
+  "feedback.analysis_run": "Ran Feedback analysis",
+  "crms.signed_in": "Signed in to CREOMS",
+  "crms.access_denied": "Refused a CREOMS Module",
 };
 
 const systemLabel = (source: string) => (source === SOURCE ? "Portal" : source);
@@ -184,6 +226,7 @@ function filterParams(filters: AuditLogFilters, params = new URLSearchParams()):
   set("to", filters.to);
   set("action", filters.action);
   set("source", filters.source);
+  set("module", filters.module);
   set("outcome", filters.outcome?.toLowerCase());
   set("cursor", filters.cursor);
 
@@ -372,10 +415,18 @@ export function createAuditClient(config: ClientConfig): AuditClient {
         throw new Error(`Audit-logs service answered ${response.status}`);
       }
 
-      const { sources } = (await response.json()) as { sources: { source: string; actions: string[] }[] };
+      const { sources } = (await response.json()) as { sources: { source: string; modules?: string[]; actions: string[] }[] };
       const actions = new Map<string, { value: string; label: string; systems: string[] }>();
+      const modules = new Map<string, { value: string; systems: string[] }>();
 
-      for (const { source, actions: names } of sources) {
+      for (const { source, modules: moduleNames = [], actions: names } of sources) {
+        for (const value of moduleNames) {
+          const known = modules.get(value);
+
+          if (known) known.systems.push(source);
+          else modules.set(value, { value, systems: [source] });
+        }
+
         for (const value of names) {
           const known = actions.get(value);
 
@@ -390,6 +441,7 @@ export function createAuditClient(config: ClientConfig): AuditClient {
       return {
         systems: sources.map(({ source }) => ({ value: source, label: systemLabel(source) })),
         actions: [...actions.values()],
+        modules: [...modules.values()],
       };
     },
 

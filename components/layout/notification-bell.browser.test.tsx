@@ -14,9 +14,14 @@ const older: Item = { id: "n1", title: "Your access changed", link: "https://crm
 let inbox: { available: boolean; unread: number; notifications: Item[] };
 let fetchMock: ReturnType<typeof vi.fn>;
 
-function setVisibility(state: "visible" | "hidden") {
-  Object.defineProperty(document, "visibilityState", { configurable: true, get: () => state });
-  document.dispatchEvent(new Event("visibilitychange"));
+let sockets: FakeSocket[];
+class FakeSocket {
+  onopen?: () => void;
+  onmessage?: (event: { data: string }) => void;
+  onerror?: () => void;
+  onclose?: () => void;
+  constructor() { sockets.push(this); }
+  close() { this.onclose?.(); }
 }
 
 const inboxCalls = () => fetchMock.mock.calls.filter(([url, init]) => url === "/api/notifications" && !init?.method).length;
@@ -25,10 +30,13 @@ beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
   inbox = { available: true, unread: 1, notifications: [newest, older] };
   fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+    if (url === "/api/notifications/live") return Response.json({ url: "wss://gateway.test/notifications/live?ticket=pass" });
     if (init?.method === "POST") return Response.json({ ok: true });
     return Response.json(inbox);
   });
   vi.stubGlobal("fetch", fetchMock);
+  sockets = [];
+  vi.stubGlobal("WebSocket", FakeSocket);
   Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
 });
 
@@ -156,62 +164,75 @@ describe("NotificationBell", () => {
     expect(screen.queryByTitle("Unread")).toBeNull();
   });
 
-  it("updates within the polling interval while the tab is visible", async () => {
+  it("updates on a live notification without idle polling", async () => {
     await renderBell();
-    expect(inboxCalls()).toBe(1);
-
+    await act(async () => sockets[0].onopen?.());
+    const before = inboxCalls();
+    await act(async () => { await vi.advanceTimersByTimeAsync(20_000); });
+    expect(inboxCalls()).toBe(before);
     inbox = { available: true, unread: 4, notifications: [newest, older] };
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(5000);
-    });
-
-    expect(inboxCalls()).toBe(2);
+    await act(async () => sockets[0].onmessage?.({ data: JSON.stringify({ type: "notification.created" }) }));
     expect(screen.getByRole("button", { name: "Notifications, 4 unread" })).toBeTruthy();
   });
 
-  it("does not poll while the tab is hidden, and refreshes at once when it returns", async () => {
-    await renderBell();
-    act(() => setVisibility("hidden"));
-    const before = inboxCalls();
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(20000);
-    });
-    expect(inboxCalls()).toBe(before);
-
-    await act(async () => {
-      setVisibility("visible");
-      await vi.advanceTimersByTimeAsync(0);
-    });
-    expect(inboxCalls()).toBe(before + 1);
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(5000);
-    });
-    expect(inboxCalls()).toBe(before + 2);
-  });
-
-  it("stops polling when removed", async () => {
+  it("reconnects with a fresh ticket and catches up, then stops on unmount", async () => {
     const { unmount } = await renderBell();
+    act(() => sockets[0].close());
+    inbox.unread = 2;
+    await act(async () => { await vi.advanceTimersByTimeAsync(1300); });
+    expect(sockets).toHaveLength(2);
+    await act(async () => sockets[1].onopen?.());
+    expect(screen.getByRole("button", { name: "Notifications, 2 unread" })).toBeTruthy();
     unmount();
-    const before = inboxCalls();
+    await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
+    expect(sockets).toHaveLength(2);
+  });
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(15000);
+  describe("CREOMS copies", () => {
+    const copy: Item = {
+      ...newest,
+      title: "Jane placed Order #7",
+      sendingApp: "CREOMS",
+      link: "https://creoms.test/orders/7",
+    };
+
+    it("badges a CREOMS copy and no other notification", async () => {
+      inbox = { available: true, unread: 1, notifications: [copy, older] };
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      await renderBell();
+
+      await user.click(screen.getByRole("button", { name: "Notifications, 1 unread" }));
+
+      expect(screen.getAllByText("CREOMS")).toHaveLength(1);
+      expect(within(screen.getByRole("button", { name: /Jane placed/ })).getByText("CREOMS")).toBeTruthy();
     });
 
-    expect(inboxCalls()).toBe(before);
-  });
-});
+    it("marks a copy read, un-highlights it and opens the CREOMS page when clicked", async () => {
+      inbox = { available: true, unread: 1, notifications: [copy] };
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const { navigate } = await renderBell();
 
- it("badges a CREOMS copy and opens its matching page after marking it read", async () => {
-  inbox.notifications = [{ ...newest, title: "Jane placed Order #7", sendingApp: "CREOMS", link: "https://creoms.test/orders/7" }];
-  const navigate = vi.fn();
-  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-  render(<NotificationBell navigate={navigate} />);
-  await act(async () => { await vi.advanceTimersByTimeAsync(0); });
-  await user.click(screen.getByRole("button", { name: "Notifications, 1 unread" }));
-  await user.click(screen.getByRole("button", { name: /CREOMS Jane placed/ }));
-  expect(fetchMock).toHaveBeenCalledWith("/api/notifications/n2/read", expect.objectContaining({ method: "POST" }));
-  expect(navigate).toHaveBeenCalledWith("https://creoms.test/orders/7");
+      await user.click(screen.getByRole("button", { name: "Notifications, 1 unread" }));
+      expect(screen.getByTitle("Unread")).toBeTruthy();
+      await user.click(screen.getByRole("button", { name: /CREOMS Jane placed/ }));
+
+      expect(fetchMock).toHaveBeenCalledWith("/api/notifications/n2/read", expect.objectContaining({ method: "POST" }));
+      expect(screen.queryByTitle("Unread")).toBeNull();
+      expect(screen.getByRole("button", { name: "Notifications" }).textContent).toBe("");
+      expect(navigate).toHaveBeenCalledWith("https://creoms.test/orders/7");
+    });
+
+    it("drops the badge number when the alert is read in CREOMS", async () => {
+      inbox = { available: true, unread: 1, notifications: [copy] };
+      await renderBell();
+      expect(screen.getByRole("button", { name: "Notifications, 1 unread" })).toBeTruthy();
+
+      inbox = { available: true, unread: 0, notifications: [{ ...copy, read: true }] };
+      await act(async () => {
+        sockets[0].onmessage?.({ data: JSON.stringify({ type: "notifications.read", ids: [copy.id] }) });
+      });
+
+      expect(screen.getByRole("button", { name: "Notifications" }).textContent).toBe("");
+    });
+  });
 });

@@ -47,6 +47,10 @@ const options: AuditFilterOptions = {
     { value: "user.login", label: "Signed in", systems: ["Authentication"] },
     { value: "user.login_failed", label: "Failed sign-in", systems: ["Authentication"] },
   ],
+  modules: [
+    { value: "Marketing", systems: ["CRMS"] },
+    { value: "Feedback", systems: ["CRMS"] },
+  ],
 };
 
 const range = { from: "2026-10-15", to: "2026-10-21" };
@@ -82,6 +86,28 @@ describe("SystemLogsView rows", () => {
     expect(within(rows[1]).getByText("Unauthenticated visitor")).toBeTruthy();
     expect(within(rows[1]).getByText(/Unknown Username/)).toBeTruthy();
     expect(within(rows[0]).getByRole("time").getAttribute("datetime")).toBe("2026-10-06T01:00:00.000Z");
+  });
+
+  it.each(["all", "mine"] as const)("renders Announcement and Feedback events in %s logs", (scope) => {
+    render(<SystemLogsView
+      initial={ok([
+        entry({ id: "announcement", system: "CRMS", action: "Created record", actionValue: "record.created", actor: "Sam Staff", description: 'Sam Staff saved the Draft "Ube restock".' }),
+        entry({ id: "analysis", system: "CRMS", action: "Ran Feedback analysis", actionValue: "feedback.analysis_run", actor: "Sam Staff", outcome: "FAILURE", description: "Sam Staff could not run Feedback analysis." }),
+      ])}
+      options={options}
+      defaultRange={range}
+      load={vi.fn()}
+      scope={scope}
+    />);
+
+    const rows = screen.getAllByRole("row").slice(1);
+    expect(within(rows[0]).getByText("Created record")).toBeTruthy();
+    expect(within(rows[0]).getByText('Sam Staff saved the Draft "Ube restock".')).toBeTruthy();
+    expect(within(rows[0]).getByText("Success")).toBeTruthy();
+    expect(within(rows[1]).getByText("Ran Feedback analysis")).toBeTruthy();
+    expect(within(rows[1]).getByText("Sam Staff could not run Feedback analysis.")).toBeTruthy();
+    expect(within(rows[1]).getByText("Failed")).toBeTruthy();
+    if (scope === "all") expect(within(rows[0]).getByText("Sam Staff")).toBeTruthy();
   });
 
   it("shows times in Philippine time, naming today and yesterday", () => {
@@ -136,6 +162,29 @@ describe("SystemLogsView rows", () => {
 });
 
 describe("SystemLogsView filters", () => {
+  it("shows HRMS events and narrows the action filter to HRMS", async () => {
+    const load = vi.fn().mockResolvedValue(ok([]));
+    render(<SystemLogsView
+      initial={ok([entry({ system: "HRMS", action: "Published job posting", actor: "Ada Min", target: "Warehouse assistant", description: "" })])}
+      options={{
+        ...options,
+        systems: [...options.systems, { value: "HRMS", label: "HRMS" }],
+        actions: [...options.actions, { value: "job_posting.published", label: "Published job posting", systems: ["HRMS"] }],
+      }}
+      defaultRange={range}
+      load={load}
+    />);
+    const row = screen.getAllByRole("row")[1];
+    expect(within(row).getByText("Ada Min")).toBeTruthy();
+    expect(within(row).getByText("Warehouse assistant")).toBeTruthy();
+    expect(within(row).getByText("Published job posting")).toBeTruthy();
+
+    await userEvent.setup().selectOptions(screen.getByLabelText("System"), "HRMS");
+
+    expect(within(screen.getByLabelText("Action")).getAllByRole("option").map((o) => o.textContent)).toEqual(["All actions", "Published job posting"]);
+    await waitFor(() => expect(load).toHaveBeenLastCalledWith(expect.objectContaining({ source: "HRMS" })));
+  });
+
   it("starts on the last 7 days without asking the service again", () => {
     const { load } = setup();
 
@@ -163,6 +212,20 @@ describe("SystemLogsView filters", () => {
     await user.selectOptions(screen.getByLabelText("System"), "Authentication");
 
     expect(names()).toEqual(["All actions", "Signed in", "Failed sign-in"]);
+  });
+
+  it("filters CRMS events by Module, and drops it under a System that has none", async () => {
+    const { load, user } = setup();
+    const moduleFilter = screen.getByLabelText("Module");
+
+    expect(within(moduleFilter).getAllByRole("option").map((o) => o.textContent)).toEqual(["All modules", "Marketing", "Feedback"]);
+
+    await user.selectOptions(screen.getByLabelText("System"), "CRMS");
+    await user.selectOptions(moduleFilter, "Marketing");
+    await waitFor(() => expect(load).toHaveBeenLastCalledWith(expect.objectContaining({ source: "CRMS", module: "Marketing" })));
+
+    await user.selectOptions(screen.getByLabelText("System"), "Authentication");
+    await waitFor(() => expect(load).toHaveBeenLastCalledWith(expect.not.objectContaining({ module: "Marketing" })));
   });
 
   it("narrows by each filter, and the filters combine", async () => {

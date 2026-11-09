@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/cn";
 import type { Inbox, PortalNotification } from "@/lib/notifications/notifications";
 
-const POLL_INTERVAL_MS = 5000;
 const MAX_BADGE = 99;
 
 const EMPTY_INBOX: Inbox = { available: false, unread: 0, notifications: [] };
@@ -40,55 +39,67 @@ async function fetchInbox(): Promise<Inbox> {
   }
 }
 
-/** Polls the Portal's own server about every 5 seconds, and only while the tab is visible. */
+/** A connected tab makes requests only on connect, events, or user actions. */
 function useInbox() {
   const [inbox, setInbox] = useState<Inbox>(EMPTY_INBOX);
-
   const refresh = useCallback(async () => {
     setInbox(await fetchInbox());
   }, []);
 
   useEffect(() => {
     let cancelled = false;
-    let timer: ReturnType<typeof setInterval> | undefined;
+    let socket: WebSocket | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let failures = 0;
+    let revision = 0;
 
-    async function poll() {
+    async function sync() {
+      const current = ++revision;
       const next = await fetchInbox();
+      if (!cancelled && current === revision) setInbox(next);
+    }
 
-      if (!cancelled) {
-        setInbox(next);
+    function retry() {
+      if (cancelled) return;
+      // Only a disconnected tab retries. Jitter spreads reconnects after a deploy.
+      const delay = Math.min(30_000, 1000 * 2 ** Math.min(failures++, 5));
+      timer = setTimeout(() => void connect(), delay + Math.random() * delay * 0.25);
+    }
+
+    async function connect() {
+      try {
+        const response = await fetch("/api/notifications/live", { method: "POST", cache: "no-store" });
+        if (cancelled) return;
+        if (response.status === 401 || response.status === 403) return;
+        if (!response.ok) throw new Error("Live unavailable");
+        const { url } = await response.json();
+        if (cancelled) return;
+        const connection = new WebSocket(url);
+        socket = connection;
+        // Fetch after subscribing, so events during catch-up cannot be missed.
+        connection.onopen = () => { void sync(); };
+        connection.onmessage = (message) => {
+          try {
+            const event = JSON.parse(message.data);
+            if (event.type === "notification.created" || event.type === "notifications.read") {
+              failures = 0;
+              void sync();
+            }
+          } catch { /* Ignore unknown frames. */ }
+        };
+        connection.onerror = () => connection.close();
+        connection.onclose = () => { retry(); };
+      } catch {
+        retry();
       }
     }
 
-    function stop() {
-      clearInterval(timer);
-      timer = undefined;
-    }
-
-    function start() {
-      stop();
-      void poll();
-      timer = setInterval(() => void poll(), POLL_INTERVAL_MS);
-    }
-
-    function onVisibilityChange() {
-      if (document.visibilityState === "visible") {
-        start();
-      } else {
-        stop();
-      }
-    }
-
-    if (document.visibilityState === "visible") {
-      start();
-    }
-
-    document.addEventListener("visibilitychange", onVisibilityChange);
-
+    void sync();
+    void connect();
     return () => {
       cancelled = true;
-      stop();
-      document.removeEventListener("visibilitychange", onVisibilityChange);
+      clearTimeout(timer);
+      socket?.close();
     };
   }, []);
 

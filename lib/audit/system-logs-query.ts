@@ -52,6 +52,7 @@ export function parseSystemLogFilters(input: unknown): AuditLogFilters {
     to: bound("to"),
     action: text("action"),
     source: text("source"),
+    module: text("module"),
     outcome: outcome && OUTCOMES.has(outcome) ? (outcome as AuditLogFilters["outcome"]) : undefined,
     cursor: text("cursor", 2000),
   };

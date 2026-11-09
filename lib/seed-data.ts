@@ -36,8 +36,10 @@ export const SEED_SYSTEMS: SeedSystem[] = [
   },
   {
     name: "HRMS",
-    url: "https://hrms-arae.vercel.app",
+    url: "https://hrms.buildwrite.me",
     callbackUrls: [
+      "https://hrms.buildwrite.me/api/portal/callback",
+      // Keep the previous deployment trusted until the domain cutover is verified.
       "https://hrms-arae.vercel.app/api/portal/callback",
       "http://localhost:3001/api/portal/callback", // ignored in production
     ],
