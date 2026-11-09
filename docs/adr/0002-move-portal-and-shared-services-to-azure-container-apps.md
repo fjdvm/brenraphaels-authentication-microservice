@@ -2,6 +2,8 @@
 
 Status: accepted; implementation tracked in [Spec#138](https://github.com/fjdvm/brenraphaels-authentication-microservice/issues/138) and its tickets. Recorded by [Ticket#140](https://github.com/fjdvm/brenraphaels-authentication-microservice/issues/140).
 
+Superseded in part by [ADR-0003](0003-move-ecommerce-and-creoms-to-azure-container-apps.md): the statement below that ecommerce and creoms stay on Vercel no longer applies; they move to Azure Container Apps under Spec#180. HRMS still stays on Vercel under [Spec#222](https://github.com/fjdvm/brenraphaels-authentication-microservice/issues/222). The original decision text is preserved below.
+
 The Portal's Vercel Hobby team is paused until 2026-12-06. The owner has about $80 of Azure credit, subject to subscription verification, and a monthly budget below $20. Move the Portal, audit-logs, file-storage, api-gateway and notifications from Vercel and Cloudflare Workers to Azure Container Apps, together in one resource group and Container Apps Environment in Indonesia Central (Jakarta). This consolidates the shared infrastructure while retaining a runtime that supports persistent WebSockets.
 
 This decision supersedes the gateway's [ADR-0001](https://github.com/fjdvm/brenraphaels-proxy/blob/main/docs/adr/0001-gateway-runs-on-cloudflare-workers.md) and the hosting decision in notifications' [ADR-0001](https://github.com/fjdvm/brenraphaels-notifications/blob/main/docs/adr/0001-deploy-entirely-on-cloudflare.md). The Portal has no previous Cloudflare hosting ADR. The gateway records the same hosting decision in its own ADR-0002; notifications records its replacement runtime decision in ADR-0005.
