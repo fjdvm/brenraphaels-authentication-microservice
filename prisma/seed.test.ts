@@ -256,8 +256,9 @@ describe("seedPortal", () => {
   it("registers CRMS at its real origin with exact callbacks and trusts no placeholder System", () => {
     const crms = SEED_SYSTEMS.find((system) => system.name === "CRMS");
 
-    expect(crms?.url).toBe("https://epic-crms.vercel.app");
+    expect(crms?.url).toBe("https://creoms.buildwrite.me");
     expect(crms?.callbackUrls).toEqual([
+      "https://creoms.buildwrite.me/api/portal/callback",
       "https://epic-crms.vercel.app/api/portal/callback",
       "http://localhost:3000/api/portal/callback",
     ]);
