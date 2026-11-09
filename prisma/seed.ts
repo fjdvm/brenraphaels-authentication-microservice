@@ -10,8 +10,6 @@ import {
   SEED_MODULE_FORMER_NAMES,
   SEED_ROLES,
   SEED_ROLE_FORMER_NAMES,
-  POS_LOCATION_MANAGEMENT_MODULE,
-  POS_MANAGER_ROLE_NAME,
   SEED_SYSTEMS,
   SUPER_ADMIN_ROLE_NAME,
   type SeedSystem,
@@ -34,11 +32,11 @@ export type SeedPortalStore = {
   upsertRole(name: string, isAdministrator: boolean): Promise<SeededRecord>;
   upsertSystem(system: SeedSystem): Promise<SeededRecord>;
   upsertModule(systemId: string, name: string, formerName?: string): Promise<SeededRecord>;
+  findModules(): Promise<SeededRecord[]>;
   upsertAccessTemplate(roleId: string, moduleId: string): Promise<void>;
   upsertUser(user: Omit<SeedSuperAdmin, "password"> & { roleId: string; neonAuthUserId: string; mustChangePassword: boolean }): Promise<SeededRecord>;
   upsertAccessGrant(userId: string, moduleId: string): Promise<void>;
   findAdministratorUsers(): Promise<SeededRecord[]>;
-  findUsersByRole(roleName: string): Promise<SeededRecord[]>;
   setUsernameSequence(year: number, lastNumber: number): Promise<void>;
 };
 
@@ -78,7 +76,6 @@ export async function seedPortal(
 
   const modules: SeededRecord[] = [];
   const imsModules: SeededRecord[] = [];
-  let posLocationManagement: SeededRecord | undefined;
   for (const system of SEED_SYSTEMS) {
     const seededSystem = await portal.upsertSystem(system);
 
@@ -90,9 +87,6 @@ export async function seedPortal(
       );
       modules.push(seededModule);
       if (system.name === "IMS") imsModules.push(seededModule);
-      if (system.name === "POS" && moduleName === POS_LOCATION_MANAGEMENT_MODULE) {
-        posLocationManagement = seededModule;
-      }
     }
   }
 
@@ -104,6 +98,8 @@ export async function seedPortal(
   for (const seededModule of modules) {
     await portal.upsertAccessTemplate(superAdminRole.id, seededModule.id);
   }
+
+  await seedGeneralManager(portal);
 
   let authUser = await auth.findUserByEmail(superAdmin.email);
   if (!authUser) {
@@ -132,16 +128,16 @@ export async function seedPortal(
     }
   }
 
-  // POS used to open Locations to Managers by Role; the Module keeps them in. Grants
-  // are only ever added, so an existing grant is left as it is.
-  if (posLocationManagement) {
-    for (const manager of await portal.findUsersByRole(POS_MANAGER_ROLE_NAME)) {
-      await portal.upsertAccessGrant(manager.id, posLocationManagement.id);
-    }
-  }
-
   await portal.setUsernameSequence(yearFromUsername(superAdmin.username), 1);
   await auth.disablePublicSignUpAndGoogleSignIn();
+}
+
+/** Add the new Role defaults without running bootstrap or earlier cutover backfills. */
+export async function seedGeneralManager(portal: SeedPortalStore): Promise<void> {
+  const role = await portal.upsertRole("General Manager", false);
+  for (const seededModule of await portal.findModules()) {
+    await portal.upsertAccessTemplate(role.id, seededModule.id);
+  }
 }
 
 function requiredEnvironment(name: string): string {
@@ -230,6 +226,9 @@ export function createPortalStore(prisma: PrismaClient): SeedPortalStore {
         create: { systemId, name },
       });
     },
+    async findModules() {
+      return prisma.module.findMany({ select: { id: true } });
+    },
     async upsertAccessTemplate(roleId, moduleId) {
       await prisma.accessTemplate.upsert({
         where: { roleId_moduleId: { roleId, moduleId } },
@@ -266,12 +265,6 @@ export function createPortalStore(prisma: PrismaClient): SeedPortalStore {
     async findAdministratorUsers() {
       return prisma.user.findMany({
         where: { isDeleted: false, role: { isAdministrator: true } },
-        select: { id: true },
-      });
-    },
-    async findUsersByRole(roleName) {
-      return prisma.user.findMany({
-        where: { isDeleted: false, role: { name: roleName } },
         select: { id: true },
       });
     },

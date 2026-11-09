@@ -5,6 +5,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { PORTAL_READS_TAG } from "@/lib/cache/portal-reads";
 
 import { prisma } from "@/lib/db/prisma";
+import { SEED_ROLES } from "@/lib/seed-data";
 
 import type { SelectableSystem } from "./module-selection";
 
@@ -42,7 +43,13 @@ export async function loadUserFormOptions(): Promise<UserFormOptions> {
   ]);
 
   return {
-    roles: roles.map((role) => ({
+    roles: roles.sort((left, right) => {
+      const order = (name: string) => {
+        const index = SEED_ROLES.findIndex((seeded) => seeded === name);
+        return index < 0 ? SEED_ROLES.length : index;
+      };
+      return order(left.name) - order(right.name) || left.name.localeCompare(right.name);
+    }).map((role) => ({
       id: role.id,
       name: role.name,
       templateModuleIds: role.accessTemplates.map((template) => template.moduleId),

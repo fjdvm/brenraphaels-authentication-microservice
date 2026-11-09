@@ -41,6 +41,10 @@ An administrative Role with the same administrative authority as CEO. The first 
 **CEO**:
 An administrative Role with the same full administrative authority as Super Admin.
 
+**General Manager**:
+A non-administrative Role for the person overseeing the whole business. Its AccessTemplate pre-checks every Module in every System, but it confers no authority over Users, AccessGrants or System Logs; only an Administrator can assign it.
+_Avoid_: GM, Admin.
+
 **System Logs**:
 The audit history of this portal's authentication and administrative activity, including login/logout, password actions, User changes, and AccessGrant changes. Each event records who acted, what happened, when, and the outcome. Held only in the audit-logs service (the Portal writes as its Authentication Source and keeps no local copy).
 

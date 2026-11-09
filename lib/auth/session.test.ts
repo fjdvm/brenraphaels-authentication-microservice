@@ -140,6 +140,13 @@ describe("requirePortalUser", () => {
     await expect(requireAdministrator()).rejects.toThrow("redirect:/");
   });
 
+  it("refuses a General Manager on administrator-only URLs and actions", async () => {
+    mocks.findUnique.mockResolvedValue({ ...activeUser, role: { name: "General Manager", isAdministrator: false } });
+    const { requirePortalUser, requireAdministrator } = await import("./session");
+    await expect(requirePortalUser()).resolves.toMatchObject({ roleName: "General Manager", isAdministrator: false });
+    await expect(requireAdministrator()).rejects.toThrow("redirect:/");
+  });
+
   it("allows a CEO because the current Role grants administrative authority", async () => {
     mocks.findUnique.mockResolvedValue({
       ...activeUser,

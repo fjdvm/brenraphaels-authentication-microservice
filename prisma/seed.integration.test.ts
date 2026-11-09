@@ -66,7 +66,7 @@ describe.skipIf(!testEnvironment)("the disposable Neon branch seed", () => {
       roles: SEED_ROLES.length,
       systems: SEED_SYSTEMS.length,
       modules: moduleCount,
-      access_templates: moduleCount,
+      access_templates: moduleCount * 2,
       super_admins: 1,
       active_access_grants: moduleCount,
       username_sequence: 1,
