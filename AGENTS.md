@@ -13,3 +13,16 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 For newly published specifications, prefix each title with `Spec#<issue-number>:` using its actual GitHub issue number (for example, `Spec#17: Responsive admin sidebar`). Create the issue, obtain its assigned number, then update and verify the title. This rule applies to future specifications only; preserve existing specification titles. Read `docs/agents/issue-tracker.md` for publishing conventions and `docs/agents/triage-labels.md` for label mappings.
 
 For newly published implementation tickets, prefix each title with `Ticket#<issue-number>:` using its actual GitHub issue number (for example, `Ticket#18: CEO authority and responsive shadcn admin navigation`). Create the issue, obtain its assigned number, then update and verify the title. This rule applies to future tickets only; preserve existing ticket titles.
+
+## Workflow rules
+
+- Implement a feature only after grilling, domain modeling, a spec (`/to-spec`), and tickets (`/to-tickets`), with the spec and tickets approved by the user.
+- Implement one ticket at a time against its acceptance criteria; start only after its blockers are resolved.
+
+### Checks and PR completion
+
+1. Before every push, run local typecheck (`npx next typegen` then `npx tsc --noEmit`) and unit tests (`npm test`). Push only when both pass.
+2. Open or update the ticket's PR and enable squash auto-merge with `gh pr merge <PR> --auto --squash`. Stop when GitHub accepts auto-merge; implementation is done at that point, without waiting for merge or deployment.
+3. If waiting for PR checks is unavoidable, use one blocking `gh pr checks <PR> --watch --fail-fast` command. Never loop on status commands.
+4. Never wait for the production deploy. GitHub's failed-workflow notification emails the owner; Azure retains the previous revision if deployment fails.
+5. Track any required live-production check in a separate verification ticket (ready-for-human or its own ticket), rather than waiting as part of implementation.
