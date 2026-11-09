@@ -122,7 +122,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 1
     steps:
-      - name: Require every check to pass
+      # PR/manual code runs require smoke; main code runs require the image.
+      # Docs-only runs require all three conditional jobs to be skipped.
+      - name: Require every expected dependency result
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
           CLASSIFICATION: ${{ needs.changes.outputs.classification }}
@@ -200,7 +202,14 @@ jobs:
           cache-from: type=gha,scope=portal-production
 
   deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.classification == 'code'
+    # Override implicit success(): container-smoke is an intentionally skipped
+    # ancestor on main. Every direct dependency must still succeed.
+    if: >-
+      !cancelled() &&
+      github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+      needs.changes.outputs.classification == 'code' &&
+      needs.changes.result == 'success' && needs.checks.result == 'success' &&
+      needs.production-image.result == 'success' && needs.ci-gate.result == 'success'
     needs: [changes, checks, production-image, ci-gate]
     runs-on: ubuntu-latest
     timeout-minutes: 25
