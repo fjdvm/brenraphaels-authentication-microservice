@@ -4,8 +4,8 @@ Ticket: #143; parent: #138. No database migration is needed.
 
 Every push to main runs the existing container smoke suite before publishing a
 production image to ghcr.io/fjdvm/brenraphaels-authentication-microservice using
-GITHUB_TOKEN. The public URL build argument and matching runtime environment value are
-https://portal.buildwrite.me (email code also reads it dynamically).
+GITHUB_TOKEN. The public URL is supplied only at runtime as
+https://portal.buildwrite.me (updated by #231; email code reads it dynamically).
 Azure login uses the OIDC secrets from #141. Deployment uses the immutable image
 digest. PRs and manual smoke runs cannot deploy.
 
@@ -31,7 +31,7 @@ secrets referenced by environment entries; GHCR uses the read:packages token.
 Keep API_GATEWAY_URL pointing to the existing Cloudflare gateway. This ticket
 does not bind the custom domain, update Neon trusted domains or repoint Systems.
 The default address supports reachability checks; full sign-in at the new origin
-requires the later domain/Auth cutover. The compiled URL targets the final domain.
+requires the later domain/Auth cutover. The runtime public URL targets the final domain.
 
 ## Rollback
 
