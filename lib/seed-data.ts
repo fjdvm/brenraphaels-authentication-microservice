@@ -68,7 +68,6 @@ export const SEED_SYSTEMS: SeedSystem[] = [
       "Product Management",
       "Stock Management",
       "Sales Reports",
-      "Location Management",
     ],
   },
   {
@@ -116,7 +115,6 @@ export const SEED_MODULE_FORMER_NAMES: Readonly<
   POS: {
     "Product Management": "Product Management/Price Configuration",
     "Sales Reports": "Sales Report Analytics",
-    "Location Management": "Location/Branch Management",
   },
   IMS: {
     Inventory: "Inventory Module",
@@ -133,6 +131,3 @@ export const SEED_ROLE_FORMER_NAMES: Readonly<Record<string, string>> = {
 export const SUPER_ADMIN_ROLE_NAME = "Super Admin" satisfies (typeof SEED_ROLES)[number];
 
 export const ADMINISTRATOR_ROLE_NAMES: readonly string[] = [SUPER_ADMIN_ROLE_NAME, "CEO"];
-
-export const POS_MANAGER_ROLE_NAME = "POS Manager";
-export const POS_LOCATION_MANAGEMENT_MODULE = "Location Management";
