@@ -3,14 +3,14 @@
 Ticket: #142. This builds and tests the image; no image is published and no deployment is made.
 
 ```sh
-docker build --build-arg NEXT_PUBLIC_APP_URL=https://portal.example.com -t portal:local .
+docker build -t portal:local .
 docker run --rm -p 3000:3000 --env-file /path/to/runtime.env portal:local
 curl --fail http://localhost:3000/api/health
 ```
 
-Use `.env.production.example` as the runtime key list. `NEXT_PUBLIC_APP_URL` is the
-only build argument and is frozen into the image. Rebuild when it changes. The build
-uses non-secret placeholders for route collection and needs no database or Auth access.
+Use `.env.production.example` as the runtime key list. `NEXT_PUBLIC_APP_URL` is supplied
+at runtime, so changing the public address does not require rebuilding the image
+(updated by #231). The build uses non-secret placeholders for route collection and needs no database or Auth access.
 Prisma Client is generated during the build. Runtime starts with `node server.js` as
 the unprivileged `node` user; static and public assets are included. `PORT` defaults to
 3000 and `HOSTNAME` to `0.0.0.0`. The platform probe is `GET /api/health` (anonymous,
@@ -29,7 +29,7 @@ Requires Node 24, npm, Docker Compose and OpenSSL. No cloud secrets are needed.
 ```sh
 npm ci
 npx prisma generate
-docker build --build-arg NEXT_PUBLIC_APP_URL=http://localhost:3000 -t portal:ticket142 .
+docker build -t portal:ticket142 .
 bash scripts/container-smoke/run.sh
 ```
 

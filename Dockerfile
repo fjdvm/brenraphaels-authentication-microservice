@@ -6,11 +6,9 @@ RUN npm ci --ignore-scripts --no-audit --no-fund
 FROM dependencies AS build
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY . .
-ARG NEXT_PUBLIC_APP_URL
 # Build-only placeholders let Next collect routes that import server modules.
 # No real database, Auth or gateway credentials are needed or copied into the image.
-RUN test -n "$NEXT_PUBLIC_APP_URL" && \
-    DATABASE_URL=postgresql://build:build@localhost:5432/build \
+RUN DATABASE_URL=postgresql://build:build@localhost:5432/build \
     NEON_AUTH_BASE_URL=https://build.invalid/auth \
     NEON_AUTH_COOKIE_SECRET=build-only-placeholder-at-least-32-characters \
     npm run build
