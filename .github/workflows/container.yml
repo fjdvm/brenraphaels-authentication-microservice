@@ -248,33 +248,7 @@ jobs:
           python3 scripts/deploy/render-container-app.py "$manifest"
           # Suppress the ARM response: it can contain configuration/secret fields.
           az containerapp create -g "$RESOURCE_GROUP" -n "$CONTAINER_APP" --yaml "$manifest" --output none
-          revision="$CONTAINER_APP--$REVISION_SUFFIX"
-          ready=false
-          for attempt in $(seq 1 200); do
-            state=$(az containerapp revision show -g "$RESOURCE_GROUP" -n "$CONTAINER_APP" --revision "$revision" --query properties.healthState -o tsv)
-            if [ "$state" = Healthy ]; then ready=true; break; fi
-            sleep 3
-          done
-          test "$ready" = true
-          fqdn=$(az containerapp show -g "$RESOURCE_GROUP" -n "$CONTAINER_APP" --query properties.configuration.ingress.fqdn -o tsv)
-          latest=$(az containerapp show -g "$RESOURCE_GROUP" -n "$CONTAINER_APP" --query properties.latestReadyRevisionName -o tsv)
-          test "$latest" = "$revision"
-          curl --fail --silent --show-error --retry 6 --retry-all-errors "https://$fqdn/api/health"
-          bound=$(az containerapp show -g "$RESOURCE_GROUP" -n "$CONTAINER_APP" \
-            --query "properties.configuration.ingress.customDomains[?name=='$PORTAL_CUSTOM_DOMAIN' && bindingType=='SniEnabled'] | length(@)" -o tsv)
-          if [ "$bound" != 1 ]; then
-            echo "::error::$PORTAL_CUSTOM_DOMAIN is not bound (SniEnabled) to $CONTAINER_APP after the deploy"
-            exit 1
-          fi
-          curl --fail --silent --show-error --retry 6 --retry-all-errors "https://$PORTAL_CUSTOM_DOMAIN/api/health"
-          {
-            echo '### Portal deployment'
-            echo "- Default address: https://$fqdn"
-            echo "- Healthy revision: $revision"
-            echo "- Image: $PORTAL_IMAGE"
-            echo '- Replicas: min 1, max 2; 0.5 vCPU / 1 GiB'
-            echo '- Previous revisions retained inactive for rollback (up to 10).'
-          } >> "$GITHUB_STEP_SUMMARY"
+          bash scripts/deploy/verify-revision.sh
       - uses: docker/setup-buildx-action@v3
       # Export the dependency target, not the runtime image: mode=min on the
       # runtime target would omit npm ci, because dependencies is an intermediate stage.
