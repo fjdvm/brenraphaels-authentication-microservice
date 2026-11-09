@@ -1,3 +1,4 @@
+# Temporary workflow-only acceptance probe for ticket #234.
 name: Portal container
 on:
   pull_request:
