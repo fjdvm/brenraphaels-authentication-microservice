@@ -14,8 +14,10 @@ export type SeedSystem = {
 export const SEED_SYSTEMS: SeedSystem[] = [
   {
     name: "CRMS",
-    url: "https://epic-crms.vercel.app",
+    url: "https://creoms.buildwrite.me",
     callbackUrls: [
+      "https://creoms.buildwrite.me/api/portal/callback",
+      // Keep the previous deployment trusted until the domain cutover is verified.
       "https://epic-crms.vercel.app/api/portal/callback",
       "http://localhost:3000/api/portal/callback", // ignored in production
     ],
