@@ -13,6 +13,13 @@ missing = [key for key in required if not secrets.get(key)]
 if missing:
     sys.exit('Missing GitHub secrets: ' + ', '.join(missing))
 
+# `az containerapp create --yaml` replaces the whole configuration, so the custom
+# domain must be declared here or every deploy silently unbinds it (see #220).
+custom_domain = os.environ.get('PORTAL_CUSTOM_DOMAIN', '')
+certificate_id = os.environ.get('PORTAL_CERTIFICATE_ID', '')
+if not custom_domain or not certificate_id:
+    sys.exit('Missing PORTAL_CUSTOM_DOMAIN or PORTAL_CERTIFICATE_ID: refusing to deploy without the custom domain binding')
+
 def secret_name(key):
     return key.lower().replace('_', '-')
 
@@ -28,6 +35,8 @@ manifest = {
                             'passwordSecretRef': 'ghcr-pull-token'}],
             'ingress': {'external': True, 'targetPort': 3000, 'transport': 'auto',
                         'allowInsecure': False,
+                        'customDomains': [{'name': custom_domain, 'bindingType': 'SniEnabled',
+                                           'certificateId': certificate_id}],
                         'traffic': [{'latestRevision': True, 'weight': 100}]},
         },
         'template': {

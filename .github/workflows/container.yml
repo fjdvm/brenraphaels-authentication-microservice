@@ -55,6 +55,7 @@ jobs:
       RESOURCE_GROUP: rg-brenraphaels
       CONTAINER_APP: portal
       PORTAL_PUBLIC_URL: https://portal.buildwrite.me
+      PORTAL_CUSTOM_DOMAIN: portal.buildwrite.me
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -93,6 +94,15 @@ jobs:
           export AZURE_CORE_ONLY_SHOW_ERRORS=true
           export CONTAINER_ENVIRONMENT_ID
           CONTAINER_ENVIRONMENT_ID=$(az containerapp env show -g "$RESOURCE_GROUP" -n cae-brenraphaels --query id -o tsv)
+          # The manifest replaces the whole app config, so it must carry the custom
+          # domain binding; reuse the existing managed certificate (never create one here).
+          export PORTAL_CERTIFICATE_ID
+          PORTAL_CERTIFICATE_ID=$(az containerapp env certificate list -g "$RESOURCE_GROUP" -n cae-brenraphaels \
+            --query "[?properties.subjectName=='$PORTAL_CUSTOM_DOMAIN' && properties.provisioningState=='Succeeded'].id | [0]" -o tsv)
+          if [ -z "$PORTAL_CERTIFICATE_ID" ] || [ "$PORTAL_CERTIFICATE_ID" = None ]; then
+            echo "::error::No succeeded managed certificate for $PORTAL_CUSTOM_DOMAIN in cae-brenraphaels"
+            exit 1
+          fi
           export REVISION_SUFFIX="gh-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           manifest="$RUNNER_TEMP/portal-deploy.json"
           trap 'rm -f "$manifest"' EXIT
@@ -111,6 +121,13 @@ jobs:
           latest=$(az containerapp show -g "$RESOURCE_GROUP" -n "$CONTAINER_APP" --query properties.latestReadyRevisionName -o tsv)
           test "$latest" = "$revision"
           curl --fail --silent --show-error --retry 6 --retry-all-errors "https://$fqdn/api/health"
+          bound=$(az containerapp show -g "$RESOURCE_GROUP" -n "$CONTAINER_APP" \
+            --query "properties.configuration.ingress.customDomains[?name=='$PORTAL_CUSTOM_DOMAIN' && bindingType=='SniEnabled'] | length(@)" -o tsv)
+          if [ "$bound" != 1 ]; then
+            echo "::error::$PORTAL_CUSTOM_DOMAIN is not bound (SniEnabled) to $CONTAINER_APP after the deploy"
+            exit 1
+          fi
+          curl --fail --silent --show-error --retry 6 --retry-all-errors "https://$PORTAL_CUSTOM_DOMAIN/api/health"
           {
             echo '### Portal deployment'
             echo "- Default address: https://$fqdn"
