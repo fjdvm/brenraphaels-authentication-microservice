@@ -53,7 +53,15 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
+      - name: Restore installed dependencies
+        id: node-modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-${{ runner.arch }}-node24-modules-${{ hashFiles('package-lock.json') }}
+      - name: Install dependencies
+        if: steps.node-modules.outputs.cache-hit != 'true'
+        run: npm ci
       - run: npx prisma generate
       - run: npx next typegen
       - run: npx tsc --noEmit
@@ -70,7 +78,15 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
+      - name: Restore installed dependencies
+        id: node-modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-${{ runner.arch }}-node24-modules-${{ hashFiles('package-lock.json') }}
+      - name: Install dependencies
+        if: steps.node-modules.outputs.cache-hit != 'true'
+        run: npm ci
       - uses: docker/setup-buildx-action@v3
       - name: Restore Next.js build cache
         uses: actions/cache/restore@v4
@@ -97,22 +113,11 @@ jobs:
           bytes=$(docker image inspect portal:ticket142 --format '{{.Size}}')
           echo "Portal image: $bytes bytes (limit 400 MiB)" | tee -a "$GITHUB_STEP_SUMMARY"
           test "$bytes" -lt 419430400
-      - name: Resolve Playwright version
-        id: playwright
-        run: node -e "console.log('version=' + require('@playwright/test/package.json').version)" >> "$GITHUB_OUTPUT"
-      - name: Cache Playwright browsers
-        id: playwright-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ steps.playwright.outputs.version }}
-      # OS packages are not part of the browser cache and are needed on every runner.
-      - name: Install Chromium system dependencies
-        run: npx playwright install-deps chromium
-      - name: Install Chromium browser
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install chromium
+      # The runner image ships Google Chrome; using it avoids downloading Chromium
+      # and its OS packages (about 15-35s) on every run.
       - name: Smoke test against disposable PostgreSQL
+        env:
+          SMOKE_BROWSER_CHANNEL: chrome
         run: bash scripts/container-smoke/run.sh
 
   ci-gate:
