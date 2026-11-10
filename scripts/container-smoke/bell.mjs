@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { chromium } from '@playwright/test';
 const origin = process.env.SMOKE_ORIGIN;
 const control = body => fetch('http://127.0.0.1:18080/control', { method: 'POST', body: JSON.stringify(body) });
-const browser = await chromium.launch({ args: ['--host-resolver-rules=MAP gateway 127.0.0.1', '--no-proxy-server'] });
+const browser = await chromium.launch({ channel: process.env.SMOKE_BROWSER_CHANNEL || undefined, args: ['--host-resolver-rules=MAP gateway 127.0.0.1', '--no-proxy-server'] });
 try {
   const context = await browser.newContext();
   // Store a real session cookie; Chromium permits Secure cookies on loopback HTTP.
