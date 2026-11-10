@@ -14,6 +14,10 @@ For newly published specifications, prefix each title with `Spec#<issue-number>:
 
 For newly published implementation tickets, prefix each title with `Ticket#<issue-number>:` using its actual GitHub issue number (for example, `Ticket#18: CEO authority and responsive shadcn admin navigation`). Create the issue, obtain its assigned number, then update and verify the title. This rule applies to future tickets only; preserve existing ticket titles.
 
+## No polling
+
+No app polls (ADR-0005, `docs/adr/0005-no-polling-anywhere.md`). Never repeat a data request on a timer, window focus or tab visibility; use the WebSocket, refetch on (re)connect, or refetch on a user action. A 30–60 second in-memory heartbeat is a keepalive, not polling. Idle-tab checks: `lib/no-polling.test.ts` and the bell's "without idle polling" browser test.
+
 ## Workflow rules
 
 - Implement a feature only after grilling, domain modeling, a spec (`/to-spec`), and tickets (`/to-tickets`), with the spec and tickets approved by the user.
