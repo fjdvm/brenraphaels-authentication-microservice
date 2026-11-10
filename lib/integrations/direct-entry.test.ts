@@ -108,6 +108,42 @@ describe("direct System entry through central login", () => {
     });
   });
 
+  describe("behind a proxy that hides the public host", () => {
+    // Azure's standalone server builds request.url from its own listen address.
+    const INTERNAL = "https://0.0.0.0:3000";
+
+    function authorizeViaInternalAddress() {
+      const url = new URL(authorizeUrl({}, pkce.challenge));
+      const internal = new URL(`${url.pathname}${url.search}`, INTERNAL);
+
+      return handleAuthorize(new Request(internal), ctx.deps);
+    }
+
+    beforeEach(() => {
+      vi.stubEnv("NEXT_PUBLIC_APP_URL", PORTAL);
+    });
+
+    it("sends a signed-out browser to login on the public origin", async () => {
+      ctx.world.subject = { status: "signed_out" };
+
+      const location = new URL((await authorizeViaInternalAddress()).headers.get("location")!);
+
+      expect(location.origin).toBe(PORTAL);
+      expect(location.pathname).toBe("/login");
+      expect(location.searchParams.get("ri")).toBeTruthy();
+    });
+
+    it("sends a browser that must change its password to the public origin", async () => {
+      ctx.world.subject = { status: "must_change_password" };
+
+      const location = new URL((await authorizeViaInternalAddress()).headers.get("location")!);
+
+      expect(location.origin).toBe(PORTAL);
+      expect(location.pathname).toBe("/change-password");
+      expect(location.searchParams.get("ri")).toBeTruthy();
+    });
+  });
+
   describe("mandatory password change", () => {
     it("keeps the request through the password change and resumes it afterwards", async () => {
       ctx.world.subject = { status: "must_change_password" };

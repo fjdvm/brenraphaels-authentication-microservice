@@ -112,6 +112,25 @@ export async function handleAuthorize(request: Request, deps: EndpointDeps): Pro
   }
 }
 
+/**
+ * The origin browsers use to reach the Portal. Behind Azure's ingress the standalone server
+ * builds `request.url` from its listen address (`0.0.0.0:3000`), so redirects take the
+ * configured public origin instead; `request.url` remains the fallback where none is set.
+ */
+function publicOrigin(request: Request): string {
+  const configured = process.env.NEXT_PUBLIC_APP_URL;
+
+  if (configured) {
+    try {
+      return new URL(configured).origin;
+    } catch {
+      // A malformed value falls through to the request's own origin.
+    }
+  }
+
+  return new URL(request.url).origin;
+}
+
 async function authorize(request: Request, deps: EndpointDeps): Promise<Response> {
   const subject = await deps.resolveSubject();
   const params = new URL(request.url).searchParams;
@@ -134,7 +153,7 @@ async function authorize(request: Request, deps: EndpointDeps): Promise<Response
 
     const destination = new URL(
       subject.status === "signed_out" ? "/login" : "/change-password",
-      request.url,
+      publicOrigin(request),
     );
     destination.searchParams.set(
       RETURN_INTENT_PARAM,
