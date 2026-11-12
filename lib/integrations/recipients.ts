@@ -6,7 +6,7 @@ type Ports = {
   listEligibleStaff(systemId: string): Promise<{ id: string; username: string; name: string; modules: string[] }[]>;
 };
 
-/** Backend-only directory. A System may enumerate grants only in its own System. */
+/** Backend-only directory. A System may enumerate grants only in its own System. Each Staff member carries a display `name`; HRMS needs it for its Interviewer picker (fjdvm/hrms#268). */
 export async function handleRecipients(request: Request, ports: Ports): Promise<Response> {
   const headers = { "Cache-Control": "no-store" };
   try {
