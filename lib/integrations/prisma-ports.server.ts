@@ -94,6 +94,13 @@ export const prismaHandoffPorts: HandoffPorts & ValidationPorts = {
     }),
 
   async hasActiveGrantInModule(userId, systemId, moduleName) {
+    const grant = await prisma.accessGrant.findFirst({
+      where: { userId, revokedAt: null, module: { systemId, name: moduleName, retiredAt: null } },
+      select: { id: true },
+    });
+    // Before the cutover, existing unretired grants still authorize normally.
+    if (grant !== null) return true;
+
     if (moduleName === LEGACY_HRMS_HIRING) {
       const system = await prisma.system.findUnique({ where: { id: systemId }, select: { name: true } });
       if (system?.name === "HRMS") {
@@ -103,16 +110,10 @@ export const prismaHandoffPorts: HandoffPorts & ValidationPorts = {
             select: { id: true },
           }),
         ));
-        return grants.every((grant) => grant !== null);
+        return grants.every((replacement) => replacement !== null);
       }
     }
-
-    const grant = await prisma.accessGrant.findFirst({
-      where: { userId, revokedAt: null, module: { systemId, name: moduleName, retiredAt: null } },
-      select: { id: true },
-    });
-
-    return grant !== null;
+    return false;
   },
 
   async findStaffProfile(userId) {

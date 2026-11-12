@@ -87,6 +87,8 @@ it("never reuses a successful access answer after the central session is revoked
 it("keeps legacy HRMS hiring checks working only with all four replacement grants", async () => {
   database.systemName = "HRMS";
   database.findSystem.mockResolvedValue({ id: "hrms", name: "HRMS", backendSecretHash: hashToken("backend-secret") });
+  database.grants = new Set(["Recruitment and Hiring"]);
+  expect((await validate("Recruitment and Hiring")).status).toBe(200);
   database.grants = new Set(["Job Postings", "Applications", "Interviews", "Offers"]);
   expect((await validate("Recruitment and Hiring")).status).toBe(200);
   database.grants.delete("Offers");
