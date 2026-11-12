@@ -25,3 +25,22 @@ it("fails closed when the directory is unavailable", async () => {
   }), { findSystemByName: async () => { throw new Error("offline"); }, listEligibleStaff: vi.fn() });
   expect(response.status).toBe(503);
 });
+
+it("bridges the old HRMS directory only for holders of all four hiring Modules", async () => {
+  const modules = ["Job Postings", "Applications", "Interviews", "Offers"];
+  const ports = {
+    findSystemByName: async () => ({ id: "hrms", backendSecretHash: hashToken("secret") }),
+    listEligibleStaff: async () => [
+      { id: "old", username: "old", name: "Migrated User", modules },
+      { id: "partial", username: "partial", name: "Partial User", modules: ["Applications"] },
+    ],
+  };
+  const request = (system: string) => new Request("https://portal.test/api/integrations/recipients", {
+    headers: { Authorization: `Basic ${Buffer.from(`${system}:secret`).toString("base64")}` },
+  });
+  const result = await handleRecipients(request("HRMS"), ports);
+  expect((await result.json()).staff.map((staff: { modules: string[] }) => staff.modules))
+    .toEqual([[...modules, "Recruitment and Hiring"], ["Applications"]]);
+  const other = await handleRecipients(request("POS"), ports);
+  expect((await other.json()).staff[0].modules).toEqual(modules);
+});
