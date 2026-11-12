@@ -46,3 +46,10 @@ Tests call the HTTP handlers using a fake HRMS sender and in-memory Postgres
 running the real migration and parameterized persistence queries. They cover bad
 secrets, concurrent delivery, User/active-request email collisions, templates,
 retired Modules, empty selections and retries after account creation.
+
+Verified on 2026-11-13 (Manila): the migration succeeded on a temporary branch of
+production (`ticket-hrms-331-migration-test`, expiring automatically), then was
+applied to the configured Portal database and recorded with Prisma. The unrelated
+System Log removal remains pending. Local validation: typecheck, targeted ESLint,
+Prisma validation, both endpoint test files, and the full suite (570 passed,
+23 skipped). Standards review found no violations; spec review found no gaps.

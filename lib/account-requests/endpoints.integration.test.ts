@@ -74,7 +74,7 @@ it("serves only current Modules and current Role templates across Systems", asyn
   });
 });
 
-it("accepts an empty Module selection and preserves a request after its Role template changes", async () => {
+it("accepts an empty Module selection and acknowledges retries after account creation", async () => {
   const body = { ...payload, reference: "RQ-0005", moduleIds: [], employee: { ...payload.employee, workEmail: "no-modules@example.com" } };
   expect((await handleAccountRequest(request(body), ports)).status).toBe(201);
   await db.exec(`INSERT INTO "User" (id,username,email,"firstName","lastName","roleId","neonAuthUserId") VALUES ('created','created','no-modules@example.com','Created','Test','staff','auth-created');
