@@ -35,6 +35,7 @@ it("migrates HRMS grants and Role templates without losing history or granting O
       { userId: 'payroll', name: 'Payroll & ESS' }, { userId: 'payroll', name: 'Payroll & ESS' },
       { userId: 'recruiter', name: 'Job Postings' }, { userId: 'recruiter', name: 'Recruitment and Hiring' },
     ]);
+    await db.exec(readFileSync("prisma/migrations/20261112000000_module_retirement/migration.sql", "utf8"));
     await db.exec(readFileSync("prisma/migrations/20261113000000_hrms_modules/migration.sql", "utf8"));
     expect(await active()).toEqual([
       { userId: 'hr', name: 'Employee Information' }, { userId: 'payroll', name: 'Payroll & ESS' },

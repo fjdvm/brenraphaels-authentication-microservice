@@ -1,8 +1,7 @@
 BEGIN;
 
+-- Apply after the Portal legacy hiring bridge is deployed (fjdvm/hrms#316).
 -- Retired Modules remain addressable by historical AccessGrants.
-ALTER TABLE "Module" ADD COLUMN "retiredAt" TIMESTAMP(3);
-
 INSERT INTO "Module" (id, "systemId", name)
 SELECT gen_random_uuid()::text, s.id, names.name
 FROM "System" s CROSS JOIN (VALUES
