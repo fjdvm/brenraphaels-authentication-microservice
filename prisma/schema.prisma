@@ -27,6 +27,8 @@ model Module {
   id              String           @id @default(cuid())
   systemId        String
   name            String
+  // Kept for grant history; unavailable for selection or authorization.
+  retiredAt       DateTime?
   system          System           @relation(fields: [systemId], references: [id])
   accessTemplates AccessTemplate[]
   accessGrants    AccessGrant[]

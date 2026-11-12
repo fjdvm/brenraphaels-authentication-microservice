@@ -28,7 +28,7 @@ export async function loadUserFormOptions(): Promise<UserFormOptions> {
 
   const [roles, systems] = await Promise.all([
     prisma.role.findMany({
-      select: { id: true, name: true, accessTemplates: { select: { moduleId: true } } },
+      select: { id: true, name: true, accessTemplates: { where: { module: { retiredAt: null } }, select: { moduleId: true } } },
       orderBy: { name: "asc" },
     }),
     prisma.system.findMany({
@@ -36,7 +36,7 @@ export async function loadUserFormOptions(): Promise<UserFormOptions> {
         id: true,
         name: true,
         iconName: true,
-        modules: { select: { id: true, name: true }, orderBy: { name: "asc" } },
+        modules: { where: { retiredAt: null }, select: { id: true, name: true }, orderBy: { name: "asc" } },
       },
       orderBy: { name: "asc" },
     }),

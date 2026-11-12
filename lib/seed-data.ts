@@ -46,14 +46,17 @@ export const SEED_SYSTEMS: SeedSystem[] = [
       "http://localhost:3001/api/portal/callback", // ignored in production
     ],
     iconName: "contact",
-    description: "Recruitment, employee records, payroll and attendance.",
+    description: "Recruitment, employee records, onboarding, training and performance.",
     modules: [
       "Dashboard",
-      "Recruitment and Hiring",
+      "Job Postings",
+      "Applications",
+      "Interviews",
+      "Offers",
       "Employee Information",
-      "Payroll & ESS",
-      "Attendance",
-      "User Management",
+      "Employee Onboarding",
+      "Training",
+      "Performance",
     ],
   },
   {
@@ -115,7 +118,6 @@ export const SEED_MODULE_FORMER_NAMES: Readonly<
   Record<string, Readonly<Record<string, string>>>
 > = {
   CRMS: { Marketing: "Campaigns" },
-  HRMS: { Attendance: "Attendance Biometrics" },
   POS: {
     "Product Management": "Product Management/Price Configuration",
     "Sales Reports": "Sales Report Analytics",

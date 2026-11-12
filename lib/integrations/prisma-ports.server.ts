@@ -2,6 +2,8 @@ import "server-only";
 
 import { prisma } from "@/lib/db/prisma";
 
+import { HRMS_HIRING_MODULES, LEGACY_HRMS_HIRING } from "./hrms-legacy-hiring";
+
 import type { HandoffPorts } from "./handoff";
 import type { ValidationPorts } from "./validation";
 
@@ -23,7 +25,7 @@ export const prismaHandoffPorts: HandoffPorts & ValidationPorts = {
 
   async hasActiveGrantInSystem(userId, systemId) {
     const grant = await prisma.accessGrant.findFirst({
-      where: { userId, revokedAt: null, module: { systemId } },
+      where: { userId, revokedAt: null, module: { systemId, retiredAt: null } },
       select: { id: true },
     });
 
@@ -93,11 +95,25 @@ export const prismaHandoffPorts: HandoffPorts & ValidationPorts = {
 
   async hasActiveGrantInModule(userId, systemId, moduleName) {
     const grant = await prisma.accessGrant.findFirst({
-      where: { userId, revokedAt: null, module: { systemId, name: moduleName } },
+      where: { userId, revokedAt: null, module: { systemId, name: moduleName, retiredAt: null } },
       select: { id: true },
     });
+    // Before the cutover, existing unretired grants still authorize normally.
+    if (grant !== null) return true;
 
-    return grant !== null;
+    if (moduleName === LEGACY_HRMS_HIRING) {
+      const system = await prisma.system.findUnique({ where: { id: systemId }, select: { name: true } });
+      if (system?.name === "HRMS") {
+        const grants = await Promise.all(HRMS_HIRING_MODULES.map((name) =>
+          prisma.accessGrant.findFirst({
+            where: { userId, revokedAt: null, module: { systemId, name, retiredAt: null } },
+            select: { id: true },
+          }),
+        ));
+        return grants.every((replacement) => replacement !== null);
+      }
+    }
+    return false;
   },
 
   async findStaffProfile(userId) {

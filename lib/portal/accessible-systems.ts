@@ -23,7 +23,7 @@ export type AccessibleSystem = {
  */
 export async function listAccessibleSystems(userId: string): Promise<AccessibleSystem[]> {
   const grants = await prisma.accessGrant.findMany({
-    where: { userId },
+    where: { userId, module: { retiredAt: null } },
     select: {
       revokedAt: true,
       user: { select: { isDeleted: true } },
@@ -38,7 +38,7 @@ export async function listAccessibleSystems(userId: string): Promise<AccessibleS
               url: true,
               iconName: true,
               description: true,
-              _count: { select: { modules: true } },
+              _count: { select: { modules: { where: { retiredAt: null } } } },
             },
           },
         },

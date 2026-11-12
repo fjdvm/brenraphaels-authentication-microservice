@@ -1,3 +1,4 @@
+import { hasLegacyHiringAccess, LEGACY_HRMS_HIRING } from "./hrms-legacy-hiring";
 import { parseBasicCredentials } from "./basic";
 import { hashToken, safeEqual } from "./tokens";
 
@@ -15,7 +16,11 @@ export async function handleRecipients(request: Request, ports: Ports): Promise<
     if (!credentials || !system?.backendSecretHash || !safeEqual(hashToken(credentials.secret), system.backendSecretHash)) {
       return Response.json({ error: "invalid_client" }, { status: 401, headers });
     }
-    return Response.json({ staff: await ports.listEligibleStaff(system.id) }, { headers });
+    const staff = await ports.listEligibleStaff(system.id);
+    return Response.json({ staff: credentials.name === "HRMS"
+      ? staff.map((user) => ({ ...user, modules: hasLegacyHiringAccess(user.modules)
+        ? [...user.modules, LEGACY_HRMS_HIRING] : user.modules }))
+      : staff }, { headers });
   } catch {
     return Response.json({ error: "temporarily_unavailable" }, { status: 503, headers });
   }
