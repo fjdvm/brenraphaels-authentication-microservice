@@ -55,7 +55,7 @@ export const prismaAccessStore: AccessStore = {
   },
 
   countModules(moduleIds) {
-    return prisma.module.count({ where: { id: { in: moduleIds } } });
+    return prisma.module.count({ where: { id: { in: moduleIds }, retiredAt: null } });
   },
 
   apply({ userId, roleId, moduleIds, actorId }) {

@@ -7,8 +7,8 @@ export async function POST(request: Request): Promise<Response> {
     findSystemByName: prismaHandoffPorts.findSystemByName,
     async listEligibleStaff(systemId) {
       const users = await prisma.user.findMany({
-        where: { isDeleted: false, mustChangePassword: false, accessGrants: { some: { revokedAt: null, module: { systemId } } } },
-        select: { id: true, username: true, firstName: true, lastName: true, accessGrants: { where: { revokedAt: null, module: { systemId } }, select: { module: { select: { name: true } } } } },
+        where: { isDeleted: false, mustChangePassword: false, accessGrants: { some: { revokedAt: null, module: { systemId, retiredAt: null } } } },
+        select: { id: true, username: true, firstName: true, lastName: true, accessGrants: { where: { revokedAt: null, module: { systemId, retiredAt: null } }, select: { module: { select: { name: true } } } } },
       });
       return users.map(user => ({ id: user.id, username: user.username, name: `${user.firstName} ${user.lastName}`, modules: [...new Set(user.accessGrants.map(grant => grant.module.name))] }));
     },

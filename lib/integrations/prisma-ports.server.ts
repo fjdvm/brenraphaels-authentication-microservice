@@ -23,7 +23,7 @@ export const prismaHandoffPorts: HandoffPorts & ValidationPorts = {
 
   async hasActiveGrantInSystem(userId, systemId) {
     const grant = await prisma.accessGrant.findFirst({
-      where: { userId, revokedAt: null, module: { systemId } },
+      where: { userId, revokedAt: null, module: { systemId, retiredAt: null } },
       select: { id: true },
     });
 
@@ -93,7 +93,7 @@ export const prismaHandoffPorts: HandoffPorts & ValidationPorts = {
 
   async hasActiveGrantInModule(userId, systemId, moduleName) {
     const grant = await prisma.accessGrant.findFirst({
-      where: { userId, revokedAt: null, module: { systemId, name: moduleName } },
+      where: { userId, revokedAt: null, module: { systemId, name: moduleName, retiredAt: null } },
       select: { id: true },
     });
 

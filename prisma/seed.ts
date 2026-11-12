@@ -227,7 +227,7 @@ export function createPortalStore(prisma: PrismaClient): SeedPortalStore {
       });
     },
     async findModules() {
-      return prisma.module.findMany({ select: { id: true } });
+      return prisma.module.findMany({ where: { retiredAt: null }, select: { id: true } });
     },
     async upsertAccessTemplate(roleId, moduleId) {
       await prisma.accessTemplate.upsert({

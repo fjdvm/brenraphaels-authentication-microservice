@@ -148,7 +148,7 @@ describe("seedPortal", () => {
     const role = stores.roles.get("General Manager");
     expect(role).toMatchObject({ isAdministrator: false });
     expect(SEED_ROLES.slice(2, 4)).toEqual(["VP", "General Manager"]);
-    expect([...stores.accessTemplates].filter((entry) => entry.startsWith(`${role!.id}:`))).toHaveLength(29);
+    expect([...stores.accessTemplates].filter((entry) => entry.startsWith(`${role!.id}:`))).toHaveLength(32);
     const before = { roles: [...stores.roles], templates: [...stores.accessTemplates], users: [...stores.users], grants: [...stores.accessGrants] };
     await seedPortal(stores.portal, stores.auth, admin);
     expect({ roles: [...stores.roles], templates: [...stores.accessTemplates], users: [...stores.users], grants: [...stores.accessGrants] }).toEqual(before);
@@ -309,25 +309,11 @@ describe("seedPortal", () => {
     ).toHaveLength(1);
   });
 
-  it("seeds the HRMS Attendance Module as a rename of Attendance Biometrics", async () => {
-    const stores = createStores();
-    const renames: string[] = [];
-    const upsertModule = stores.portal.upsertModule;
-    stores.portal.upsertModule = async (systemId, name, formerName) => {
-      if (formerName && ["Campaigns", "Attendance Biometrics"].includes(formerName)) renames.push(`${formerName} -> ${name}`);
-      return upsertModule(systemId, name, formerName);
-    };
-
-    await seedPortal(stores.portal, stores.auth, {
-      username: "2026-ADMIN-001",
-      firstName: "Jude",
-      lastName: "Nitram",
-      email: "jude.nitram08@gmail.com",
-      password: "not-a-real-password",
-    });
-
-    expect(renames).toEqual(["Campaigns -> Marketing", "Attendance Biometrics -> Attendance"]);
-    expect(SEED_SYSTEMS.find((system) => system.name === "HRMS")?.modules).toContain("Attendance");
+  it("seeds exactly the nine current HRMS Modules", () => {
+    expect(SEED_SYSTEMS.find((system) => system.name === "HRMS")?.modules).toEqual([
+      "Dashboard", "Job Postings", "Applications", "Interviews", "Offers",
+      "Employee Information", "Employee Onboarding", "Training", "Performance",
+    ]);
   });
 
   it("seeds a Tickets Module under CRMS that CREOMS validates sessions against", () => {
