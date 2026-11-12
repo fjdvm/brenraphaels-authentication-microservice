@@ -16,7 +16,7 @@ export type Inbox = {
 };
 
 /** What an Administrator did that the affected User is told about. */
-export type NotificationType = "access.changed" | "role.changed" | "credentials.resent";
+export type NotificationType = "access.changed" | "role.changed" | "credentials.resent" | "account-request.new";
 
 /** A notification the Portal sends to one User's Portal inbox. */
 export type OutgoingNotification = {

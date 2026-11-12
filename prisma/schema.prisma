@@ -18,6 +18,7 @@ model System {
   // SHA-256 of the System backend's secret. The secret itself is shown once at
   // registration and never stored.
   backendSecretHash   String?
+  accountRequests     AccountRequest[]
   modules             Module[]
   handoffCodes        HandoffCode[]
   integrationSessions IntegrationSession[]
@@ -42,6 +43,7 @@ model Role {
   isAdministrator Boolean          @default(false)
   accessTemplates AccessTemplate[]
   users           User[]
+  accountRequests AccountRequest[]
 }
 
 model AccessTemplate {
@@ -128,4 +130,44 @@ model IntegrationSession {
   user          User      @relation(fields: [userId], references: [id])
 
   @@index([neonSessionId])
+}
+
+enum AccountRequestStatus {
+  new
+  seen
+  created
+  declined
+  cancelled
+}
+
+// HRMS owns the RQ reference; Portal owns the request's authoritative status.
+model AccountRequest {
+  id               String               @id @default(cuid())
+  reference        String
+  sourceSystemId   String
+  sourceSystem     System               @relation(fields: [sourceSystemId], references: [id])
+  personName       String
+  workEmail        String
+  personalEmail    String
+  mobile           String?
+  position         String
+  branch           String
+  startDate        DateTime             @db.Date
+  roleId           String
+  role             Role                 @relation(fields: [roleId], references: [id])
+  moduleIds        String[]
+  neededFrom       DateTime             @db.Date
+  note             String?
+  requesterName    String
+  status           AccountRequestStatus @default(new)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  seenAt           DateTime?
+  accountCreatedAt DateTime?
+  declinedAt       DateTime?
+  cancelledAt      DateTime?
+  // SQL migration also enforces one active request per case-insensitive work email.
+
+  @@unique([sourceSystemId, reference])
+  @@index([status, createdAt])
 }
