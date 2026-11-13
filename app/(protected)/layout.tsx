@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { PortalShell } from "@/components/layout/portal-shell";
 import { ShellSkeleton } from "@/components/layout/shell-skeleton";
+import { countNewAccountRequests } from "@/lib/admin/account-requests.server";
 import { requirePortalUser, toShellUser } from "@/lib/auth/session";
 
 // One shell for every signed-in page, so moving between them keeps the sidebar and header
@@ -21,8 +22,13 @@ async function Shell({ children }: { children: ReactNode }) {
   await connection();
   const user = await requirePortalUser({ allowMustChangePassword: true });
 
+  // The badge is read on each render of the shell (navigation, reload), never on a timer.
+  const newAccountRequests = user.isAdministrator ? await countNewAccountRequests().catch(() => 0) : 0;
+
   return user.isAdministrator ? (
-    <AdminShell user={toShellUser(user)}>{children}</AdminShell>
+    <AdminShell newAccountRequests={newAccountRequests} user={toShellUser(user)}>
+      {children}
+    </AdminShell>
   ) : (
     <PortalShell user={user}>{children}</PortalShell>
   );

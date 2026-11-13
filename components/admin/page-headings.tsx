@@ -19,6 +19,18 @@ export function SystemLogsHeading() {
   );
 }
 
+export function AccountRequestsHeading() {
+  return (
+    <>
+      <h1 className="text-2xl font-semibold text-foreground">Account requests</h1>
+      <p className="text-sm text-on-surface-variant">
+        People staff asked you to create accounts for. Open a request to review it, then create the account with the
+        details already filled in.
+      </p>
+    </>
+  );
+}
+
 export function MyLogsHeading() {
   return (
     <>

@@ -17,22 +17,25 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { SIDEBAR_SECTIONS } from "@/lib/admin/navigation";
+import { ACCOUNT_REQUESTS_HREF, SIDEBAR_SECTIONS } from "@/lib/admin/navigation";
 
 type AdminShellProps = {
   children: ReactNode;
   user: ShellUser;
+  /** Requests waiting for an Administrator; shown as a badge on Account requests. */
+  newAccountRequests?: number;
 };
 
 // Matches the CREOMS sidebar (296px), so the Portal and CREOMS feel like one product.
 const SIDEBAR_STYLE = { "--sidebar-width": "18.5rem" } as CSSProperties;
 
-function AdministrativeNavigation({ user }: { user: ShellUser }) {
+function AdministrativeNavigation({ user, newAccountRequests = 0 }: { user: ShellUser; newAccountRequests?: number }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
 
@@ -61,6 +64,14 @@ function AdministrativeNavigation({ user }: { user: ShellUser }) {
                       <span>{label}</span>
                     </Link>
                   </SidebarMenuButton>
+                  {href === ACCOUNT_REQUESTS_HREF && newAccountRequests > 0 ? (
+                    <SidebarMenuBadge
+                      aria-label={`${newAccountRequests} new`}
+                      className="right-2.5 h-5 min-w-5 rounded-full bg-identity px-1.5 text-[11px] font-semibold text-on-primary peer-data-[active=true]/menu-button:text-on-primary"
+                    >
+                      {newAccountRequests}
+                    </SidebarMenuBadge>
+                  ) : null}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
@@ -75,14 +86,14 @@ function AdministrativeNavigation({ user }: { user: ShellUser }) {
   );
 }
 
-export function AdminShell({ children, user }: AdminShellProps) {
+export function AdminShell({ children, user, newAccountRequests }: AdminShellProps) {
   return (
     <SidebarProvider style={SIDEBAR_STYLE}>
       <Sidebar collapsible="offcanvas">
         <SidebarHeader className="border-b border-border py-[18px] pl-3.5 pr-2.5">
           <BrandLockup size="sidebar" />
         </SidebarHeader>
-        <AdministrativeNavigation user={user} />
+        <AdministrativeNavigation newAccountRequests={newAccountRequests} user={user} />
       </Sidebar>
 
       <div className="flex min-h-svh min-w-0 flex-1 flex-col bg-surface">
