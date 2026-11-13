@@ -115,6 +115,6 @@ normal Usernames, dual delivery, and retaining Created on personal-email failure
   the same row; only one can win.
 - Both use the same HRMS Basic authentication and `no-store` responses. Unknown
   references return `404`, malformed references `400`, invalid credentials `401`.
-  Terminal requests return `409 { status }`, mapping Created to `account_created`.
+  Terminal requests return `409 { status }`, mapping Created to `account_created` or `login_sent` after confirmed delivery.
   Successful cancellation returns `200 { status: "cancelled" }`.
 - This uses the existing schema; no migration or production data change is needed.

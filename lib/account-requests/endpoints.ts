@@ -84,6 +84,7 @@ export async function handleAccountRequestOptions(request: Request, ports: Accou
 
 
 export type AccountRequestActionPorts = AccountRequestPorts & {
+  findActionRequest(systemId: string, reference: string): Promise<RequestReceipt | null>;
   cancel(systemId: string, reference: string): Promise<RequestReceipt | null>;
 };
 
@@ -95,7 +96,7 @@ export async function handleAccountRequestAction(request: Request, reference: st
     if (!z.string().regex(/^RQ-\d{4,}$/).max(50).safeParse(reference).success) return json({ error: "invalid-request" }, 400);
     const saved = action === "cancel"
       ? await ports.cancel(system.id, reference)
-      : await ports.findRequest(system.id, reference);
+      : await ports.findActionRequest(system.id, reference);
     if (!saved) return json({ error: "not-found" }, 404);
     if (action === "cancel" && saved.status === "cancelled") return json({ status: "cancelled" });
     if (!["new", "seen"].includes(saved.status)) {
