@@ -22,7 +22,7 @@ export default async function NewUserPage({ searchParams }: { searchParams: Prom
 
   return (
     <main className="flex w-full flex-1 flex-col">
-      <NewUserHeading />
+      <NewUserHeading fromRequest={Boolean(request)} />
       <CreateUserForm request={prefill} action={request ? createRequestUserAction.bind(null, request.id) : createUserAction} roles={roles} systems={systems} />
     </main>
   );

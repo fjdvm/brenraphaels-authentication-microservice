@@ -81,6 +81,7 @@ export function CreateUserForm({ action, roles, systems, request }: CreateUserFo
   const [moduleIds, setModuleIds] = useState<string[]>(request?.moduleIds ?? []);
   const { fieldErrors } = state;
   const selection = summarizeSelection(systems, moduleIds);
+  const matchesRequest = Boolean(request) && request!.roleId === roleId && request!.moduleIds.length === moduleIds.length && request!.moduleIds.every((id) => moduleIds.includes(id));
 
   function chooseRole(nextRoleId: string) {
     setRoleId(nextRoleId);
@@ -106,10 +107,12 @@ export function CreateUserForm({ action, roles, systems, request }: CreateUserFo
     <form className="flex flex-1 flex-col" noValidate onSubmit={handleSubmit}>
       <div className="flex flex-1 flex-col gap-4 px-6 pt-4 pb-7 md:px-8">
         {request ? (
-          <div className="rounded-lg border border-panel-border bg-identity-soft px-4 py-3 text-sm text-identity">
-            <p className="font-semibold">Filled in from request {request.reference}</p>
-            <p className="text-xs">Sent by {request.requesterName}{request.note ? `: “${request.note}”` : ""}. Check the details, then create the account.</p>
-            <Link className="text-xs underline" href="/admin/account-requests">View request</Link>
+          <div className="flex items-center gap-3 rounded-lg border border-panel-border bg-identity-soft px-4 py-3 text-sm text-identity">
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold">Filled in from request {request.reference}</p>
+              <p className="text-xs">Sent by {request.requesterName}{request.note ? `: “${request.note}”` : ""}. Check the details, then create the account.</p>
+            </div>
+            <Link className="shrink-0 text-[13px] font-semibold" href="/admin/account-requests">View request</Link>
           </div>
         ) : null}
         {state.error ? (
@@ -220,6 +223,7 @@ export function CreateUserForm({ action, roles, systems, request }: CreateUserFo
           <ModuleAccessMatrix setSelected={setModuleIds} selected={moduleIds} systems={systems} />
           <p aria-live="polite" className="text-[13px] font-medium text-identity">
             {plural(selection.modules, "module")} selected across {plural(selection.systems, "system")}
+            {request ? (matchesRequest ? " · matches the request" : " · differs from the request") : ""}
           </p>
         </section>
       </div>
