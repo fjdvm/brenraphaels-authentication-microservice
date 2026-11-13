@@ -1,5 +1,6 @@
 "use server";
 
+import { declineRequest } from "@/lib/account-requests/decline.server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdministrator } from "@/lib/auth/session";
@@ -33,5 +34,15 @@ export async function resendRequestLoginAction(id: string) {
   const result = await resendRequestLogin(id, administrator);
   revalidatePath("/admin/account-requests");
   invalidatePortalReads();
+  return result.ok ? { error: null } : { error: result.error };
+}
+
+export async function declineAccountRequestAction(id: string, input: { reason: string; message?: string }) {
+  const administrator = await requireAdministrator();
+  const result = await declineRequest(id, input, administrator);
+  if (result.ok) {
+    revalidatePath("/admin/account-requests");
+    invalidatePortalReads();
+  }
   return result.ok ? { error: null } : { error: result.error };
 }

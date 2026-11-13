@@ -56,6 +56,13 @@ function client(respond: Parameters<typeof stubService>[0], overrides: Partial<P
 
 afterEach(() => vi.restoreAllMocks());
 
+it("records a declined Account request in Portal activity with reason and optional message", async () => {
+  const { calls, client: audit } = client(created);
+  await audit.record({ action: "account_request.decline", outcome: "SUCCESS", actorId: "admin", detail: "Declined Account request RQ-0001. Reason: Duplicate. Message: Use RQ-0002" });
+  expect(calls[0].body).toMatchObject({ source: "Authentication", action: "account_request.declined", outcome: "success", actor: { id: "admin" }, description: expect.stringContaining("Declined Account request") });
+  expect(calls[0].body.description).toContain("RQ-0001. Reason: Duplicate. Message: Use RQ-0002");
+});
+
 describe("recording events", () => {
   it("writes a correctly shaped Authentication event with the write key", async () => {
     const { calls, client: audit } = client(created);

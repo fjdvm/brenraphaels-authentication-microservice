@@ -3,7 +3,7 @@ import { once } from "node:events";
 import { expect, it } from "vitest";
 import { deliverStatus } from "./delivery";
 
-it("pushes to a fake HRMS receiver, retains failures, and retries until acknowledged", async () => {
+it.each(["account_created", "declined"])("pushes %s to a fake HRMS receiver and retries until acknowledged", async (status) => {
   const received: unknown[] = [];
   const authorizations: (string | undefined)[] = [];
   const server = createServer(async (request, response) => {
@@ -19,7 +19,7 @@ it("pushes to a fake HRMS receiver, retains failures, and retries until acknowle
   if (!address || typeof address === "string") throw new Error("Missing receiver address");
   const queued: (() => Promise<void>)[] = [];
   const acknowledged: string[] = [];
-  const payload = { reference: "RQ-0001", status: "account_created", actor: "admin", occurredAt: "2026-11-13T00:00:00.000Z" };
+  const payload = { reference: "RQ-0001", status, ...(status === "declined" ? { reason: "Duplicate request", message: "Please use RQ-0002." } : {}), actor: "admin", occurredAt: "2026-11-13T00:00:00.000Z" };
   const ports = {
     send: (body: unknown) => fetch(`http://127.0.0.1:${address.port}`, { method: "POST", headers: { authorization: "Bearer system-secret" }, body: JSON.stringify(body) }),
     acknowledge: async (id: string) => { acknowledged.push(id); },
