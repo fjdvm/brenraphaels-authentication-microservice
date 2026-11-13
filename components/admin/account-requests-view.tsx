@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { seeAccountRequestAction, resendRequestLoginAction } from "@/actions/account-requests";
 import { ChevronRight, Info, Shield } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
@@ -57,6 +60,18 @@ function systemsOf(request: AccountRequestRow, systems: AccessSystem[]) {
 
 /** Figma "Portal · Account requests" and "Portal · Account request detail". */
 export function AccountRequestsView({ heading, requests, systems, now }: Props) {
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const router = useRouter();
+  async function openRequest(id: string) {
+    setOpenId(id);
+    setError(null);
+    try { await seeAccountRequestAction(id); router.refresh(); } catch { setError("Could not mark this request Seen. Close and reopen to retry."); }
+  }
+  async function resend(id: string) {
+    setBusy(true);
+    try { const result = await resendRequestLoginAction(id); setError(result.error); router.refresh(); } catch { setError("Login details could not be sent. Try again."); } finally { setBusy(false); }
+  }
   const [tab, setTab] = useState<RequestTab>("new");
   const [openId, setOpenId] = useState<string | null>(null);
   const clock = new Date(now);
@@ -155,7 +170,7 @@ export function AccountRequestsView({ heading, requests, systems, now }: Props) 
                   <td className="py-3.5 pr-3">
                     <button
                       className="flex flex-col rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      onClick={() => setOpenId(request.id)}
+                      onClick={() => { void openRequest(request.id); }}
                       type="button"
                     >
                       <span className="text-sm font-semibold text-foreground">{request.personName}</span>
@@ -192,13 +207,13 @@ export function AccountRequestsView({ heading, requests, systems, now }: Props) 
       </p>
 
       <Dialog onOpenChange={(next) => !next && setOpenId(null)} open={open !== null}>
-        {open ? <RequestDetail request={open} systems={systems} now={clock} /> : null}
+        {open ? <RequestDetail request={open} systems={systems} now={clock} error={error} busy={busy} resend={() => { void resend(open.id); }} /> : null}
       </Dialog>
     </>
   );
 }
 
-function RequestDetail({ request, systems, now }: { request: AccountRequestRow; systems: AccessSystem[]; now: Date }) {
+function RequestDetail({ request, systems, now, error, busy, resend }: { request: AccountRequestRow; systems: AccessSystem[]; now: Date; error: string | null; busy: boolean; resend: () => void }) {
   const { groups, untouched } = groupAccess(systems, request.moduleIds);
   const status = STATUS[request.status];
   const sent = new Date(request.createdAt);
@@ -277,10 +292,13 @@ function RequestDetail({ request, systems, now }: { request: AccountRequestRow; 
           ) : null}
         </section>
       </DialogBody>
+      {error ? <p className="px-6 text-sm text-danger-text" role="alert">{error}</p> : null}
       <DialogFooter>
         {/* Wired in the Create account and Decline slices. */}
         <Button disabled type="button" variant="outline">Decline…</Button>
-        <Button disabled type="button">Create account</Button>
+        {["new", "seen"].includes(request.status) ? (
+          <Button asChild><Link href={`/admin/users/new?request=${encodeURIComponent(request.id)}`}>Create account</Link></Button>
+        ) : request.status === "created" ? <Button disabled={busy} onClick={resend} type="button">{busy ? "Sending…" : "Resend login details"}</Button> : null}
       </DialogFooter>
     </DialogContent>
   );

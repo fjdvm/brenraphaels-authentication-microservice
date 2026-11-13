@@ -166,8 +166,23 @@ model AccountRequest {
   accountCreatedAt DateTime?
   declinedAt       DateTime?
   cancelledAt      DateTime?
+  deliveries       AccountRequestDelivery[]
+  createdUserId    String?
+  loginSentAt      DateTime?
   // SQL migration also enforces one active request per case-insensitive work email.
 
   @@unique([sourceSystemId, reference])
   @@index([status, createdAt])
+}
+
+// Status payloads contain no credentials. Deleted only after a 2xx acknowledgement.
+model AccountRequestDelivery {
+  id          String @id @default(cuid())
+  requestId   String
+  request     AccountRequest @relation(fields: [requestId], references: [id])
+  status      String
+  payload     Json
+  createdAt   DateTime @default(now())
+
+  @@unique([requestId, status])
 }

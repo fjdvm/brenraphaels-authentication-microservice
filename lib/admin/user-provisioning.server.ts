@@ -45,42 +45,7 @@ export const prismaProvisioningStore: ProvisioningStore = {
   async createUser(input) {
     try {
       return await prisma.$transaction(async (transaction) => {
-        const sequenceNumber = await incrementUsernameSequence(transaction, usernameYear());
-        const username = generateUsername(
-          usernameYear(),
-          input.firstName,
-          input.lastName,
-          sequenceNumber,
-        );
-
-        const user = await transaction.user.create({
-          data: {
-            username,
-            email: input.email,
-            firstName: input.firstName,
-            lastName: input.lastName,
-            roleId: input.roleId,
-            neonAuthUserId: input.neonAuthUserId,
-            mustChangePassword: true,
-          },
-          select: { id: true },
-        });
-
-        await transaction.accessGrant.createMany({
-          data: input.moduleIds.map((moduleId) => ({
-            userId: user.id,
-            moduleId,
-            grantedBy: input.grantedBy,
-          })),
-        });
-
-        const systems = await transaction.system.findMany({
-          where: { modules: { some: { id: { in: input.moduleIds } } } },
-          select: { name: true },
-          orderBy: { name: "asc" },
-        });
-
-        return { id: user.id, username, systemNames: systems.map((system) => system.name) };
+        return insertProvisionedUser(transaction, input);
       });
     } catch (error) {
       throw isEmailCollision(error) ? new DuplicateEmailError() : error;
@@ -105,4 +70,44 @@ export function createProductionProvisioningPorts(): ProvisioningPorts {
     audit: recordAuditEvent,
     generatePassword: generateTemporaryPassword,
   };
+}
+
+/** Shared atomic User/Username/grant insert for request fulfillment. */
+export async function insertProvisionedUser(transaction: Prisma.TransactionClient, input: Parameters<ProvisioningStore["createUser"]>[0]) {
+  const sequenceNumber = await incrementUsernameSequence(transaction, usernameYear());
+  const username = generateUsername(
+    usernameYear(),
+    input.firstName,
+    input.lastName,
+    sequenceNumber,
+  );
+
+  const user = await transaction.user.create({
+    data: {
+      username,
+      email: input.email,
+      firstName: input.firstName,
+      lastName: input.lastName,
+      roleId: input.roleId,
+      neonAuthUserId: input.neonAuthUserId,
+      mustChangePassword: true,
+    },
+    select: { id: true },
+  });
+
+  await transaction.accessGrant.createMany({
+    data: input.moduleIds.map((moduleId) => ({
+      userId: user.id,
+      moduleId,
+      grantedBy: input.grantedBy,
+    })),
+  });
+
+  const systems = await transaction.system.findMany({
+    where: { modules: { some: { id: { in: input.moduleIds } } } },
+    select: { name: true },
+    orderBy: { name: "asc" },
+  });
+
+  return { id: user.id, username, systemNames: systems.map((system) => system.name) };
 }
