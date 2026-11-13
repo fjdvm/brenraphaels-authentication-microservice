@@ -5,9 +5,10 @@ import { AccountRequestsHeading } from "@/components/admin/page-headings";
 import { listAccountRequests } from "@/lib/admin/account-requests.server";
 import { requireAdministrator } from "@/lib/auth/session";
 
-export default async function AccountRequestsPage() {
+export default async function AccountRequestsPage({ searchParams }: { searchParams: Promise<{ request?: string }> }) {
   await connection();
   await requireAdministrator();
+  const { request } = await searchParams;
 
   const result = await listAccountRequests().catch((error) => {
     console.error("Failed to read Account requests", error);
@@ -19,6 +20,7 @@ export default async function AccountRequestsPage() {
       <AccountRequestsView
         heading={<AccountRequestsHeading />}
         now={new Date().toISOString()}
+        initialRequestId={request}
         systems={result?.systems ?? []}
         requests={result?.requests ?? null}
       />

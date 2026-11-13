@@ -41,6 +41,13 @@ const heading = <h1>Account requests</h1>;
 afterEach(cleanup);
 
 describe("AccountRequestsView", () => {
+  it("opens a created request from its recovery link with Resend login details available", () => {
+    render(<AccountRequestsView heading={heading} now={now} requests={[request({ id: "created-1", status: "created" })]} systems={systems} initialRequestId="created-1" />);
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("button", { name: "Resend login details" })).toBeTruthy();
+    expect(within(dialog).queryByRole("link", { name: "Create account" })).toBeNull();
+    expect(screen.getByRole("tab", { name: "Created 1", hidden: true }).getAttribute("aria-selected")).toBe("true");
+  });
   const requests = [
     request({ id: "a", status: "new" }),
     request({ id: "b", status: "declined", personName: "Mark Villanueva", reference: "RQ-0002" }),

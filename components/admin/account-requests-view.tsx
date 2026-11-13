@@ -29,6 +29,7 @@ type Props = {
   systems: AccessSystem[];
   /** The server's clock, so "Today" reads the same on server and client. */
   now: string;
+  initialRequestId?: string;
 };
 
 const panel = "rounded-xl border border-panel-border bg-surface";
@@ -59,7 +60,7 @@ function systemsOf(request: AccountRequestRow, systems: AccessSystem[]) {
 }
 
 /** Figma "Portal · Account requests" and "Portal · Account request detail". */
-export function AccountRequestsView({ heading, requests, systems, now }: Props) {
+export function AccountRequestsView({ heading, requests, systems, now, initialRequestId }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const router = useRouter();
@@ -81,8 +82,9 @@ export function AccountRequestsView({ heading, requests, systems, now }: Props) 
       return null;
     } catch { return "The request could not be declined. Try again."; }
   }
-  const [tab, setTab] = useState<RequestTab>("new");
-  const [openId, setOpenId] = useState<string | null>(null);
+  const initialRequest = requests?.find(request => request.id === initialRequestId);
+  const [tab, setTab] = useState<RequestTab>(initialRequest?.status === "created" ? "created" : "new");
+  const [openId, setOpenId] = useState<string | null>(initialRequest?.id ?? null);
   const clock = new Date(now);
 
   const headingBlock = (
