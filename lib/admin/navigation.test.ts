@@ -7,6 +7,7 @@ describe("ADMIN_NAVIGATION", () => {
     expect(ADMIN_NAVIGATION.map(({ href, label }) => ({ href, label }))).toEqual([
       { href: "/admin/access", label: "Access" },
       { href: "/admin/users", label: "User management" },
+      { href: "/admin/account-requests", label: "Account requests" },
       { href: "/admin/system-logs", label: "System logs" },
     ]);
   });
@@ -21,6 +22,7 @@ describe("SIDEBAR_NAVIGATION", () => {
     expect(SIDEBAR_NAVIGATION.map(({ href, label }) => ({ href, label }))).toEqual([
       { href: "/admin/access", label: "Access" },
       { href: "/admin/users", label: "User management" },
+      { href: "/admin/account-requests", label: "Account requests" },
       { href: "/admin/system-logs", label: "System logs" },
       { href: "/my-logs", label: "Activity log" },
     ]);
@@ -38,7 +40,7 @@ describe("SIDEBAR_SECTIONS", () => {
       { label: undefined, hrefs: ["/admin/access"] },
       {
         label: "ADMIN",
-        hrefs: ["/admin/users", "/admin/system-logs", "/my-logs"],
+        hrefs: ["/admin/users", "/admin/account-requests", "/admin/system-logs", "/my-logs"],
       },
     ]);
   });
