@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { seeAccountRequestAction, resendRequestLoginAction } from "@/actions/account-requests";
-import { ChevronRight, Info, Shield } from "lucide-react";
+import { seeAccountRequestAction, resendRequestLoginAction, declineAccountRequestAction } from "@/actions/account-requests";
+import { ChevronDown, ChevronRight, Info, Shield } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
+import { Dialog, DialogBody, DialogClose, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
 import {
   filterRequests,
   formatWait,
@@ -71,6 +71,15 @@ export function AccountRequestsView({ heading, requests, systems, now }: Props) 
   async function resend(id: string) {
     setBusy(true);
     try { const result = await resendRequestLoginAction(id); setError(result.error); router.refresh(); } catch { setError("Login details could not be sent. Try again."); } finally { setBusy(false); }
+  }
+  async function decline(id: string, input: { reason: string; message?: string }) {
+    try {
+      const result = await declineAccountRequestAction(id, input);
+      if (result.error) return result.error;
+      setOpenId(null);
+      router.refresh();
+      return null;
+    } catch { return "The request could not be declined. Try again."; }
   }
   const [tab, setTab] = useState<RequestTab>("new");
   const [openId, setOpenId] = useState<string | null>(null);
@@ -207,13 +216,14 @@ export function AccountRequestsView({ heading, requests, systems, now }: Props) 
       </p>
 
       <Dialog onOpenChange={(next) => !next && setOpenId(null)} open={open !== null}>
-        {open ? <RequestDetail request={open} systems={systems} now={clock} error={error} busy={busy} resend={() => { void resend(open.id); }} /> : null}
+        {open ? <RequestDetail request={open} systems={systems} now={clock} error={error} busy={busy} resend={() => { void resend(open.id); }} decline={(input) => decline(open.id, input)} /> : null}
       </Dialog>
     </>
   );
 }
 
-function RequestDetail({ request, systems, now, error, busy, resend }: { request: AccountRequestRow; systems: AccessSystem[]; now: Date; error: string | null; busy: boolean; resend: () => void }) {
+function RequestDetail({ request, systems, now, error, busy, resend, decline }: { request: AccountRequestRow; systems: AccessSystem[]; now: Date; error: string | null; busy: boolean; resend: () => void; decline: (input: { reason: string; message?: string }) => Promise<string | null> }) {
+  const [declining, setDeclining] = useState(false);
   const { groups, untouched } = groupAccess(systems, request.moduleIds);
   const status = STATUS[request.status];
   const sent = new Date(request.createdAt);
@@ -294,11 +304,57 @@ function RequestDetail({ request, systems, now, error, busy, resend }: { request
       </DialogBody>
       {error ? <p className="px-6 text-sm text-danger-text" role="alert">{error}</p> : null}
       <DialogFooter>
-        {/* Wired in the Create account and Decline slices. */}
-        <Button disabled type="button" variant="outline">Decline…</Button>
+        {["new", "seen"].includes(request.status) ? <Button onClick={() => setDeclining(true)} type="button" variant="outline">Decline…</Button> : null}
         {["new", "seen"].includes(request.status) ? (
           <Button asChild><Link href={`/admin/users/new?request=${encodeURIComponent(request.id)}`}>Create account</Link></Button>
         ) : request.status === "created" ? <Button disabled={busy} onClick={resend} type="button">{busy ? "Sending…" : "Resend login details"}</Button> : null}
+      </DialogFooter>
+      <Dialog onOpenChange={setDeclining} open={declining}>
+        <DeclineDialog onDecline={decline} requester={request.requesterName} />
+      </Dialog>
+    </DialogContent>
+  );
+}
+
+const DECLINE_REASONS = ["Already has an account", "Duplicate request", "Details are incorrect", "Not needed anymore", "Other"] as const;
+
+/** Figma "Portal · Decline request dialog". */
+function DeclineDialog({ onDecline, requester }: { onDecline: (input: { reason: string; message?: string }) => Promise<string | null>; requester: string }) {
+  const [reason, setReason] = useState<string>(DECLINE_REASONS[0]);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const field = "w-full rounded-lg border border-panel-border bg-surface px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50";
+  async function submit() {
+    setBusy(true);
+    setError(null);
+    const message_ = message.trim();
+    const failure = await onDecline(message_ ? { reason, message: message_ } : { reason });
+    setError(failure);
+    setBusy(false);
+  }
+  return (
+    <DialogContent className="max-w-120">
+      <DialogHeader description={`${requester} will be told why so they can send a new one if needed.`} title="Decline this request?" />
+      <DialogBody className="flex flex-col gap-4">
+        <label className="flex flex-col gap-1.5 text-[13px] font-medium text-foreground">
+          Reason
+          <span className="relative">
+            <select className={cn(field, "appearance-none pr-9")} onChange={(event) => setReason(event.target.value)} value={reason}>
+              {DECLINE_REASONS.map((entry) => <option key={entry} value={entry}>{entry}</option>)}
+            </select>
+            <ChevronDown aria-hidden="true" className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-on-surface-variant" />
+          </span>
+        </label>
+        <label className="flex flex-col gap-1.5 text-[13px] font-medium text-foreground">
+          Message to requester (optional)
+          <textarea className={cn(field, "min-h-20 resize-none font-normal")} maxLength={5000} onChange={(event) => setMessage(event.target.value)} value={message} />
+        </label>
+        {error ? <p className="text-sm text-danger-text" role="alert">{error}</p> : null}
+      </DialogBody>
+      <DialogFooter>
+        <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
+        <Button disabled={busy} onClick={() => { void submit(); }} type="button" variant="danger">{busy ? "Declining…" : "Decline request"}</Button>
       </DialogFooter>
     </DialogContent>
   );

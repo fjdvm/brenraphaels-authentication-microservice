@@ -9,7 +9,8 @@ import type { AccountRequestRow } from "@/lib/admin/account-requests";
 import { AccountRequestsView } from "./account-requests-view";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
-vi.mock("@/actions/account-requests", () => ({ seeAccountRequestAction: vi.fn(async () => {}), resendRequestLoginAction: vi.fn(async () => ({ error: null })) }));
+vi.mock("@/actions/account-requests", () => ({ seeAccountRequestAction: vi.fn(async () => {}), resendRequestLoginAction: vi.fn(async () => ({ error: null })), declineAccountRequestAction: vi.fn(async () => ({ error: null })) }));
+import { declineAccountRequestAction } from "@/actions/account-requests";
 
 const request = (overrides: Partial<AccountRequestRow> & Pick<AccountRequestRow, "id" | "status">): AccountRequestRow => ({
   reference: "RQ-0001",
@@ -75,7 +76,30 @@ describe("AccountRequestsView", () => {
     expect(checkbox("Reports").checked).toBe(false);
     expect(within(dialog).getByText(/No access requested for CRMS/)).toBeTruthy();
     expect(within(dialog).getByRole("link", { name: "Create account" }).getAttribute("href")).toBe("/admin/users/new?request=a");
-    expect(button("Decline…").disabled).toBe(true);
+    expect(button("Decline…").disabled).toBe(false);
+  });
+
+  it("declines from the dialog with a reason and optional message", async () => {
+    render(<AccountRequestsView heading={heading} now={now} requests={requests} systems={systems} />);
+    await userEvent.click(screen.getByText("Carla Domingo"));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Decline…" }));
+
+    const dialog = screen.getAllByRole("dialog").at(-1)!;
+    expect(within(dialog).getByText("Decline this request?")).toBeTruthy();
+    expect(within(dialog).getByText(/Ana T\. will be told why/)).toBeTruthy();
+    await userEvent.selectOptions(within(dialog).getByLabelText("Reason"), "Already has an account");
+    await userEvent.type(within(dialog).getByLabelText("Message to requester (optional)"), "Use the old one");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Decline request" }));
+
+    expect(declineAccountRequestAction).toHaveBeenCalledWith("a", { reason: "Already has an account", message: "Use the old one" });
+  });
+
+  it("does not offer Decline on a request that is already closed", async () => {
+    render(<AccountRequestsView heading={heading} now={now} requests={requests} systems={systems} />);
+    await userEvent.click(screen.getByRole("tab", { name: "Declined 1" }));
+    await userEvent.click(screen.getByText("Mark Villanueva"));
+
+    expect(within(screen.getByRole("dialog")).queryByRole("button", { name: "Decline…" })).toBeNull();
   });
 
   it("explains an empty list", () => {
