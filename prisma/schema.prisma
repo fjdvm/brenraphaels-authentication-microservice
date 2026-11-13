@@ -164,6 +164,8 @@ model AccountRequest {
   updatedAt        DateTime             @updatedAt
   seenAt           DateTime?
   accountCreatedAt DateTime?
+  declineReason    String?
+  declineMessage   String?
   declinedAt       DateTime?
   cancelledAt      DateTime?
   deliveries       AccountRequestDelivery[]

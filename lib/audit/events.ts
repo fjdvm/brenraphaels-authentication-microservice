@@ -8,6 +8,7 @@ export const AUDIT_ACTIONS = [
   "auth.password_reset_request",
   "auth.password_reset",
   "user.create",
+  "account_request.decline",
   "user.delete",
   "user.restore",
   "user.resend_credentials",

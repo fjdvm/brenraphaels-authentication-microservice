@@ -146,6 +146,7 @@ const CATALOG: Record<AuditAction, { action: string; label: string }> = {
   "auth.password_change": { action: "password.changed", label: "Changed password" },
   "auth.password_reset_request": { action: "password.forgot_requested", label: "Requested Forgot password link" },
   "auth.password_reset": { action: "password.forgot_completed", label: "Completed Forgot password" },
+  "account_request.decline": { action: "account_request.declined", label: "Declined Account request" },
   "user.create": { action: "user.created", label: "Created User" },
   "user.delete": { action: "user.deleted", label: "Deleted User" },
   "user.restore": { action: "user.restored", label: "Restored User" },
