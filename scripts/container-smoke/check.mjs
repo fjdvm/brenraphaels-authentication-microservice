@@ -35,5 +35,5 @@ assert.ok(!html.includes('id="__next_error__"'), "streamed response must not con
 const asset = html.match(/(?:src|href)="([^" ]*\/_next\/static\/[^" ]+)"/);
 assert.ok(asset, "home must include static assets");
 assert.equal((await request(asset[1])).status, 200, "standalone image must serve static assets");
-assert.equal((await request("/logo.png")).status, 200, "standalone image must serve public files");
+assert.equal((await request("/images/brand/logo-tile.png")).status, 200, "standalone image must serve public files");
 console.log("Container smoke passed: health, anonymous guard, signed-in database-backed home, assets.");
