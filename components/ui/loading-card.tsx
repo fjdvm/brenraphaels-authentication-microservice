@@ -2,7 +2,7 @@
 
 import { useId } from "react";
 
-import { BrandLogo } from "@/components/ui/brand-logo";
+import { BrandTile } from "@/components/brand/brand-lockup";
 import { cn } from "@/lib/utils/cn";
 
 /** Waits shorter than this finish without the card flashing up. */
@@ -57,7 +57,7 @@ export function LoadingCard({ title, subtitle, delayMs = LOADING_CARD_DELAY_MS }
               transform="rotate(-90 36 36)"
             />
           </svg>
-          <BrandLogo className="absolute left-3.5 top-3.5 rounded-[10px] bg-black" size={44} />
+          <BrandTile className="absolute left-3.5 top-3.5" size={44} />
         </div>
         <div className="flex flex-col items-center gap-1 text-center leading-[normal]">
           <p className="text-[17px] font-semibold text-foreground" id={titleId}>
