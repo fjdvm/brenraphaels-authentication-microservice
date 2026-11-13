@@ -177,4 +177,33 @@ describe("Create user form", () => {
 
     expect(screen.queryByLabelText(/password/i)).toBeNull();
   });
+
+  describe("from an Account request", () => {
+    const request = { id: "rq", reference: "RQ-0014", requesterName: "Ana T.", note: "Only sales", firstName: "Carla", lastName: "Domingo", email: "carla@x.ph", roleId: "r-cashier", moduleIds: ["p-sales"] };
+    const open = (action = vi.fn<(previous: CreateUserFormState, data: FormData) => Promise<CreateUserFormState>>().mockResolvedValue({ error: null, fieldErrors: {} })) => {
+      render(<CreateUserForm action={action} request={request} roles={roles} systems={systems} />);
+      return action;
+    };
+
+    it("prefills name, email, Role and the ticked Modules", () => {
+      open();
+      expect((screen.getByLabelText("First name") as HTMLInputElement).value).toBe("Carla");
+      expect((screen.getByLabelText("Email") as HTMLInputElement).value).toBe("carla@x.ph");
+      expect((screen.getByLabelText("Role") as HTMLSelectElement).value).toBe("r-cashier");
+      expect((systemGroup("POS").getByRole("checkbox", { name: "Sales Processing" }) as HTMLInputElement).checked).toBe(true);
+      expect(screen.getByText("Filled in from request RQ-0014")).toBeTruthy();
+      expect(screen.getByRole("link", { name: "Cancel" }).getAttribute("href")).toBe("/admin/account-requests");
+    });
+
+    it("lets the Administrator adjust, and says when it differs from the request", async () => {
+      const user = userEvent.setup();
+      const action = open();
+      expect(screen.getByText(/matches the request/)).toBeTruthy();
+      await user.click(systemGroup("CRMS").getByRole("checkbox", { name: "Dashboard" }));
+      expect(screen.getByText(/differs from the request/)).toBeTruthy();
+      await user.click(screen.getByRole("button", { name: /Create user/ }));
+      await waitFor(() => expect(action).toHaveBeenCalled());
+      expect(action.mock.calls[0][1].getAll("moduleIds")).toEqual(["p-sales", "c-dash"]);
+    });
+  });
 });
