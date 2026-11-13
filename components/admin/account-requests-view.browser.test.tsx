@@ -2,11 +2,14 @@
 
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { AccountRequestRow } from "@/lib/admin/account-requests";
 
 import { AccountRequestsView } from "./account-requests-view";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("@/actions/account-requests", () => ({ seeAccountRequestAction: vi.fn(async () => {}), resendRequestLoginAction: vi.fn(async () => ({ error: null })) }));
 
 const request = (overrides: Partial<AccountRequestRow> & Pick<AccountRequestRow, "id" | "status">): AccountRequestRow => ({
   reference: "RQ-0001",
@@ -58,7 +61,7 @@ describe("AccountRequestsView", () => {
     expect(screen.getByText("Mark Villanueva")).toBeTruthy();
   });
 
-  it("opens the detail dialog with access grouped by system and inert action buttons", async () => {
+  it("opens the detail dialog with access grouped by system and a create-from-request link", async () => {
     render(<AccountRequestsView heading={heading} now={now} requests={requests} systems={systems} />);
     await userEvent.click(screen.getByText("Carla Domingo"));
 
@@ -71,7 +74,7 @@ describe("AccountRequestsView", () => {
     expect(checkbox("Dashboard").checked).toBe(true);
     expect(checkbox("Reports").checked).toBe(false);
     expect(within(dialog).getByText(/No access requested for CRMS/)).toBeTruthy();
-    expect(button("Create account").disabled).toBe(true);
+    expect(within(dialog).getByRole("link", { name: "Create account" }).getAttribute("href")).toBe("/admin/users/new?request=a");
     expect(button("Decline…").disabled).toBe(true);
   });
 

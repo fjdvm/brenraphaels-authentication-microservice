@@ -20,6 +20,7 @@ type CreateUserFormProps = {
   action: (previous: CreateUserFormState, formData: FormData) => Promise<CreateUserFormState>;
   roles: RoleOption[];
   systems: SelectableSystem[];
+  request?: { id: string; reference: string; requesterName: string; note: string | null; firstName: string; lastName: string; email: string; roleId: string; moduleIds: string[] };
 };
 
 function FieldError({ id, message }: { id: string; message?: string }) {
@@ -68,16 +69,16 @@ const panelClass = "flex flex-col gap-3.5 rounded-xl border border-panel-border 
 const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
 
 /** Figma "Portal · Add new user": User information, System access and the action bar. */
-export function CreateUserForm({ action, roles, systems }: CreateUserFormProps) {
+export function CreateUserForm({ action, roles, systems, request }: CreateUserFormProps) {
   const [settled, formAction, isPending] = useActionState(action, initialCreateUserFormState);
   // An earlier result is not shown while the next submission is waiting on the server.
   const state = isPending ? initialCreateUserFormState : settled;
   // Controlled, so a failed submission never wipes what the Administrator entered.
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [roleId, setRoleId] = useState("");
-  const [moduleIds, setModuleIds] = useState<string[]>([]);
+  const [firstName, setFirstName] = useState(request?.firstName ?? "");
+  const [lastName, setLastName] = useState(request?.lastName ?? "");
+  const [email, setEmail] = useState(request?.email ?? "");
+  const [roleId, setRoleId] = useState(request?.roleId ?? "");
+  const [moduleIds, setModuleIds] = useState<string[]>(request?.moduleIds ?? []);
   const { fieldErrors } = state;
   const selection = summarizeSelection(systems, moduleIds);
 
@@ -104,6 +105,13 @@ export function CreateUserForm({ action, roles, systems }: CreateUserFormProps) 
   return (
     <form className="flex flex-1 flex-col" noValidate onSubmit={handleSubmit}>
       <div className="flex flex-1 flex-col gap-4 px-6 pt-4 pb-7 md:px-8">
+        {request ? (
+          <div className="rounded-lg border border-panel-border bg-identity-soft px-4 py-3 text-sm text-identity">
+            <p className="font-semibold">Filled in from request {request.reference}</p>
+            <p className="text-xs">Sent by {request.requesterName}{request.note ? `: “${request.note}”` : ""}. Check the details, then create the account.</p>
+            <Link className="text-xs underline" href="/admin/account-requests">View request</Link>
+          </div>
+        ) : null}
         {state.error ? (
           <p className="rounded-lg bg-badge-danger px-4 py-3 text-sm text-badge-danger-foreground" role="alert">
             {state.error}
@@ -153,6 +161,7 @@ export function CreateUserForm({ action, roles, systems }: CreateUserFormProps) 
                 id="email"
                 name="email"
                 onChange={(event) => setEmail(event.target.value)}
+                readOnly={Boolean(request)}
                 type="email"
                 value={email}
               />
@@ -218,7 +227,7 @@ export function CreateUserForm({ action, roles, systems }: CreateUserFormProps) 
       <div className="sticky bottom-0 flex flex-wrap items-center gap-2 border-t border-border bg-surface px-6 py-3.5 leading-[normal] md:px-8">
         <p className="min-w-0 flex-1 text-[13px] text-on-surface-variant">Fields marked * are required.</p>
         <Button asChild size="cta" variant="row-action">
-          <Link href="/admin/users">Cancel</Link>
+          <Link href={request ? "/admin/account-requests" : "/admin/users"}>Cancel</Link>
         </Button>
         <Button disabled={isPending} size="cta" type="submit" variant="identity">
           {isPending ? "Creating…" : "Create user"}

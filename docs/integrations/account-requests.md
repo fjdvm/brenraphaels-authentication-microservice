@@ -25,8 +25,8 @@ cannot read this cross-System matrix or submit requests. Responses are `no-store
   policy. Notification service outages are logged and do not reject saved requests.
 
 Portal status labels are `new`, `seen`, `created`, `declined`, `cancelled`.
-The admin review/actions and outgoing HRMS webhooks belong to later tickets;
-`created` will map to HRMS `account_created`. This ticket adds no UI or polling.
+The administrator request list and detail are implemented by hrms#334.
+Creation and outgoing status delivery are implemented by hrms#335 as described below.
 
 ## Migration
 
@@ -53,3 +53,52 @@ applied to the configured Portal database and recorded with Prisma. The unrelate
 System Log removal remains pending. Local validation: typecheck, targeted ESLint,
 Prisma validation, both endpoint test files, and the full suite (570 passed,
 23 skipped). Standards review found no violations; spec review found no gaps.
+
+## Create from request (fjdvm/hrms#335)
+
+Opening a request commits Seen and its outgoing event once. Create account opens
+`/admin/users/new?request=<id>` using the existing User form with the requested
+Role and Modules prefilled; the administrator can adjust names, Role and Modules.
+The work email remains the request's authoritative User email. A single-name
+request needs a last name entered before creation, as for every other User.
+
+A five-minute per-request delivery lease prevents resends from replacing the password
+while the initial credentials are being emailed; SMTP operations have bounded timeouts.
+A crashed sender leaves a lease the administrator can retry after expiry.
+
+A transaction claims an open request, advances the normal Username sequence,
+inserts the User and AccessGrants, links the User, marks Created, and saves an
+`account_created` outbox event. Competing creation/cancellation cannot both win.
+The same temporary credentials are emailed to work and personal addresses
+(deduplicated when equal). Only confirmed delivery to both records `login_sent`.
+Email failure retains the account and exposes Resend login details in the request;
+resending replaces the password using the existing credential issuer and sends
+both addresses. Passwords are never persisted in the outbox.
+
+`AccountRequestDelivery` stores `{ reference, status, actor, occurredAt }`.
+`actor` is the Portal administrator's User ID. Configure `HRMS_SYSTEM_SECRET`
+with HRMS's `PORTAL_SYSTEM_SECRET` and `HRMS_ACCOUNT_REQUEST_WEBHOOK_URL` with
+`https://hrms.buildwrite.me/api/portal/account-requests/status` (receiver hrms#336).
+The deploy manifest reads these GitHub secrets through `.env.production.example`.
+Pushes use Bearer authentication, a ten-second timeout, and refuse redirects.
+Each unacknowledged push retries with exponential delays capped at five minutes,
+without an attempt limit. A 2xx removes it. Startup reloads pending deliveries;
+newly committed events start delivery directly without another outbox read. Multiple replicas may deliver the
+same event, which the HRMS contract explicitly allows. A failed startup outbox
+read fails server initialization so the container can restart; there is no idle
+query timer. Failed status pushes are delivery retries, not application polling.
+
+Apply only the additive migration, preserving the unrelated pending System Log
+removal and avoiding the seed:
+
+```sh
+npx prisma db execute --file prisma/migrations/20261115000000_account_request_fulfillment/migration.sql
+npx prisma migrate resolve --applied 20261115000000_account_request_fulfillment
+npx prisma db execute --file prisma/migrations/20261115010000_account_request_delivery_lease/migration.sql
+npx prisma migrate resolve --applied 20261115010000_account_request_delivery_lease
+```
+
+Tested first on production child branch `ticket-hrms-335-fulfillment-test`
+(expiring 2026-11-14 UTC), using the real Prisma transaction and fake identity,
+mail and HRMS services. Covers Seen idempotency, competing creation, grants,
+normal Usernames, dual delivery, and retaining Created on personal-email failure.
