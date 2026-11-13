@@ -169,6 +169,8 @@ model AccountRequest {
   deliveries       AccountRequestDelivery[]
   createdUserId    String?
   loginSentAt      DateTime?
+  loginDeliveryToken String?
+  loginDeliveryUntil DateTime?
   // SQL migration also enforces one active request per case-insensitive work email.
 
   @@unique([sourceSystemId, reference])

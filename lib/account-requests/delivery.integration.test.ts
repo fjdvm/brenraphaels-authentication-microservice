@@ -37,3 +37,19 @@ it("pushes to a fake HRMS receiver, retains failures, and retries until acknowle
     expect(queued).toHaveLength(2);
   } finally { server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())); }
 });
+
+it("retries after a successful receiver response when acknowledgement persistence fails", async () => {
+  let acknowledged = 0;
+  let retry: (() => Promise<void>) | undefined;
+  let sends = 0;
+  const ports = {
+    send: async () => { sends++; return { ok: true }; },
+    acknowledge: async () => { if (++acknowledged === 1) throw new Error("database unavailable"); },
+    later: (run: () => Promise<void>) => { retry = run; },
+  };
+  await deliverStatus({ id: "pending", payload: { status: "seen" } }, ports);
+  expect(retry).toBeDefined();
+  await retry!();
+  expect(sends).toBe(2);
+  expect(acknowledged).toBe(2);
+});

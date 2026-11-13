@@ -81,6 +81,9 @@ export function createSmtpCredentialsMailer(): CredentialsMailer {
   return createCredentialsMailer({
     transport: nodemailer.createTransport({
       host: SMTP_HOST,
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 30_000,
       port,
       secure: port === 465,
       auth: { user: SMTP_USER, pass: SMTP_PASSWORD },

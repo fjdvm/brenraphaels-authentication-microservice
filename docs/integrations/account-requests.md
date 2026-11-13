@@ -62,6 +62,10 @@ Role and Modules prefilled; the administrator can adjust names, Role and Modules
 The work email remains the request's authoritative User email. A single-name
 request needs a last name entered before creation, as for every other User.
 
+A five-minute per-request delivery lease prevents resends from replacing the password
+while the initial credentials are being emailed; SMTP operations have bounded timeouts.
+A crashed sender leaves a lease the administrator can retry after expiry.
+
 A transaction claims an open request, advances the normal Username sequence,
 inserts the User and AccessGrants, links the User, marks Created, and saves an
 `account_created` outbox event. Competing creation/cancellation cannot both win.
@@ -79,7 +83,7 @@ The deploy manifest reads these GitHub secrets through `.env.production.example`
 Pushes use Bearer authentication, a ten-second timeout, and refuse redirects.
 Each unacknowledged push retries with exponential delays capped at five minutes,
 without an attempt limit. A 2xx removes it. Startup reloads pending deliveries;
-mutation-triggered wakeups also resume them. Multiple replicas may deliver the
+newly committed events start delivery directly without another outbox read. Multiple replicas may deliver the
 same event, which the HRMS contract explicitly allows. A failed startup outbox
 read fails server initialization so the container can restart; there is no idle
 query timer. Failed status pushes are delivery retries, not application polling.
@@ -90,6 +94,8 @@ removal and avoiding the seed:
 ```sh
 npx prisma db execute --file prisma/migrations/20261115000000_account_request_fulfillment/migration.sql
 npx prisma migrate resolve --applied 20261115000000_account_request_fulfillment
+npx prisma db execute --file prisma/migrations/20261115010000_account_request_delivery_lease/migration.sql
+npx prisma migrate resolve --applied 20261115010000_account_request_delivery_lease
 ```
 
 Tested first on production child branch `ticket-hrms-335-fulfillment-test`

@@ -3,7 +3,7 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 import { createFromRequest } from "./fulfillment";
 
 vi.mock("server-only", () => ({}));
-vi.mock("./delivery.server", () => ({ wakeDeliveries: async () => {} }));
+vi.mock("./delivery.server", () => ({ startDelivery: () => {} }));
 const testUrl = process.env.SEED_TEST_DATABASE_URL;
 
 describe.skipIf(!testUrl)("request fulfillment against migrated Postgres and fake identity/email services", () => {
@@ -52,6 +52,23 @@ describe.skipIf(!testUrl)("request fulfillment against migrated Postgres and fak
     expect(user.username).toMatch(/^2026-AS-\d+$/);
     expect(sent).toEqual([request.workEmail, request.personalEmail]);
     expect((await prisma.accountRequestDelivery.findMany({ where: { requestId: request.id }, orderBy: { createdAt: "asc" } })).map(d => d.status)).toEqual(["account_created", "login_sent"]);
+  }, 30000);
+
+  it("refuses a resend while the initial credentials are still being delivered", async () => {
+    const { request, admin, ports, input } = await setup();
+    let release!: () => void;
+    let started!: () => void;
+    const entered = new Promise<void>(resolve => { started = resolve; });
+    const pending = new Promise<void>(resolve => { release = resolve; });
+    ports.provisioning.mailer = { sendCredentials: async () => { started(); await pending; } };
+    const initial = createFromRequest(request.id, input, admin, ports);
+    await entered;
+    const { resendRequestLogin } = await import("./fulfillment.server");
+    try {
+      const resent = await resendRequestLogin(request.id, admin);
+      expect(resent).toEqual({ ok: false, error: expect.stringContaining("being sent") });
+    } finally { release(); }
+    expect((await initial).ok).toBe(true);
   }, 30000);
 
   it("keeps the created account on personal-email failure and does not publish login_sent", async () => {
