@@ -72,12 +72,18 @@
   --callout: #f7f5fa;
   --callout-foreground: #5a5368;
   /* Figma "Portal UI/UX" auth screens and loading card */
+  --brand-lockup-title: #2a0f3f;
+  --brand-lockup-subtitle: #7a5899;
+  --brand-lockup-subtitle-dark: #cdb8e6;
+  --brand-lockup-border: #ece6f2;
   --auth-panel: #2a1540;
   --auth-panel-circle-top: #452067;
   --auth-panel-circle-left: #3e1e6b;
   --auth-panel-circle-right: #472f67;
   --auth-panel-subtitle: #c9b3e6;
   --auth-panel-body: #d9cdea;
+  --field-hint: #3f3f46;
+  --auth-panel-feature: #f3eef9;
   --auth-panel-icon: #e0d2ef;
   --auth-panel-note: #b9a8d6;
   --auth-panel-copyright: #8c7aae;
@@ -163,12 +169,18 @@
   --color-dialog-divider: var(--dialog-divider);
   --color-callout: var(--callout);
   --color-callout-foreground: var(--callout-foreground);
+  --color-brand-lockup-title: var(--brand-lockup-title);
+  --color-brand-lockup-subtitle: var(--brand-lockup-subtitle);
+  --color-brand-lockup-subtitle-dark: var(--brand-lockup-subtitle-dark);
+  --color-brand-lockup-border: var(--brand-lockup-border);
   --color-auth-panel: var(--auth-panel);
   --color-auth-panel-circle-top: var(--auth-panel-circle-top);
   --color-auth-panel-circle-left: var(--auth-panel-circle-left);
   --color-auth-panel-circle-right: var(--auth-panel-circle-right);
   --color-auth-panel-subtitle: var(--auth-panel-subtitle);
   --color-auth-panel-body: var(--auth-panel-body);
+  --color-field-hint: var(--field-hint);
+  --color-auth-panel-feature: var(--auth-panel-feature);
   --color-auth-panel-icon: var(--auth-panel-icon);
   --color-auth-panel-note: var(--auth-panel-note);
   --color-auth-panel-copyright: var(--auth-panel-copyright);

@@ -6,8 +6,10 @@ import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { loginAction, type FormState } from "@/actions/auth";
+import { Checkbox } from "@/components/ui/checkbox";
 import { LoadingCard } from "@/components/ui/loading-card";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { cn } from "@/lib/utils/cn";
 
 import {
   AuthField,
@@ -68,12 +70,18 @@ export function LoginForm({
           label="Password"
           name="password"
         />
+        <div className="flex items-center gap-2">
+          <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-[13px]/[normal] text-field-hint">
+            <Checkbox defaultChecked name="remember" />
+            Remember this device for 30 days
+          </label>
+          <Link className={cn(authLinkClass, "shrink-0 self-auto")} href="/forgot-password">
+            Forgot password?
+          </Link>
+        </div>
         {state.error && !isPending ? <FormAlert tone="error">{state.error}</FormAlert> : null}
         <SubmitButton label="Log in" pendingLabel="Logging in…" />
       </div>
-      <Link className={authLinkClass} href="/forgot-password">
-        Forgot password?
-      </Link>
       <SigningInCard />
     </form>
   );

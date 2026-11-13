@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { Menu, PanelLeft } from "lucide-react";
 import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 
-import { BrandLockup } from "@/components/layout/brand-lockup";
+import { BrandLockup } from "@/components/brand/brand-lockup";
 import { LogoutButton, NotificationButton } from "@/components/layout/portal-actions";
 import { type ShellUser, UserCard } from "@/components/layout/user-identity";
 import { Button } from "@/components/ui/button";
@@ -91,7 +91,7 @@ export function AdminShell({ children, user, newAccountRequests }: AdminShellPro
     <SidebarProvider style={SIDEBAR_STYLE}>
       <Sidebar collapsible="offcanvas">
         <SidebarHeader className="border-b border-border py-[18px] pl-3.5 pr-2.5">
-          <BrandLockup size="sidebar" />
+          <BrandLockup />
         </SidebarHeader>
         <AdministrativeNavigation newAccountRequests={newAccountRequests} user={user} />
       </Sidebar>

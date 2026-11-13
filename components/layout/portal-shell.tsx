@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { BrandLockup } from "@/components/layout/brand-lockup";
+import { BrandLockup } from "@/components/brand/brand-lockup";
 import { LogoutButton, NotificationButton } from "@/components/layout/portal-actions";
 import { type ShellUser, UserAvatar } from "@/components/layout/user-identity";
 
@@ -25,7 +25,7 @@ export function PortalShell({ children, user, systemNames }: PortalShellProps) {
     <div className="flex min-h-full flex-1 flex-col bg-canvas">
       <header className="sticky top-0 z-10 border-b border-border bg-surface">
         <div className="flex h-[72px] w-full items-center gap-4 px-4 sm:px-6 xl:px-[120px]">
-          <BrandLockup className="mr-auto" size="header" />
+          <BrandLockup className="mr-auto" />
           <NotificationButton size="lg" />
           <span aria-hidden="true" className="hidden h-7 w-px bg-border sm:block" />
           <div className="hidden min-w-0 items-center gap-2.5 sm:flex">
