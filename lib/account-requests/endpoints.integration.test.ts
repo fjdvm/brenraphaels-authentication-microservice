@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { createAccountRequestStore } from "./store";
-import { handleAccountRequest, handleAccountRequestOptions } from "./endpoints";
+import { handleAccountRequest, handleAccountRequestOptions, handleAccountRequestAction } from "./endpoints";
 import { hashToken } from "../integrations/tokens";
 import { stubNotificationsService } from "../notifications/test-support";
 
@@ -82,4 +82,43 @@ it("accepts an empty Module selection and acknowledges retries after account cre
   const response = await handleAccountRequest(request(body), ports);
   expect(response.status).toBe(200);
   expect(await response.json()).toEqual({ reference: "RQ-0005", status: "created" });
+});
+
+
+it("reminds Administrators and cancels an open request idempotently", async () => {
+  const body = { ...payload, reference: "RQ-0343", employee: { ...payload.employee, workEmail: "remind@example.com" } };
+  expect((await handleAccountRequest(request(body), ports)).status).toBe(201);
+  const before = notifications.sent.length;
+  expect((await handleAccountRequestAction(request(), "RQ-0343", "remind", ports)).status).toBe(200);
+  expect(notifications.sent.slice(before).map(n => n.userIds).sort()).toEqual([["admin"], ["ceo"]]);
+  for (let i = 0; i < 2; i++) {
+    const response = await handleAccountRequestAction(request(), "RQ-0343", "cancel", ports);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ status: "cancelled" });
+  }
+  const reminder = await handleAccountRequestAction(request(), "RQ-0343", "remind", ports);
+  expect(reminder.status).toBe(409);
+  expect(await reminder.json()).toEqual({ status: "cancelled" });
+});
+
+it("authenticates actions, scopes references to HRMS, and refuses terminal requests", async () => {
+  for (const action of ["remind", "cancel"] as const) {
+    expect((await handleAccountRequestAction(request(payload, "bad"), "RQ-0001", action, ports)).status).toBe(401);
+    expect((await handleAccountRequestAction(request(), "invalid", action, ports)).status).toBe(400);
+    expect((await handleAccountRequestAction(request(), "RQ-9999", action, ports)).status).toBe(404);
+    const before = notifications.sent.length;
+    const created = await handleAccountRequestAction(request(), "RQ-0005", action, ports);
+    expect(created.status).toBe(409);
+    expect(await created.json()).toEqual({ status: "account_created" });
+    expect(notifications.sent.length).toBe(before);
+  }
+  await db.exec(`UPDATE "AccountRequest" SET status = 'seen' WHERE reference = 'RQ-0001'`);
+  expect((await handleAccountRequestAction(request(), "RQ-0001", "cancel", ports)).status).toBe(200);
+  // A cancelled request cannot be claimed by the administrator's creation/decline predicate.
+  const claimed = await db.query(`UPDATE "AccountRequest" SET status = 'created' WHERE reference = 'RQ-0001' AND status IN ('new', 'seen') RETURNING id`);
+  expect(claimed.rows).toEqual([]);
+  await db.exec(`UPDATE "AccountRequest" SET status = 'declined' WHERE reference = 'RQ-0005'`);
+  const declined = await handleAccountRequestAction(request(), "RQ-0005", "cancel", ports);
+  expect(declined.status).toBe(409);
+  expect(await declined.json()).toEqual({ status: "declined" });
 });

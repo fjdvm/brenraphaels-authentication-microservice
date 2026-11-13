@@ -102,3 +102,19 @@ Tested first on production child branch `ticket-hrms-335-fulfillment-test`
 (expiring 2026-11-14 UTC), using the real Prisma transaction and fake identity,
 mail and HRMS services. Covers Seen idempotency, competing creation, grants,
 normal Usernames, dual delivery, and retaining Created on personal-email failure.
+
+## Remind and cancel (fjdvm/hrms#343)
+
+- `POST /api/integrations/account-requests/{reference}/remind` notifies current,
+  non-deleted Administrators in-app for New/Seen requests. HRMS enforces its
+  once-per-24-hours reminder limit. The body is unused.
+- `POST /api/integrations/account-requests/{reference}/cancel` atomically changes
+  New/Seen to Cancelled and records `cancelledAt`. Repeated cancellation succeeds.
+  Existing administrator actions only claim New/Seen requests, so a cancelled
+  request cannot be created or declined. Account creation and cancellation lock
+  the same row; only one can win.
+- Both use the same HRMS Basic authentication and `no-store` responses. Unknown
+  references return `404`, malformed references `400`, invalid credentials `401`.
+  Terminal requests return `409 { status }`, mapping Created to `account_created`.
+  Successful cancellation returns `200 { status: "cancelled" }`.
+- This uses the existing schema; no migration or production data change is needed.
