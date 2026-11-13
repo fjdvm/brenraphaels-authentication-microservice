@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { createAccountRequestStore } from "./store";
-import { handleAccountRequest, handleAccountRequestOptions } from "./endpoints";
+import { handleAccountRequest, handleAccountRequestOptions, handleAccountRequestAction } from "./endpoints";
+import { declineAccountRequest, createDeclineStore } from "./decline";
 import { hashToken } from "../integrations/tokens";
 import { stubNotificationsService } from "../notifications/test-support";
 
@@ -22,7 +23,7 @@ const request = (body = payload, secret = "secret") => new Request("https://port
   method: "POST", headers: { authorization: `Basic ${Buffer.from(`HRMS:${secret}`).toString("base64")}` }, body: JSON.stringify(body),
 });
 beforeAll(async () => {
-  for (const migration of ["20261003000000_init", "20261005000000_administrator_role_authority", "20261007000000_system_handoff", "20261112000000_module_retirement", "20261114000000_account_requests"]) {
+  for (const migration of ["20261003000000_init", "20261005000000_administrator_role_authority", "20261007000000_system_handoff", "20261112000000_module_retirement", "20261114000000_account_requests", "20261115000000_account_request_fulfillment", "20261116000000_account_request_decline"]) {
     await db.exec(readFileSync(`prisma/migrations/${migration}/migration.sql`, "utf8"));
   }
   await db.query(`INSERT INTO "System" (id,name,url,"backendSecretHash") VALUES ('hrms','HRMS','https://hrms.test',$1),('crms','CRMS','https://crms.test',NULL)`, [hashToken("secret")]);
@@ -82,4 +83,59 @@ it("accepts an empty Module selection and acknowledges retries after account cre
   const response = await handleAccountRequest(request(body), ports);
   expect(response.status).toBe(200);
   expect(await response.json()).toEqual({ reference: "RQ-0005", status: "created" });
+});
+
+
+it("reminds Administrators and cancels an open request idempotently", async () => {
+  const body = { ...payload, reference: "RQ-0343", employee: { ...payload.employee, workEmail: "remind@example.com" } };
+  expect((await handleAccountRequest(request(body), ports)).status).toBe(201);
+  const before = notifications.sent.length;
+  expect((await handleAccountRequestAction(request(), "RQ-0343", "remind", ports)).status).toBe(200);
+  expect(notifications.sent.slice(before).map(n => n.userIds).sort()).toEqual([["admin"], ["ceo"]]);
+  for (let i = 0; i < 2; i++) {
+    const response = await handleAccountRequestAction(request(), "RQ-0343", "cancel", ports);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ status: "cancelled" });
+  }
+  const reminder = await handleAccountRequestAction(request(), "RQ-0343", "remind", ports);
+  expect(reminder.status).toBe(409);
+  expect(await reminder.json()).toEqual({ status: "cancelled" });
+});
+
+it("authenticates actions, scopes references to HRMS, and refuses terminal requests", async () => {
+  for (const action of ["remind", "cancel"] as const) {
+    expect((await handleAccountRequestAction(request(payload, "bad"), "RQ-0001", action, ports)).status).toBe(401);
+    expect((await handleAccountRequestAction(request(), "invalid", action, ports)).status).toBe(400);
+    expect((await handleAccountRequestAction(request(), "RQ-9999", action, ports)).status).toBe(404);
+    const before = notifications.sent.length;
+    const created = await handleAccountRequestAction(request(), "RQ-0005", action, ports);
+    expect(created.status).toBe(409);
+    expect(await created.json()).toEqual({ status: "account_created" });
+    expect(notifications.sent.length).toBe(before);
+  }
+  await db.exec(`UPDATE "AccountRequest" SET status = 'seen' WHERE reference = 'RQ-0001'`);
+  expect((await handleAccountRequestAction(request(), "RQ-0001", "cancel", ports)).status).toBe(200);
+  const rows = await db.query<{ id: string }>(`SELECT id FROM "AccountRequest" WHERE reference = 'RQ-0001'`);
+  const declinedAfterCancel = await declineAccountRequest(rows.rows[0].id, { reason: "Other" }, { id: "admin" }, {
+    decline: createDeclineStore({ async query<T>(sql: import("@prisma/client").Prisma.Sql): Promise<T[]> {
+      return (await db.query<T>(sql.text, [...sql.values])).rows;
+    } }),
+    startDelivery() { throw new Error("Cancelled requests must not emit decline events"); },
+    async audit() { throw new Error("Cancelled requests must not record a decline"); },
+  });
+  expect(declinedAfterCancel.ok).toBe(false);
+  await db.exec(`UPDATE "AccountRequest" SET status = 'declined' WHERE reference = 'RQ-0005'`);
+  const declined = await handleAccountRequestAction(request(), "RQ-0005", "cancel", ports);
+  expect(declined.status).toBe(409);
+  expect(await declined.json()).toEqual({ status: "declined" });
+});
+
+
+it("returns login_sent as the current status once login delivery is confirmed", async () => {
+  await db.exec(`UPDATE "AccountRequest" SET status = 'created', "loginSentAt" = now() WHERE reference = 'RQ-0005'`);
+  for (const action of ["remind", "cancel"] as const) {
+    const response = await handleAccountRequestAction(request(), "RQ-0005", action, ports);
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ status: "login_sent" });
+  }
 });

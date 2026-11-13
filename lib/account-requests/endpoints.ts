@@ -81,3 +81,34 @@ export async function handleAccountRequestOptions(request: Request, ports: Accou
     return json({ error: "temporarily_unavailable" }, 503);
   }
 }
+
+
+export type AccountRequestActionPorts = AccountRequestPorts & {
+  findActionRequest(systemId: string, reference: string): Promise<RequestReceipt | null>;
+  cancel(systemId: string, reference: string): Promise<RequestReceipt | null>;
+};
+
+/** HRMS owns reminder throttling; the Portal is authoritative for terminal statuses. */
+export async function handleAccountRequestAction(request: Request, reference: string, action: "remind" | "cancel", ports: AccountRequestActionPorts): Promise<Response> {
+  try {
+    const system = await authenticate(request, ports);
+    if (!system) return json({ error: "invalid_client" }, 401);
+    if (!z.string().regex(/^RQ-\d{4,}$/).max(50).safeParse(reference).success) return json({ error: "invalid-request" }, 400);
+    const saved = action === "cancel"
+      ? await ports.cancel(system.id, reference)
+      : await ports.findActionRequest(system.id, reference);
+    if (!saved) return json({ error: "not-found" }, 404);
+    if (action === "cancel" && saved.status === "cancelled") return json({ status: "cancelled" });
+    if (!["new", "seen"].includes(saved.status)) {
+      // Translate the Portal label to the shared wire status.
+      return json({ status: saved.status === "created" ? "account_created" : saved.status }, 409);
+    }
+    await Promise.all((await ports.administratorIds()).map(userId => ports.notify({
+      userId, type: "account-request.reminder", title: `Reminder: Account request ${reference}`,
+      body: `HR is waiting for Account request ${reference}. Open Account requests to review it.`,
+    })));
+    return json({ status: saved.status === "new" ? "requested" : saved.status });
+  } catch {
+    return json({ error: "temporarily_unavailable" }, 503);
+  }
+}

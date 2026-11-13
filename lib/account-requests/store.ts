@@ -1,18 +1,34 @@
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
-import type { AccountRequestPorts, RequestReceipt } from "./endpoints";
+import type { AccountRequestPorts, AccountRequestActionPorts, RequestReceipt } from "./endpoints";
 
 type Database = { query<T>(sql: Prisma.Sql): Promise<T[]> };
 
 /** Parameterized SQL is shared by the real Portal database and in-memory Postgres tests. */
-export function createAccountRequestStore(db: Database): Omit<AccountRequestPorts, "notify"> {
+export function createAccountRequestStore(db: Database): Omit<AccountRequestActionPorts, "notify"> {
   const findRequest: AccountRequestPorts["findRequest"] = async (systemId, reference) => {
     const rows = await db.query<RequestReceipt>(Prisma.sql`
       SELECT reference, status FROM "AccountRequest" WHERE "sourceSystemId" = ${systemId} AND reference = ${reference}`);
     return rows[0] ?? null;
   };
+  const findActionRequest: AccountRequestActionPorts["findActionRequest"] = async (systemId, reference) => {
+    const rows = await db.query<RequestReceipt>(Prisma.sql`
+      SELECT reference, CASE WHEN status = 'created' AND "loginSentAt" IS NOT NULL
+        THEN 'login_sent' ELSE status::text END AS status
+      FROM "AccountRequest" WHERE "sourceSystemId" = ${systemId} AND reference = ${reference}`);
+    return rows[0] ?? null;
+  };
   return {
     findRequest,
+    findActionRequest,
+    async cancel(systemId, reference) {
+      // This update locks against the same open-status claim used by creation/decline.
+      const rows = await db.query<RequestReceipt>(Prisma.sql`
+        UPDATE "AccountRequest" SET status = 'cancelled', "cancelledAt" = CURRENT_TIMESTAMP, "updatedAt" = CURRENT_TIMESTAMP
+        WHERE "sourceSystemId" = ${systemId} AND reference = ${reference} AND status IN ('new', 'seen')
+        RETURNING reference, status`);
+      return rows[0] ?? await findActionRequest(systemId, reference);
+    },
     async findSystemByName(name) {
       const rows = await db.query<{ id: string; backendSecretHash: string | null }>(Prisma.sql`
         SELECT id, "backendSecretHash" FROM "System" WHERE name = ${name}`);
