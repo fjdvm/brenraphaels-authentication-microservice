@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { createRequestUserAction } from "@/actions/account-requests";
 import { connection } from "next/server";
@@ -15,6 +15,8 @@ export default async function NewUserPage({ searchParams }: { searchParams: Prom
   await requireAdministrator();
   const { request: requestId } = await searchParams;
   const request = requestId ? await prisma.accountRequest.findUnique({ where: { id: requestId } }) : null;
+  // A committed account can outlive failed login delivery. A refresh must reach its Resend action, not a 404.
+  if (request?.status === "created") redirect(`/admin/account-requests?request=${encodeURIComponent(request.id)}`);
   if (requestId && (!request || !["new", "seen"].includes(request.status))) notFound();
   const names = request?.personName.trim().split(/\s+/) ?? [];
   const prefill = request ? { id: request.id, reference: request.reference, requesterName: request.requesterName, note: request.note, firstName: names.slice(0, -1).join(" ") || names[0], lastName: names.length > 1 ? names.at(-1)! : "", email: request.workEmail, roleId: request.roleId, moduleIds: request.moduleIds } : undefined;
