@@ -121,7 +121,7 @@ describe("seedPortal", () => {
     expect(stores.roles.get("CEO")?.isAdministrator).toBe(true);
     expect(stores.systems).toHaveLength(SEED_SYSTEMS.length);
     expect(stores.modules).toHaveLength(moduleCount);
-    expect(stores.accessTemplates).toHaveLength(moduleCount * 2);
+    expect(stores.accessTemplates).toHaveLength(moduleCount * 2 + 10 * 2 + 8);
     expect(stores.authUsers).toHaveLength(1);
     expect(stores.authUsers.get(superAdmin.email)?.password).toBe(
       superAdmin.password,

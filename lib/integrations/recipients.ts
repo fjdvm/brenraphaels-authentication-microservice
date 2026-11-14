@@ -4,7 +4,7 @@ import { hashToken, safeEqual } from "./tokens";
 
 type Ports = {
   findSystemByName(name: string): Promise<{ id: string; backendSecretHash: string | null } | null>;
-  listEligibleStaff(systemId: string): Promise<{ id: string; username: string; name: string; modules: string[] }[]>;
+  listEligibleStaff(systemId: string): Promise<{ id: string; username: string; name: string; role?: string; modules: string[] }[]>;
 };
 
 /** Backend-only directory. A System may enumerate grants only in its own System. Each Staff member carries a display `name`; HRMS needs it for its Interviewer picker (fjdvm/hrms#268). */
