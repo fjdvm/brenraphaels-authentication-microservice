@@ -65,7 +65,7 @@ export function AccountCard({ username, email, roleName, lastSignIn, otherSystem
       {otherSystemNames.length > 0 ? (
         <p className="flex gap-2 rounded-lg bg-callout px-3 py-2.5 text-xs text-callout-foreground">
           <Info aria-hidden="true" className="size-4 shrink-0" />
-          Need {joinWithOr(otherSystemNames)}? Ask a Super Admin to update your access.
+          Need {joinWithOr(otherSystemNames)}? Ask an Admin to update your access.
         </p>
       ) : null}
     </section>

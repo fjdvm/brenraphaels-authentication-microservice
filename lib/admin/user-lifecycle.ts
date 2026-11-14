@@ -67,7 +67,7 @@ export async function changeUserLifecycle(
   targetExists = true;
 
   if (action === "delete" && target.roleName === SUPER_ADMIN_ROLE_NAME) {
-    return fail("A Super Admin cannot be deleted.", "Attempted to delete a Super Admin");
+    return fail("An Admin cannot be deleted.", "Attempted to delete an Admin");
   }
 
   const wantsDeleted = action === "delete";

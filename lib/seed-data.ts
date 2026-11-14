@@ -99,9 +99,9 @@ export const SEED_SYSTEMS: SeedSystem[] = [
   },
 ];
 
-// Seed order carries no authority. Super Admin is the bootstrap User's Role.
+// Seed order carries no authority. Admin is the bootstrap User's Role.
 export const SEED_ROLES = [
-  "Super Admin",
+  "Admin",
   "CEO",
   "VP",
   "General Manager",
@@ -132,8 +132,9 @@ export const SEED_MODULE_FORMER_NAMES: Readonly<
 /** Roles renamed since first seeded: current name -> former name. Renamed in place. */
 export const SEED_ROLE_FORMER_NAMES: Readonly<Record<string, string>> = {
   "IMS Manager": "SCMS Manager",
+  Admin: "Super Admin",
 };
 
-export const SUPER_ADMIN_ROLE_NAME = "Super Admin" satisfies (typeof SEED_ROLES)[number];
+export const SUPER_ADMIN_ROLE_NAME = "Admin" satisfies (typeof SEED_ROLES)[number];
 
 export const ADMINISTRATOR_ROLE_NAMES: readonly string[] = [SUPER_ADMIN_ROLE_NAME, "CEO"];

@@ -60,13 +60,13 @@ function world(rows: Row[]) {
 const admin = () => row("admin", { isAdministrator: true });
 
 describe("changeUserLifecycle", () => {
-  it("never deletes a Super Admin, even for another Administrator, and logs the refusal", async () => {
-    const superAdmin = row("root", { isAdministrator: true, roleName: "Super Admin" });
+  it("never deletes an Admin, even for another Administrator, and logs the refusal", async () => {
+    const superAdmin = row("root", { isAdministrator: true, roleName: "Admin" });
     const { ports, events } = world([row("ceo", { isAdministrator: true, roleName: "CEO" }), superAdmin]);
 
     const result = await changeUserLifecycle("delete", "root", "ceo", ports);
 
-    expect(result).toEqual({ ok: false, error: "A Super Admin cannot be deleted." });
+    expect(result).toEqual({ ok: false, error: "An Admin cannot be deleted." });
     expect(superAdmin.isDeleted).toBe(false);
     expect(events).toEqual([
       expect.objectContaining({ action: "user.delete", outcome: "FAILURE", actorId: "ceo", targetUserId: "root" }),

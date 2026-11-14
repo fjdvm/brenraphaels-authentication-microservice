@@ -22,7 +22,7 @@ const user = (overrides: Partial<ManagedUser> & Pick<ManagedUser, "id" | "userna
   ...overrides,
 });
 
-const admin = user({ id: "u1", username: "2026-ADMIN-001", roleName: "Super Admin", isAdministrator: true });
+const admin = user({ id: "u1", username: "2026-ADMIN-001", roleName: "Admin", isAdministrator: true });
 const staff = user({ id: "u3", username: "2026-FM-003", firstName: "Fitz", lastName: "Martin" });
 const newcomer = user({ id: "u5", username: "2026-NC-005", status: "Awaiting first login", mustChangePassword: true });
 const deleted = user({ id: "u4", username: "2026-AB-004", firstName: "Ana", lastName: "Bautista", status: "Deleted" });

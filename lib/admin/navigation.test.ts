@@ -8,6 +8,7 @@ describe("ADMIN_NAVIGATION", () => {
       { href: "/admin/access", label: "Access" },
       { href: "/admin/users", label: "User management" },
       { href: "/admin/account-requests", label: "Account requests" },
+      { href: "/admin/settings", label: "Settings" },
       { href: "/admin/system-logs", label: "System logs" },
     ]);
   });
@@ -23,6 +24,7 @@ describe("SIDEBAR_NAVIGATION", () => {
       { href: "/admin/access", label: "Access" },
       { href: "/admin/users", label: "User management" },
       { href: "/admin/account-requests", label: "Account requests" },
+      { href: "/admin/settings", label: "Settings" },
       { href: "/admin/system-logs", label: "System logs" },
       { href: "/my-logs", label: "Activity log" },
     ]);
@@ -40,7 +42,7 @@ describe("SIDEBAR_SECTIONS", () => {
       { label: undefined, hrefs: ["/admin/access"] },
       {
         label: "ADMIN",
-        hrefs: ["/admin/users", "/admin/account-requests", "/admin/system-logs", "/my-logs"],
+        hrefs: ["/admin/users", "/admin/account-requests", "/admin/settings", "/admin/system-logs", "/my-logs"],
       },
     ]);
   });

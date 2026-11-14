@@ -28,7 +28,7 @@ function run(command: string, arguments_: string[]): void {
 }
 
 describe.skipIf(!testEnvironment)("the disposable Neon branch seed", () => {
-  it("persists an idempotent bootstrap Super Admin", { timeout: 120_000 }, async () => {
+  it("persists an idempotent bootstrap Admin", { timeout: 120_000 }, async () => {
     run("npx", ["prisma", "migrate", "deploy"]);
     run("npm", ["run", "db:seed"]);
 

@@ -28,7 +28,7 @@ beforeAll(async () => {
   }
   await db.query(`INSERT INTO "System" (id,name,url,"backendSecretHash") VALUES ('hrms','HRMS','https://hrms.test',$1),('crms','CRMS','https://crms.test',NULL)`, [hashToken("secret")]);
   await db.exec(`
-    INSERT INTO "Role" (id,name,"isAdministrator") VALUES ('staff','Staff',false),('admin','Super Admin',true),('ceo','CEO',true);
+    INSERT INTO "Role" (id,name,"isAdministrator") VALUES ('staff','Staff',false),('admin','Admin',true),('ceo','CEO',true);
     INSERT INTO "User" (id,username,email,"firstName","lastName","roleId","neonAuthUserId","mustChangePassword") VALUES
       ('admin','admin','admin@example.com','Admin','Test','admin','auth-admin',false),
       ('ceo','ceo','ceo@example.com','CEO','Test','ceo','auth-ceo',false),
@@ -70,7 +70,7 @@ it("serves only current Modules and current Role templates across Systems", asyn
   expect(response.status).toBe(200);
   expect(response.headers.get("cache-control")).toBe("no-store");
   expect(await response.json()).toEqual({
-    roles: [{ id: "ceo", name: "CEO", moduleIds: [] }, { id: "staff", name: "Staff", moduleIds: ["info"] }, { id: "admin", name: "Super Admin", moduleIds: [] }],
+    roles: [{ id: "admin", name: "Admin", moduleIds: [] }, { id: "ceo", name: "CEO", moduleIds: [] }, { id: "staff", name: "Staff", moduleIds: ["info"] }],
     systems: [{ id: "crms", name: "CRMS", modules: [{ id: "orders", name: "Orders" }] }, { id: "hrms", name: "HRMS", modules: [{ id: "info", name: "Employee Information" }] }],
   });
 });
