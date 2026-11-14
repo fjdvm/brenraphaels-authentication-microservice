@@ -97,18 +97,21 @@ export async function validateAccess(
     return { ...validationFailure("invalid_handle"), system: identified };
   }
 
+  const settings = system.name === "CRMS" && request.moduleName === "Portal Settings";
+  const staff = settings ? await ports.findStaffProfile(session.userId) : null;
+  const settingsRole = staff && ["Super Admin", "Admin", "CEO", "CRMS Manager", "CREOMS Manager", "Manager"].includes(staff.role);
   if (
     !(await ports.isUserEligible(session.userId)) ||
-    !(await ports.hasActiveGrantInModule(session.userId, system.id, request.moduleName))
+    (settings ? !settingsRole : !(await ports.hasActiveGrantInModule(session.userId, system.id, request.moduleName)))
   ) {
     return { ...validationFailure("access_denied"), system: identified, userId: session.userId };
   }
 
-  const staff = await ports.findStaffProfile(session.userId);
+  const profile = staff ?? await ports.findStaffProfile(session.userId);
 
-  if (!staff) {
+  if (!profile) {
     return { ...validationFailure("access_denied"), system: identified, userId: session.userId };
   }
 
-  return { ok: true, userId: session.userId, system: system.name, module: request.moduleName, staff };
+  return { ok: true, userId: session.userId, system: system.name, module: request.moduleName, staff: profile };
 }
