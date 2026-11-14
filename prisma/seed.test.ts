@@ -97,7 +97,7 @@ function createStores() {
 }
 
 describe("seedPortal", () => {
-  it("persists the bootstrap Super Admin and reference data idempotently", async () => {
+  it("persists the bootstrap Admin and reference data idempotently", async () => {
     const stores = createStores();
     const superAdmin = {
       username: "2026-ADMIN-001",
@@ -117,7 +117,7 @@ describe("seedPortal", () => {
     const storedUser = stores.users.get(superAdmin.username);
 
     expect(stores.roles).toHaveLength(SEED_ROLES.length);
-    expect(stores.roles.get("Super Admin")?.isAdministrator).toBe(true);
+    expect(stores.roles.get("Admin")?.isAdministrator).toBe(true);
     expect(stores.roles.get("CEO")?.isAdministrator).toBe(true);
     expect(stores.systems).toHaveLength(SEED_SYSTEMS.length);
     expect(stores.modules).toHaveLength(moduleCount);
@@ -129,7 +129,7 @@ describe("seedPortal", () => {
     expect(storedUser).toMatchObject({
       username: superAdmin.username,
       email: superAdmin.email,
-      roleName: "Super Admin",
+      roleName: "Admin",
       mustChangePassword: false,
     });
     expect(stores.accessGrants).toHaveLength(moduleCount);
@@ -199,7 +199,7 @@ describe("seedPortal", () => {
   it("fills IMS grants for every existing active Administrator, without granting Staff or other Systems", async () => {
     const stores = createStores();
     for (const [username, roleName, isDeleted] of [
-      ["existing-ceo", "CEO", false], ["existing-admin", "Super Admin", false],
+      ["existing-ceo", "CEO", false], ["existing-admin", "Admin", false],
       ["staff", "Staff/Employee", false], ["deleted-admin", "CEO", true],
     ] as const) {
       stores.users.set(username, {

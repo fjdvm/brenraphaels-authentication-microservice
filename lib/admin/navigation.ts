@@ -1,4 +1,4 @@
-import { createLucideIcon, FileClock, LayoutGrid, type LucideIcon, UserRound, UserRoundPlus } from "lucide-react";
+import { createLucideIcon, FileClock, LayoutGrid, type LucideIcon, Settings, UserRound, UserRoundPlus } from "lucide-react";
 
 /** A user with a clock; lucide has no such icon, so it is drawn on lucide's 24px grid. */
 const UserRoundClock = createLucideIcon("user-round-clock", [
@@ -22,6 +22,7 @@ export const ADMIN_NAVIGATION: readonly AdministrativeDestination[] = [
   { href: "/admin/access", label: "Access", icon: LayoutGrid },
   { href: "/admin/users", label: "User management", icon: UserRound },
   { href: ACCOUNT_REQUESTS_HREF, label: "Account requests", icon: UserRoundPlus },
+  { href: "/admin/settings", label: "Settings", icon: Settings },
   { href: "/admin/system-logs", label: "System logs", icon: FileClock },
 ];
 

@@ -16,18 +16,18 @@ const user = (username: string, overrides: Partial<Parameters<typeof filterUsers
 });
 
 const users = [
-  user("2026-ADMIN-001", { firstName: "Jude", lastName: "Nitram", roleName: "Super Admin", isAdministrator: true }),
+  user("2026-ADMIN-001", { firstName: "Jude", lastName: "Nitram", roleName: "Admin", isAdministrator: true }),
   user("2026-FM-002", { firstName: "Fitz", lastName: "Martin", status: "Awaiting first login" }),
   user("2026-AB-003", { firstName: "Ana", lastName: "Bautista", roleName: "Cashier", status: "Deleted" }),
 ];
 
 describe("summarizeUsers", () => {
-  it("counts every User, those who can log in, live Super Admins and Deleted Users", () => {
+  it("counts every User, those who can log in, live Admins and Deleted Users", () => {
     expect(summarizeUsers(users)).toEqual({ total: 3, active: 2, superAdmins: 1, deleted: 1 });
   });
 
-  it("does not count a Deleted Super Admin as a Super Admin", () => {
-    const deletedAdmin = user("2026-SA-004", { roleName: "Super Admin", status: "Deleted" });
+  it("does not count a Deleted Admin as an Admin", () => {
+    const deletedAdmin = user("2026-SA-004", { roleName: "Admin", status: "Deleted" });
 
     expect(summarizeUsers([deletedAdmin]).superAdmins).toBe(0);
   });

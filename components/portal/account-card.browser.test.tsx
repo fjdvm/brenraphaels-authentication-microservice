@@ -42,12 +42,12 @@ describe("AccountCard", () => {
     const { rerender } = render(
       <AccountCard {...account} lastSignIn={null} otherSystemNames={["HRMS", "IMS", "POS"]} />,
     );
-    expect(screen.getByText("Need HRMS, IMS or POS? Ask a Super Admin to update your access.")).toBeTruthy();
+    expect(screen.getByText("Need HRMS, IMS or POS? Ask an Admin to update your access.")).toBeTruthy();
 
     rerender(<AccountCard {...account} lastSignIn={null} otherSystemNames={["POS"]} />);
-    expect(screen.getByText("Need POS? Ask a Super Admin to update your access.")).toBeTruthy();
+    expect(screen.getByText("Need POS? Ask an Admin to update your access.")).toBeTruthy();
 
     rerender(<AccountCard {...account} lastSignIn={null} otherSystemNames={[]} />);
-    expect(screen.queryByText(/Ask a Super Admin/)).toBeNull();
+    expect(screen.queryByText(/Ask an Admin/)).toBeNull();
   });
 });

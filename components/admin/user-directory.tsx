@@ -72,7 +72,7 @@ export function UserDirectory({ users: confirmedUsers, signedInUserId, actions }
   const stats = [
     { label: "Total users", value: summary.total, hint: "In the portal" },
     { label: "Active", value: summary.active, hint: "Can log in" },
-    { label: "Super Admins", value: summary.superAdmins, hint: "Full access to every system" },
+    { label: "Admins", value: summary.superAdmins, hint: "Full access to every system" },
     { label: "Deleted", value: summary.deleted, hint: "Can be restored" },
   ];
   const tabs: { value: UserTab; label: string; count: number }[] = [

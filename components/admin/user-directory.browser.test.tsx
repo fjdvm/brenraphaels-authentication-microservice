@@ -19,7 +19,7 @@ const user = (overrides: Partial<ManagedUser> & Pick<ManagedUser, "id" | "userna
   ...overrides,
 });
 
-const admin = user({ id: "u1", username: "2026-ADMIN-001", firstName: "Jude", lastName: "Nitram", roleName: "Super Admin", isAdministrator: true });
+const admin = user({ id: "u1", username: "2026-ADMIN-001", firstName: "Jude", lastName: "Nitram", roleName: "Admin", isAdministrator: true });
 const ceo = user({ id: "u2", username: "2026-CE-002", firstName: "Cara", lastName: "Eo", roleName: "CEO", isAdministrator: true });
 const staff = user({ id: "u3", username: "2026-FM-003", firstName: "Fitz", lastName: "Martin", status: "Awaiting first login" });
 const deleted = user({ id: "u4", username: "2026-AB-004", firstName: "Ana", lastName: "Bautista", roleName: "Cashier", status: "Deleted" });
@@ -46,7 +46,7 @@ describe("UserDirectory", () => {
     const stats = screen.getByRole("list", { name: "User summary" });
     expect(within(stats).getByText("Total users").nextSibling?.textContent).toBe("4");
     expect(within(stats).getByText("Active").nextSibling?.textContent).toBe("3");
-    expect(within(stats).getByText("Super Admins").nextSibling?.textContent).toBe("1");
+    expect(within(stats).getByText("Admins").nextSibling?.textContent).toBe("1");
     expect(within(stats).getByText("Deleted").nextSibling?.textContent).toBe("1");
 
     expect(within(row("2026-FM-003")).getByText("Fitz Martin")).toBeTruthy();
@@ -83,7 +83,7 @@ describe("UserDirectory", () => {
     expect(within(row("2026-FM-003")).getByRole("button", { name: "Delete 2026-FM-003" })).toBeTruthy();
     expect(within(row("2026-CE-002")).getByRole("button", { name: "Delete 2026-CE-002" })).toBeTruthy();
 
-    // Neither the signed-in Administrator nor a Super Admin can be deleted.
+    // Neither the signed-in Administrator nor an Admin can be deleted.
     expect(within(row("2026-ADMIN-001")).queryByRole("button", { name: /delete/i })).toBeNull();
 
     // A Deleted User can only be restored.

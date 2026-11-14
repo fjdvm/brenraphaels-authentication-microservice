@@ -21,7 +21,7 @@ const administrator = {
   lastName: "Nitram",
   username: "2026-ADMIN-001",
   email: "jude@example.com",
-  roleName: "Super Admin",
+  roleName: "Admin",
 };
 
 function setViewport(isMobile: boolean) {
@@ -72,7 +72,7 @@ describe("Administrator navigation journeys", () => {
     expect(card.textContent).toContain("Jude Nitram");
     expect(card.textContent).toContain("2026-ADMIN-001");
     expect(card.textContent).toContain("jude@example.com");
-    expect(card.textContent).toContain("Super Admin");
+    expect(card.textContent).toContain("Admin");
   });
 
   it("opens a phone drawer that closes with Escape and restores focus", async () => {
