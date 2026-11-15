@@ -34,6 +34,8 @@ describe("proxy matcher", () => {
     expect(runsProxyFor("/admin/users")).toBe(true);
   });
   it("lets the recipient directory authenticate System credentials without a browser session", () => {
+    expect(runsProxyFor("/api/integrations/payment-details")).toBe(false);
+    expect(runsProxyFor("/api/integrations/payment-details/extra")).toBe(true);
     expect(runsProxyFor("/api/integrations/recipients")).toBe(false);
     expect(runsProxyFor("/api/integrations/recipients-extra")).toBe(true);
     expect(runsProxyFor("/api/integrations/recipients/extra")).toBe(true);
