@@ -190,3 +190,17 @@ model AccountRequestDelivery {
 
   @@unique([requestId, status])
 }
+
+// The shop's payment details: one row, id "shop". Only an Admin changes it; the storefront reads it at checkout.
+model PaymentSettings {
+  id                String   @id @default("shop")
+  gcashNumber       String   @default("")
+  gcashName         String   @default("")
+  mayaNumber        String   @default("")
+  mayaName          String   @default("")
+  bankName          String   @default("")
+  bankAccountName   String   @default("")
+  bankAccountNumber String   @default("")
+  updatedAt         DateTime @default(now()) @updatedAt
+  updatedById       String?
+}

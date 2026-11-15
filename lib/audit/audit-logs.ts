@@ -159,6 +159,7 @@ const CATALOG: Record<AuditAction, { action: string; label: string }> = {
   "integration.authorize": { action: "system.handoff_authorized", label: "Authorized a System sign-in" },
   "integration.exchange": { action: "system.handoff_exchanged", label: "Exchanged a System sign-in code" },
   "integration.validate": { action: "system.handoff_denied", label: "Denied a System request" },
+  "payment_settings.change": { action: "payment_settings.changed", label: "Changed payment details" },
 };
 
 const ACTION_LABELS: Record<string, string> = {
