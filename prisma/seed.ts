@@ -88,7 +88,7 @@ export async function seedPortal(
       modules.push(seededModule);
       if (system.name === "IMS") imsModules.push(seededModule);
       if (system.name === "CRMS") {
-        const staffModules = ["Dashboard", "Customer Profiles", "Orders", "Payments", "Fulfilment", "Returns", "Tickets", "Feedback"];
+        const staffModules = ["Dashboard", "Customer Profiles", "Orders", "Senior/PWD", "Payments", "Fulfilment", "Returns", "Tickets", "Feedback"];
         for (const roleName of ["CEO", "CRMS Manager", ...(staffModules.includes(moduleName) ? ["Staff/Employee"] : [])]) {
           const role = roles.get(roleName);
           if (role) await portal.upsertAccessTemplate(role.id, seededModule.id);

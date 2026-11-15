@@ -121,7 +121,7 @@ describe("seedPortal", () => {
     expect(stores.roles.get("CEO")?.isAdministrator).toBe(true);
     expect(stores.systems).toHaveLength(SEED_SYSTEMS.length);
     expect(stores.modules).toHaveLength(moduleCount);
-    expect(stores.accessTemplates).toHaveLength(moduleCount * 2 + 10 * 2 + 8);
+    expect(stores.accessTemplates).toHaveLength(moduleCount * 2 + 10 * 2 + 11);
     expect(stores.authUsers).toHaveLength(1);
     expect(stores.authUsers.get(superAdmin.email)?.password).toBe(
       superAdmin.password,
@@ -148,7 +148,7 @@ describe("seedPortal", () => {
     const role = stores.roles.get("General Manager");
     expect(role).toMatchObject({ isAdministrator: false });
     expect(SEED_ROLES.slice(2, 4)).toEqual(["VP", "General Manager"]);
-    expect([...stores.accessTemplates].filter((entry) => entry.startsWith(`${role!.id}:`))).toHaveLength(32);
+    expect([...stores.accessTemplates].filter((entry) => entry.startsWith(`${role!.id}:`))).toHaveLength(33);
     const before = { roles: [...stores.roles], templates: [...stores.accessTemplates], users: [...stores.users], grants: [...stores.accessGrants] };
     await seedPortal(stores.portal, stores.auth, admin);
     expect({ roles: [...stores.roles], templates: [...stores.accessTemplates], users: [...stores.users], grants: [...stores.accessGrants] }).toEqual(before);
@@ -330,6 +330,7 @@ describe("seedPortal", () => {
         "Dashboard",
         "Customer Profiles",
         "Orders",
+        "Senior/PWD",
         "Payments",
         "Fulfilment",
         "Returns",

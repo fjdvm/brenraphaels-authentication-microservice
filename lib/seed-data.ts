@@ -27,6 +27,7 @@ export const SEED_SYSTEMS: SeedSystem[] = [
       "Dashboard",
       "Customer Profiles",
       "Orders",
+      "Senior/PWD",
       "Payments",
       "Fulfilment",
       "Returns",
