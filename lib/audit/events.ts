@@ -19,6 +19,7 @@ export const AUDIT_ACTIONS = [
   "integration.authorize",
   "integration.exchange",
   "integration.validate",
+  "payment_settings.change",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
