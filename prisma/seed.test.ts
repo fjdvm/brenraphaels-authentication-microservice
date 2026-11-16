@@ -121,7 +121,7 @@ describe("seedPortal", () => {
     expect(stores.roles.get("CEO")?.isAdministrator).toBe(true);
     expect(stores.systems).toHaveLength(SEED_SYSTEMS.length);
     expect(stores.modules).toHaveLength(moduleCount);
-    expect(stores.accessTemplates).toHaveLength(moduleCount * 2 + 10 * 2 + 13);
+    expect(stores.accessTemplates).toHaveLength(moduleCount * 2 + 10 * 2 + 11);
     expect(stores.authUsers).toHaveLength(1);
     expect(stores.authUsers.get(superAdmin.email)?.password).toBe(
       superAdmin.password,
@@ -148,7 +148,7 @@ describe("seedPortal", () => {
     const role = stores.roles.get("General Manager");
     expect(role).toMatchObject({ isAdministrator: false });
     expect(SEED_ROLES.slice(2, 4)).toEqual(["VP", "General Manager"]);
-    expect([...stores.accessTemplates].filter((entry) => entry.startsWith(`${role!.id}:`))).toHaveLength(34);
+    expect([...stores.accessTemplates].filter((entry) => entry.startsWith(`${role!.id}:`))).toHaveLength(33);
     const before = { roles: [...stores.roles], templates: [...stores.accessTemplates], users: [...stores.users], grants: [...stores.accessGrants] };
     await seedPortal(stores.portal, stores.auth, admin);
     expect({ roles: [...stores.roles], templates: [...stores.accessTemplates], users: [...stores.users], grants: [...stores.accessGrants] }).toEqual(before);
@@ -277,36 +277,19 @@ describe("seedPortal", () => {
     expect(mergeCallbackUrls(once, seeded)).toEqual(once);
   });
 
-  it("seeds the CRMS Marketing Module, not Campaigns, and no longer describes campaigns", () => {
+  it("no longer seeds a CRMS Marketing Module and no longer describes marketing", () => {
     const crms = SEED_SYSTEMS.find((system) => system.name === "CRMS")!;
 
-    expect(crms.modules).toContain("Marketing");
+    expect(crms.modules).not.toContain("Marketing");
     expect(crms.modules).not.toContain("Campaigns");
-    expect(crms.description).not.toMatch(/campaign/i);
+    expect(crms.description).not.toMatch(/campaign|marketing/i);
   });
 
-  it("keeps a Staff member's grant on the old Campaigns Module as Marketing, however often it is seeded", async () => {
-    const stores = createStores();
-    const superAdmin = {
-      username: "2026-ADMIN-001",
-      firstName: "Jude",
-      lastName: "Nitram",
-      email: "jude.nitram08@gmail.com",
-      password: "not-a-real-password",
-    };
-    stores.systems.set("CRMS", "system-legacy");
-    stores.modules.set("system-legacy:Campaigns", "module-campaigns");
-    stores.accessGrants.add("staff-member:module-campaigns");
-
-    await seedPortal(stores.portal, stores.auth, superAdmin);
-    await seedPortal(stores.portal, stores.auth, superAdmin);
-
-    expect(stores.modules.get("system-legacy:Marketing")).toBe("module-campaigns");
-    expect(stores.modules.has("system-legacy:Campaigns")).toBe(false);
-    expect(stores.accessGrants.has("staff-member:module-campaigns")).toBe(true);
-    expect(
-      [...stores.modules.keys()].filter((key) => key.endsWith(":Marketing")),
-    ).toHaveLength(1);
+  it("keeps the other CRMS Modules, in order", () => {
+    expect(SEED_SYSTEMS.find((system) => system.name === "CRMS")!.modules).toEqual([
+      "Dashboard", "Customer Profiles", "Orders", "Senior/PWD", "Payments",
+      "Fulfilment", "Returns", "Tickets", "Conversations", "Feedback", "Reports",
+    ]);
   });
 
   it("seeds exactly the nine current HRMS Modules", () => {
@@ -337,7 +320,6 @@ describe("seedPortal", () => {
         "Tickets",
         "Conversations",
         "Feedback",
-        "Marketing",
         "Reports",
       ]),
     );
