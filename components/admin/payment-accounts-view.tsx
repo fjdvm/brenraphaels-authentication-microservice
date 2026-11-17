@@ -1,7 +1,7 @@
 "use client";
 
 import { TriangleAlert } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,7 @@ export function PaymentAccountsView({ canEdit, initial, saveSlot = null, active 
   const [edits, setEdits] = useState<Record<string, Fields>>({});
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [confirm, setConfirm] = useState<{ kind: "save" } | { kind: "toggle"; account: PaymentAccount } | null>(null);
+  const nextKey = useRef(0);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
@@ -175,7 +176,7 @@ export function PaymentAccountsView({ canEdit, initial, saveSlot = null, active 
               {rows.length === 0 && newRows.length === 0 ? <p className="text-[13px] text-on-surface-variant">No {METHOD_LABELS[method]} account yet.</p> : null}
               {canEdit ? (
                 <div>
-                  <Button onClick={() => setDrafts((current) => [...current, { key: Date.now() + current.length, method, accountName: "", accountNumber: "", bankName: "" }])} size="row" type="button" variant="row-action">
+                  <Button onClick={() => setDrafts((current) => [...current, { key: nextKey.current++, method, accountName: "", accountNumber: "", bankName: "" }])} size="row" type="button" variant="row-action">
                     Add {METHOD_LABELS[method]} account
                   </Button>
                 </div>

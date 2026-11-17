@@ -14,6 +14,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const { id } = await params;
     const body = await request.json().catch(() => null);
     const actor = { id: user.id, roleName: user.roleName };
+    if (typeof body === "object" && body !== null && "active" in body && "accountName" in body) return Response.json({ error: "Send either an edit or an active change, not both." }, { status: 400, headers });
     const isActiveChange = typeof body === "object" && body !== null && typeof (body as { active?: unknown }).active === "boolean" && !("accountName" in body);
     const result = isActiveChange
       ? await setPaymentAccountActive(paymentAccountPorts, actor, id, (body as { active: boolean }).active)
