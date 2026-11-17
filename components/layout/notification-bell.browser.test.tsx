@@ -236,3 +236,68 @@ describe("NotificationBell", () => {
     });
   });
 });
+
+describe("NotificationBell, Member variant", () => {
+  const accessChanged: Item & { body: string } = {
+    id: "m1",
+    title: "Your access changed",
+    body: "An Admin gave you CRMS · Returns.",
+    link: null,
+    sendingApp: "Portal",
+    createdAt: new Date(Date.now() - 10 * 60_000).toISOString(),
+    read: false,
+  };
+  const workAlert: Item = {
+    id: "m2",
+    title: "Jane placed Order #7",
+    link: "https://creoms.test/orders/7",
+    sendingApp: "CREOMS",
+    createdAt: new Date(Date.now() - 5 * 60_000).toISOString(),
+    read: false,
+  };
+
+  async function renderMemberBell() {
+    render(<NotificationBell variant="member" navigate={vi.fn()} />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+  }
+
+  it("shows account and system notices only, never another System's work alerts, and counts only those", async () => {
+    inbox = { available: true, unread: 2, notifications: [workAlert, accessChanged] };
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    await renderMemberBell();
+
+    await user.click(screen.getByRole("button", { name: "Notifications, 1 unread" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Notifications" });
+    expect(within(dialog).getByText("Your access changed")).toBeTruthy();
+    expect(within(dialog).queryByText(/Jane placed/)).toBeNull();
+    expect(within(dialog).getByText("An Admin gave you CREOMS · Returns. · 10 min ago")).toBeTruthy();
+    expect(within(dialog).getByText("Only account and system notices appear here. Work alerts stay inside each system.")).toBeTruthy();
+  });
+
+  it("offers Mark all as read and clears the unread marker", async () => {
+    inbox = { available: true, unread: 1, notifications: [accessChanged] };
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    await renderMemberBell();
+
+    await user.click(screen.getByRole("button", { name: "Notifications, 1 unread" }));
+    await user.click(screen.getByRole("button", { name: "Mark all as read" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/notifications/read-all", expect.objectContaining({ method: "POST" }));
+    expect(screen.queryByTitle("Unread")).toBeNull();
+  });
+
+  it("does not poll while idle", async () => {
+    inbox = { available: true, unread: 0, notifications: [] };
+    await renderMemberBell();
+    const before = inboxCalls();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10 * 60_000);
+    });
+
+    expect(inboxCalls()).toBe(before);
+  });
+});

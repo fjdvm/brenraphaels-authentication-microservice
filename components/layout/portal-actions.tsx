@@ -26,7 +26,7 @@ function LogoutSubmitButton() {
 // Figma "btn/Log out": full width at the foot of the sidebar, inline in the Staff header.
 const LOGOUT_LAYOUTS = {
   sidebar: "w-full py-2.5",
-  header: "px-3.5 py-[9px]",
+  header: "px-2.5 py-1.5 text-[13px]",
 } as const;
 
 type LogoutButtonProps = {
@@ -48,7 +48,8 @@ export function LogoutButton({ layout, description }: LogoutButtonProps) {
         type="button"
         variant="outline"
       >
-        <LogOut aria-hidden="true" />
+        {/* Figma "btn/Log out" in the Member top bar is text only. */}
+        {layout === "sidebar" ? <LogOut aria-hidden="true" /> : null}
         Log out
       </Button>
 

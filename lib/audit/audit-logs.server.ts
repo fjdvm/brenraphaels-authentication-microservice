@@ -12,6 +12,9 @@ import { prisma } from "@/lib/db/prisma";
 import {
   auditGatewayConfig,
   createAuditClient,
+  readLastPasswordChange,
+  readMemberActivity,
+  readMemberActivityOptions,
   readMyLogs,
   exportSystemLogs,
   readSystemLogOptions,
@@ -117,6 +120,20 @@ export async function listMyLogEvents(filters: AuditLogFilters): Promise<AuditLo
   return readMyLogs(displayClient, await getPortalUser(), filters);
 }
 
+
+/** A non-administrative User's Activity log: own events, narrowed by System and Action. */
+export async function listMemberActivity(filters: AuditLogFilters): Promise<AuditLogPage> {
+  return readMemberActivity(displayClient, await getPortalUser(), filters);
+}
+
+export async function listMemberActivityOptions(): Promise<AuditFilterOptions> {
+  return readMemberActivityOptions(displayClient, await getPortalUser());
+}
+
+/** The signed-in User's last successful password change; null when there is none or it can't be read. */
+export async function readLastPasswordChangeTime(): Promise<Date | null> {
+  return readLastPasswordChange(client, await getPortalUser());
+}
 
 export async function exportSystemLogEvents(filters: AuditExportFilters): Promise<AuditExport> {
   return exportSystemLogs(client, await getPortalUser(), filters);

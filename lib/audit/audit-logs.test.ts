@@ -4,6 +4,9 @@ import {
   auditGatewayConfig,
   createAuditClient,
   exportSystemLogs,
+  readLastPasswordChange,
+  readMemberActivity,
+  readMemberActivityOptions,
   readMyLogs,
   readSystemLogOptions,
   readSystemLogs,
@@ -876,5 +879,65 @@ describe("Every CREOMS Audit Event reads well (#263)", () => {
     expect(options.actions.map(({ value, label }) => [value, label])).toEqual(
       [...new Map(creoms.map(([, action, label]) => [action, label]))].map(([action, label]) => [action, label]),
     );
+  });
+});
+
+describe("reading a non-administrative User's Activity log", () => {
+  const events = () => Response.json({ events: [], next_cursor: null });
+
+  it("narrows the User's own events by System, Action and date range, and never by Outcome or search", async () => {
+    const { calls, client: audit } = client(events);
+
+    await readMemberActivity(audit, { id: "staff" }, {
+      q: "signed",
+      from: "2026-10-15T00:00:00.000+08:00",
+      to: "2026-10-21T23:59:59.999+08:00",
+      action: "user.login",
+      outcome: "FAILURE",
+      source: "Authentication",
+      cursor: "c1",
+    });
+
+    const params = calls[0].url.searchParams;
+    expect(params.get("source")).toBe("Authentication");
+    expect(params.get("action")).toBe("user.login");
+    expect(params.has("q")).toBe(false);
+    expect(params.has("outcome")).toBe(false);
+    expect(params.get("actor_id")).toBe("staff");
+    expect(params.get("actor_type")).toBe("user");
+  });
+
+  it("cannot be widened to another User, and refuses without a signed-in User", async () => {
+    const { calls, client: audit } = client(events);
+
+    await readMemberActivity(audit, { id: "staff" }, { actor_id: "admin" } as never);
+    expect(calls[0].url.searchParams.getAll("actor_id")).toEqual(["staff"]);
+
+    await expect(readMemberActivity(audit, null, {})).rejects.toThrow("sign in required");
+    await expect(readMemberActivityOptions(audit, { id: "" })).rejects.toThrow("sign in required");
+    expect(calls).toHaveLength(1);
+  });
+});
+
+describe("reading the last password change", () => {
+  it("is the User's most recent successful change, and null when none or unreadable", async () => {
+    const at = "2026-11-05T10:00:00.000Z";
+    const found = client(() =>
+      Response.json({
+        events: [{ id: "e1", occurred_at: at, source: "Authentication", action: "password.changed", outcome: "SUCCESS" }],
+        next_cursor: null,
+      }),
+    );
+    const none = client(() => Response.json({ events: [], next_cursor: null }));
+    const down = client(() => new Response("no", { status: 500 }));
+
+    expect((await readLastPasswordChange(found.client, { id: "staff" }))?.toISOString()).toBe(at);
+    const params = found.calls[0].url.searchParams;
+    expect(params.get("action")).toBe("password.changed");
+    expect(params.get("outcome")).toBe("success");
+    expect(params.get("actor_id")).toBe("staff");
+    await expect(readLastPasswordChange(none.client, { id: "staff" })).resolves.toBeNull();
+    await expect(readLastPasswordChange(down.client, { id: "staff" })).resolves.toBeNull();
+    await expect(readLastPasswordChange(none.client, null)).resolves.toBeNull();
   });
 });
