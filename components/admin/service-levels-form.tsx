@@ -2,9 +2,11 @@
 
 import { TriangleAlert } from "lucide-react";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogClose, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
+import { FigmaIcon } from "@/components/ui/figma-icon";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -21,7 +23,7 @@ export function toHours(text: string): number | null {
  * Service levels: the first reply and resolve targets, the same for every Priority. A change applies only to
  * Tickets opened afterwards. Settings are never optimistic: the form confirms first, then waits for CREOMS.
  */
-export function ServiceLevelsForm({ canEdit, initial }: { canEdit: boolean; initial: Targets | null }) {
+export function ServiceLevelsForm({ canEdit, initial, saveSlot = null, active = true }: { canEdit: boolean; initial: Targets | null; saveSlot?: HTMLElement | null; active?: boolean }) {
   const [saved, setSaved] = useState(initial);
   const [first, setFirst] = useState(initial ? String(initial.firstReplyHours) : "");
   const [resolve, setResolve] = useState(initial ? String(initial.resolveHours) : "");
@@ -55,34 +57,49 @@ export function ServiceLevelsForm({ canEdit, initial }: { canEdit: boolean; init
   }
 
   return (
-    <section aria-labelledby="service-levels-heading" className="flex max-w-2xl flex-col gap-3.5 rounded-xl border border-panel-border bg-surface px-5 py-4.5">
-      <div className="flex flex-col gap-0.5">
-        <h2 className="text-[15px] font-semibold text-foreground" id="service-levels-heading">Service levels</h2>
-        <p className="text-xs text-on-surface-variant">
-          How long Staff have to first reply to a Ticket and to resolve it. The same for every Priority, and every hour counts. The clock stops while a Ticket is On hold or waiting on the Customer.
-        </p>
-      </div>
-      {saved === null ? <p className="text-sm text-danger-text" role="alert">The current Service levels could not be read from CREOMS. Reload to try again.</p> : null}
-      <div className="flex flex-wrap gap-4">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[13px] font-medium text-field-label" htmlFor="first-reply-hours">First reply target (hours)</label>
-          <Input className="h-auto w-40 rounded-lg px-3 py-2.5 text-sm shadow-none md:text-sm" disabled={!canEdit || saved === null} id="first-reply-hours" inputMode="numeric" onChange={(event) => { setFirst(event.target.value); setMessage(null); }} value={first} />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[13px] font-medium text-field-label" htmlFor="resolve-hours">Resolve target (hours)</label>
-          <Input className="h-auto w-40 rounded-lg px-3 py-2.5 text-sm shadow-none md:text-sm" disabled={!canEdit || saved === null} id="resolve-hours" inputMode="numeric" onChange={(event) => { setResolve(event.target.value); setMessage(null); }} value={resolve} />
-        </div>
-      </div>
-      <p className="text-xs text-on-surface-variant">
-        {canEdit ? "Only an Admin can change these. Every change is logged. A change affects only Tickets opened afterwards." : "You can view these settings. Only an Admin can change them."}
+    <section aria-labelledby="service-levels-heading" className="flex flex-col gap-3 rounded-xl border border-panel-border bg-surface p-5 leading-[normal]">
+      <h2 className="text-[15px] font-semibold text-foreground" id="service-levels-heading">Service level targets</h2>
+      <p className="text-[13px] text-on-surface-variant">
+        How long Staff have to first reply to a ticket and to resolve it. The same for every priority, and every hour counts. The clock stops while a ticket is On hold or waiting on the customer.
       </p>
-      {(first || resolve) && !valid ? <p className="text-xs text-danger-text" role="alert">Enter whole hours from 1 to 8760; the resolve target cannot be shorter than the first reply target.</p> : null}
-      {message ? <p className={message.kind === "ok" ? "text-sm text-identity" : "text-sm text-danger-text"} role={message.kind === "ok" ? "status" : "alert"}>{message.text}</p> : null}
-      {canEdit ? (
-        <div>
-          <Button disabled={!changed || pending} onClick={() => setOpen(true)} size="cta" type="button" variant="identity">Save service levels</Button>
+      {saved === null ? <p className="text-sm text-danger-text" role="alert">The current Service levels could not be read from CREOMS. Reload to try again.</p> : null}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="flex flex-col gap-1.5">
+          {canEdit ? (
+            <>
+              <label className="text-[13px] font-medium text-foreground" htmlFor="first-reply-hours">First reply target (hours)</label>
+              <Input className="h-auto rounded-lg px-3 py-2.25 text-sm shadow-none md:text-sm" disabled={saved === null} id="first-reply-hours" inputMode="numeric" onChange={(event) => { setFirst(event.target.value); setMessage(null); }} value={first} />
+            </>
+          ) : (
+            <>
+              <span className="text-[13px] font-medium text-foreground" id="first-reply-hours-label">First reply target (hours)</span>
+              <p aria-labelledby="first-reply-hours-label" className="rounded-lg border border-input bg-surface px-3 py-2.25 text-sm text-foreground" role="group">{first || "—"}</p>
+            </>
+          )}
         </div>
-      ) : null}
+        <div className="flex flex-col gap-1.5">
+          {canEdit ? (
+            <>
+              <label className="text-[13px] font-medium text-foreground" htmlFor="resolve-hours">Resolve target (hours)</label>
+              <Input className="h-auto rounded-lg px-3 py-2.25 text-sm shadow-none md:text-sm" disabled={saved === null} id="resolve-hours" inputMode="numeric" onChange={(event) => { setResolve(event.target.value); setMessage(null); }} value={resolve} />
+            </>
+          ) : (
+            <>
+              <span className="text-[13px] font-medium text-foreground" id="resolve-hours-label">Resolve target (hours)</span>
+              <p aria-labelledby="resolve-hours-label" className="rounded-lg border border-input bg-surface px-3 py-2.25 text-sm text-foreground" role="group">{resolve || "—"}</p>
+            </>
+          )}
+        </div>
+      </div>
+      {canEdit && (first || resolve) && !valid ? <p className="text-xs text-danger-text" role="alert">Enter whole hours from 1 to 8760; the resolve target cannot be shorter than the first reply target.</p> : null}
+      <p className="flex items-center gap-1.5 text-xs text-on-surface-variant">
+        <FigmaIcon name="lock-12" />
+        Only an Admin can change these. Every change is logged. A change affects only tickets opened afterwards.
+      </p>
+      {message ? <p className={message.kind === "ok" ? "text-sm text-identity" : "text-sm text-danger-text"} role={message.kind === "ok" ? "status" : "alert"}>{message.text}</p> : null}
+      {canEdit && active && saveSlot
+        ? createPortal(<Button disabled={!changed || pending} onClick={() => setOpen(true)} size="cta" type="button" variant="identity">Save changes</Button>, saveSlot)
+        : null}
 
       <Dialog onOpenChange={(next) => !pending && setOpen(next)} open={open}>
         <DialogContent className="max-w-115">
