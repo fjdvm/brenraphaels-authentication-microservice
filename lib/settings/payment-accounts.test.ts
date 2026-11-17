@@ -3,8 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 import {
   addPaymentAccount,
   editPaymentAccount,
+  checkQrImage,
   parseAccountInput,
+  removePaymentAccountQr,
+  replacePaymentAccountQr,
   setPaymentAccountActive,
+  withSignedQr,
   type PaymentAccount,
   type PaymentAccountPorts,
 } from "./payment-accounts";
@@ -19,6 +23,8 @@ function ports(existing: PaymentAccount[] = [gcash]) {
     create: vi.fn(async (input) => ({ id: "new", active: true, bankName: "", ...input }) as PaymentAccount),
     update: vi.fn(async (id: string, input) => ({ ...store.get(id)!, ...input }) as PaymentAccount),
     setActive: vi.fn(async (id: string, active: boolean) => ({ ...store.get(id)!, active }) as PaymentAccount),
+    setQrFileId: vi.fn(async (id: string, qrFileId: string | null) => ({ ...store.get(id)!, qrFileId }) as PaymentAccount),
+    files: { upload: vi.fn(async () => "file-new"), remove: vi.fn(async (_id: string) => {}) },
     audit: vi.fn(async (_event: { actorId: string; action: string; detail: string }) => {}),
   } satisfies PaymentAccountPorts;
 }
@@ -96,5 +102,60 @@ describe("changing accounts", () => {
       expect(result).toMatchObject({ ok: false, status: 403 });
     }
     expect(p.create.mock.calls.length + p.update.mock.calls.length + p.setActive.mock.calls.length + p.audit.mock.calls.length).toBe(0);
+  });
+});
+
+const png = (size = 8) => ({ filename: "qr.png", contentType: "image/png", bytes: Uint8Array.from({ length: size }, (_, i) => [0x89, 0x50, 0x4e, 0x47][i] ?? 0) });
+
+describe("QR images", () => {
+  it("accepts a real PNG or JPG up to 2 MB", () => {
+    expect(checkQrImage(png())).toBeNull();
+    expect(checkQrImage({ filename: "q.jpg", contentType: "image/jpeg", bytes: Uint8Array.of(0xff, 0xd8, 0xff, 0xe0) })).toBeNull();
+    expect(checkQrImage(png(2 * 1024 * 1024))).toBeNull();
+  });
+  it.each([
+    ["a GIF", { filename: "q.gif", contentType: "image/gif", bytes: Uint8Array.of(1, 2, 3) }, "PNG or JPG"],
+    ["a file renamed to PNG", { filename: "q.png", contentType: "image/png", bytes: Uint8Array.of(1, 2, 3, 4) }, "PNG or JPG"],
+    ["an oversized image", png(2 * 1024 * 1024 + 1), "2 MB"],
+    ["an empty file", { filename: "q.png", contentType: "image/png", bytes: new Uint8Array() }, "empty"],
+  ])("refuses %s", (_name, image, words) => {
+    expect(checkQrImage(image)).toContain(words);
+  });
+
+  it("stores the QR privately, drops the old File, and logs the replacement under the Admin", async () => {
+    const p = ports([{ ...gcash, qrFileId: "file-old" }]);
+    const result = await replacePaymentAccountQr(p, admin, "a1", png());
+    expect(result).toMatchObject({ ok: true, account: { qrFileId: "file-new" } });
+    expect(p.files.upload).toHaveBeenCalledWith(expect.objectContaining({ contentType: "image/png" }), { entityType: "payment-account", entityId: "a1", role: "qr" });
+    expect(p.files.remove).toHaveBeenCalledWith("file-old");
+    expect(p.audit).toHaveBeenCalledWith(expect.objectContaining({ actorId: "u1", action: "payment_account.qr_replace", detail: expect.stringContaining("Replaced") }));
+  });
+  it("uploads nothing for a bad file or a CEO", async () => {
+    const p = ports();
+    expect(await replacePaymentAccountQr(p, admin, "a1", { ...png(), contentType: "image/gif" })).toMatchObject({ ok: false, status: 400 });
+    expect(await replacePaymentAccountQr(p, { id: "c", roleName: "CEO" }, "a1", png())).toMatchObject({ ok: false, status: 403 });
+    expect(p.files.upload).not.toHaveBeenCalled();
+  });
+  it("removes the new File when the account cannot be updated", async () => {
+    const p = ports();
+    p.setQrFileId.mockRejectedValueOnce(new Error("db down"));
+    await expect(replacePaymentAccountQr(p, admin, "a1", png())).rejects.toThrow("db down");
+    expect(p.files.remove).toHaveBeenCalledWith("file-new");
+  });
+  it("removes a QR and logs it; a CEO cannot", async () => {
+    const p = ports([{ ...gcash, qrFileId: "file-old" }]);
+    expect(await removePaymentAccountQr(p, { id: "c", roleName: "CEO" }, "a1")).toMatchObject({ status: 403 });
+    expect(await removePaymentAccountQr(p, admin, "a1")).toMatchObject({ ok: true, account: { qrFileId: null } });
+    expect(p.files.remove).toHaveBeenCalledWith("file-old");
+    expect(p.audit).toHaveBeenCalledWith(expect.objectContaining({ action: "payment_account.qr_remove" }));
+  });
+  it("signs a fresh address per QR, never exposes the File id, and survives a signing failure", async () => {
+    const viewUrl = vi.fn(async (id: string) => `https://files.test/${id}?sig=1`);
+    const [withQr, without] = await withSignedQr([{ ...gcash, qrFileId: "f1" }, gcash], { viewUrl });
+    expect(withQr).toMatchObject({ qrUrl: "https://files.test/f1?sig=1" });
+    expect(withQr).not.toHaveProperty("qrFileId");
+    expect(without.qrUrl).toBeNull();
+    const [broken] = await withSignedQr([{ ...gcash, qrFileId: "f1" }], { viewUrl: async () => { throw new Error("down"); } });
+    expect(broken.qrUrl).toBeNull();
   });
 });

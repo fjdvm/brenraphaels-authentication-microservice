@@ -163,6 +163,8 @@ const CATALOG: Record<AuditAction, { action: string; label: string }> = {
   "payment_account.update": { action: "payment_account.updated", label: "Edited Payment account" },
   "payment_account.deactivate": { action: "payment_account.deactivated", label: "Deactivated Payment account" },
   "payment_account.reactivate": { action: "payment_account.reactivated", label: "Reactivated Payment account" },
+  "payment_account.qr_replace": { action: "payment_account.qr_replaced", label: "Replaced Payment account QR" },
+  "payment_account.qr_remove": { action: "payment_account.qr_removed", label: "Removed Payment account QR" },
 };
 
 const ACTION_LABELS: Record<string, string> = {

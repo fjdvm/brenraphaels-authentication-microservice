@@ -4,7 +4,7 @@ import { SettingsScreen } from "@/components/admin/settings-screen";
 import type { Targets } from "@/components/admin/service-levels-form";
 import { canWrite } from "@/lib/auth/role-authority";
 import { requireAdministrator } from "@/lib/auth/session";
-import { readPaymentAccounts } from "@/lib/settings/payment-accounts.server";
+import { readPaymentAccounts, signQr } from "@/lib/settings/payment-accounts.server";
 import { callApprovalLimit, callServiceLevels } from "@/lib/integrations/approval-limit";
 
 /** Portal · Settings (Figma "Settings · General" and "SLA, triage & routing"). Admin edits; CEO views. */
@@ -30,7 +30,7 @@ export default async function SettingsPage() {
 
   let accounts: Awaited<ReturnType<typeof readPaymentAccounts>> | null = null;
   try {
-    accounts = await readPaymentAccounts();
+    accounts = await signQr(await readPaymentAccounts());
   } catch {
     accounts = null;
   }

@@ -219,6 +219,8 @@ model PaymentAccount {
   accountNumber String
   bankName      String        @default("")
   active        Boolean       @default(true)
+  // The private File in file-storage holding the QR image; the Portal never keeps the image itself.
+  qrFileId      String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @default(now()) @updatedAt
   updatedById   String?

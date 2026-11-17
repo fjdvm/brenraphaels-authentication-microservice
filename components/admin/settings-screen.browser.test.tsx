@@ -107,3 +107,51 @@ describe("Settings screen", () => {
     for (const name of [/^Add /, "Deactivate", "Reactivate", "Save changes"]) expect(screen.queryByRole("button", { name })).toBeNull();
   });
 });
+
+describe("Payment account QR", () => {
+  const withQr: PaymentAccount[] = [{ ...accounts[0], qrUrl: "https://files.test/f1?sig=abc" }, accounts[1], accounts[2]];
+
+  it("lets an Admin upload, replace and remove a QR, each saved on its own", async () => {
+    const calls: { url: string; method: string; file?: unknown }[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init: { method: string; body?: FormData }) => {
+      calls.push({ url, method: init.method, file: init.body?.get("file") });
+      return Response.json({ ok: true, account: { ...accounts[2], qrUrl: init.method === "DELETE" ? null : "https://files.test/new?sig=1" } });
+    }));
+    render(<SettingsScreen accounts={withQr} canEdit centavos={500000} roleName="Admin" targets={targets} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("tab", { name: "Payments" }));
+    expect(screen.getByRole("img", { name: "GCash QR" }).getAttribute("src")).toBe("https://files.test/f1?sig=abc");
+    expect(screen.getByText("Replace QR")).toBeTruthy();
+    const bank = within(screen.getByRole("group", { name: "InstaPay QR code" }));
+    expect(bank.getByText("PNG or JPG · shown to customers to scan")).toBeTruthy();
+    await user.upload(screen.getByLabelText("InstaPay QR code file"), new File([Uint8Array.of(0x89, 0x50, 0x4e, 0x47)], "q.png", { type: "image/png" }));
+    await screen.findByText("Bank transfer QR saved.");
+    expect(calls[0]).toMatchObject({ url: "/api/settings/payment-accounts/b1/qr", method: "POST" });
+    expect(calls[0].file).toBeInstanceOf(File);
+    await user.click(within(screen.getByRole("group", { name: "InstaPay QR code" })).getByRole("button", { name: "Remove" }));
+    await screen.findByText("Bank transfer QR removed.");
+    expect(calls[1]).toMatchObject({ method: "DELETE" });
+  });
+
+  it("refuses a wrong type or an oversized image before sending anything", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    render(<SettingsScreen accounts={withQr} canEdit centavos={500000} roleName="Admin" targets={targets} />);
+    const user = userEvent.setup({ applyAccept: false });
+    await user.click(screen.getByRole("tab", { name: "Payments" }));
+    await user.upload(screen.getByLabelText("GCash QR code file"), new File(["x"], "q.gif", { type: "image/gif" }));
+    expect(screen.getByRole("alert").textContent).toBe("The QR must be a PNG or JPG image.");
+    await user.upload(screen.getByLabelText("GCash QR code file"), new File([new Uint8Array(2 * 1024 * 1024 + 1)], "q.png", { type: "image/png" }));
+    expect(screen.getByRole("alert").textContent).toBe("The QR must be 2 MB or smaller.");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("shows a CEO the QR but no upload or remove control", async () => {
+    render(<SettingsScreen accounts={withQr} canEdit={false} centavos={500000} roleName="CEO" targets={targets} />);
+    await userEvent.setup().click(screen.getByRole("tab", { name: "Payments" }));
+    expect(screen.getByRole("img", { name: "GCash QR" })).toBeTruthy();
+    expect(screen.queryByText(/Upload QR|Replace QR/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Remove" })).toBeNull();
+    expect(document.querySelector('input[type="file"]')).toBeNull();
+  });
+});
