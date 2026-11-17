@@ -1,11 +1,14 @@
 "use client";
 
 import { Bell, CheckCheck } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { FigmaIcon } from "@/components/ui/figma-icon";
 import { cn } from "@/lib/utils/cn";
 import type { Inbox, PortalNotification } from "@/lib/notifications/notifications";
+import { relativeTime } from "@/lib/notifications/relative-time";
+import { uiLabel } from "@/lib/utils/ui-label";
 
 const MAX_BADGE = 99;
 
@@ -120,17 +123,30 @@ const BELL_SIZES = {
   lg: "size-9",
 } as const;
 
+/** Figma "Member · Notifications open": account and system notices only; work alerts stay inside each System. */
+const isAccountOrSystemNotice = ({ sendingApp }: PortalNotification) => sendingApp == null || sendingApp === "Portal";
+
 export function NotificationBell({
   className,
   size = "md",
+  variant = "admin",
   navigate = (link: string) => window.location.assign(link),
 }: {
   className?: string;
   size?: keyof typeof BELL_SIZES;
+  /** "member" is the Member top bar's bell and panel, which show account and system notices only. */
+  variant?: "admin" | "member";
   navigate?: (link: string) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const { inbox, setInbox, refresh } = useInbox();
+  const { inbox: fullInbox, setInbox, refresh } = useInbox();
+  const member = variant === "member";
+  const inbox = useMemo<Inbox>(() => {
+    if (!member) return fullInbox;
+    const notifications = fullInbox.notifications.filter(isAccountOrSystemNotice);
+
+    return { ...fullInbox, notifications, unread: notifications.filter(({ read }) => !read).length };
+  }, [fullInbox, member]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -182,6 +198,87 @@ export function NotificationBell({
   }
 
   const unread = inbox.available ? inbox.unread : 0;
+
+  if (member) {
+    return (
+      <div className={cn("relative", className)}>
+        <button
+          aria-expanded={isOpen}
+          aria-haspopup="dialog"
+          aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
+          className={cn(
+            "block size-9 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            isOpen ? "bg-[#efeff1]" : "hover:bg-[#efeff1]",
+          )}
+          onClick={() => setIsOpen((current) => !current)}
+          title="Notifications"
+          type="button"
+        >
+          <FigmaIcon name={unread > 0 ? "bell-unread" : "bell"} />
+        </button>
+        {isOpen ? (
+          <section
+            aria-labelledby="notifications-title"
+            className="absolute top-full right-0 z-20 mt-[7px] w-[380px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-panel-border bg-surface shadow-[0_12px_40px_rgba(0,0,0,0.18)]"
+            role="dialog"
+          >
+            <div className="flex items-start justify-between px-4 py-3.5 leading-[normal]">
+              <h2 className="text-[15px] font-semibold text-foreground" id="notifications-title">Notifications</h2>
+              <button
+                className="text-[13px] font-semibold text-identity disabled:opacity-50"
+                disabled={unread === 0}
+                onClick={() => void markAllRead()}
+                type="button"
+              >
+                Mark all as read
+              </button>
+            </div>
+            {inbox.notifications.length === 0 ? (
+              <p className="border-t border-[#f0edf4] px-4 py-3 text-xs leading-[normal] text-on-surface-variant">
+                {inbox.available ? "No notifications yet." : "Notifications are unavailable right now."}
+              </p>
+            ) : (
+              <ul className="max-h-96 overflow-y-auto">
+                {inbox.notifications.map((notification) => (
+                  <li className="border-t border-[#f0edf4]" key={notification.id}>
+                    <button
+                      className={cn(
+                        "flex w-full items-start gap-2.5 px-4 py-3 text-left leading-[normal] hover:bg-[#fbf8ff]",
+                        !notification.read && "bg-[#fbf8ff]",
+                      )}
+                      onClick={() => void open(notification)}
+                      type="button"
+                    >
+                      {notification.read ? (
+                        <span aria-hidden="true" className="h-[13px] w-2 shrink-0" />
+                      ) : (
+                        <span className="shrink-0" title="Unread">
+                          <FigmaIcon name="dot-unread" />
+                        </span>
+                      )}
+                      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <span className="text-[13px] font-semibold text-foreground">
+                          {notification.title}
+                        </span>
+                        <span className="text-xs text-on-surface-variant">
+                          {[notification.body ? uiLabel(notification.body) : null, relativeTime(new Date(notification.createdAt), new Date())]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="border-t border-[#f0edf4] px-4 py-3 text-xs leading-[normal] text-on-surface-variant">
+              Only account and system notices appear here. Work alerts stay inside each system.
+            </p>
+          </section>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className={cn("relative", className)}>

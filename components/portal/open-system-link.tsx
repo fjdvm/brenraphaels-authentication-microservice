@@ -1,6 +1,5 @@
 "use client";
 
-import { ArrowUpRight } from "lucide-react";
 import { type MouseEvent, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -42,10 +41,14 @@ export function OpenSystemLink({ name, url }: { name: string; url: string }) {
 
   return (
     <>
-      <Button asChild className="px-[18px] py-[11px] font-semibold" size="cta" variant="identity">
+      <Button asChild className="px-3.5 py-[9px]" size="cta" variant="identity">
         <a href={url} onClick={showLoadingCard} rel="noopener" target="_blank">
-          Open {name}
-          <ArrowUpRight aria-hidden="true" />
+          {/* Figma "btn/Open CREOMS": the label, two spaces, then the arrow glyph. */}
+          <span className="whitespace-pre">
+            Open {name}
+            {"  "}
+            <span aria-hidden="true">↗</span>
+          </span>
         </a>
       </Button>
       {isOpening ? <LoadingCard title={`Opening ${name}…`} subtitle="Handing your sign-in over securely" /> : null}

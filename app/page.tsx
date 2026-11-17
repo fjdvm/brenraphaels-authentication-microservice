@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
 import { PortalShell } from "@/components/layout/portal-shell";
 import { AccountCard } from "@/components/portal/account-card";
+import { RecentActivity, RecentActivitySkeleton } from "@/components/portal/recent-activity";
 import { SystemLaunchCards } from "@/components/portal/system-launch-cards";
 import { readPreviousSignIn } from "@/lib/audit/audit-logs.server";
 import { requirePortalUser } from "@/lib/auth/session";
@@ -32,7 +34,7 @@ export default async function PortalPage() {
 
   return (
     <PortalShell systemNames={systems.map(({ name }) => name)} user={user}>
-      <main className="flex w-full flex-1 flex-col gap-6 px-4 py-10 sm:px-6 xl:px-[120px]">
+      <main className="flex w-full flex-1 flex-col gap-5 bg-canvas px-4 pt-9 pb-7 sm:px-6 xl:px-40">
         <div className="flex flex-col gap-1.5 leading-[normal]">
           <h1 className="text-[28px] font-semibold text-foreground">
             {greetingFor(now)}, {user.firstName}
@@ -51,6 +53,9 @@ export default async function PortalPage() {
             username={user.username}
           />
         </div>
+        <Suspense fallback={<RecentActivitySkeleton />}>
+          <RecentActivity />
+        </Suspense>
       </main>
     </PortalShell>
   );

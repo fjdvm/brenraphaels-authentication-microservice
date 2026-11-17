@@ -1,12 +1,20 @@
 import { Box, Contact, LayoutGrid, Store, Users, type LucideIcon } from "lucide-react";
 
-type SystemStyle = { icon: LucideIcon; tile: string; accent: string };
+import type { FigmaIconName } from "@/components/ui/figma-icon";
+
+type SystemStyle = {
+  icon: LucideIcon;
+  /** The Figma icon of Systems the Member frames show (CREOMS, IMS); others use the Lucide icon. */
+  figmaIcon?: FigmaIconName;
+  tile: string;
+  accent: string;
+};
 
 // Keys match SeedSystem.iconName; unknown keys fall back to a generic, neutral style.
 const SYSTEM_STYLES: Record<string, SystemStyle> = {
-  users: { icon: Users, tile: "bg-system-crms", accent: "text-system-crms-foreground" },
+  users: { icon: Users, figmaIcon: "user-26", tile: "bg-system-crms", accent: "text-system-crms-foreground" },
   contact: { icon: Contact, tile: "bg-system-hrms", accent: "text-system-hrms-foreground" },
-  package: { icon: Box, tile: "bg-system-ims", accent: "text-system-ims-foreground" },
+  package: { icon: Box, figmaIcon: "box-26", tile: "bg-system-ims", accent: "text-system-ims-foreground" },
   store: { icon: Store, tile: "bg-system-pos", accent: "text-system-pos-foreground" },
 };
 

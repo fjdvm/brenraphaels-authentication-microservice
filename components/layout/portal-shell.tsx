@@ -25,10 +25,9 @@ export function PortalShell({ children, user, systemNames }: PortalShellProps) {
   return (
     <div className="flex min-h-full flex-1 flex-col bg-canvas">
       <header className="sticky top-0 z-10 border-b border-border bg-surface">
-        <div className="flex h-[72px] w-full items-center gap-4 px-4 sm:px-6 xl:px-[120px]">
-          <BrandLockup className="mr-auto" />
-          <NotificationButton size="lg" />
-          <span aria-hidden="true" className="hidden h-7 w-px bg-border sm:block" />
+        <div className="flex h-16 w-full items-center gap-6 px-4 sm:px-6 xl:px-40">
+          <BrandLockup className="mr-auto h-11 w-[220px] flex-none" />
+          <NotificationButton variant="member" />
           <div className="hidden min-w-0 items-center gap-2.5 sm:flex">
             <UserAvatar size="md" user={user} />
             <div className="flex min-w-0 flex-col gap-px">
