@@ -155,7 +155,7 @@ export function UserDirectory({ users: confirmedUsers, signedInUserId, canWrite,
       </div>
 
       <div className={cn(panel, "overflow-x-auto px-5 py-1")}>
-        <table className="w-full min-w-240 text-left leading-[normal]">
+        <table className="w-full min-w-240 table-fixed text-left leading-[normal]">
           <thead className="text-xs font-medium text-on-surface-variant">
             <tr className="border-b border-table-divider">
               <th className="w-45 py-3 font-medium" scope="col">Name</th>
@@ -176,14 +176,14 @@ export function UserDirectory({ users: confirmedUsers, signedInUserId, canWrite,
               return (
                 <tr className="border-b border-table-divider" key={user.id}>
                   <td className="py-3.5 pr-3">
-                    <span className="text-sm font-medium whitespace-nowrap text-foreground">
+                    <span className="block truncate text-sm font-medium text-foreground" title={`${user.firstName} ${user.lastName}`}>
                       {user.firstName} {user.lastName}
                     </span>
                   </td>
-                  <td className="py-3.5 pr-3 text-[13px] font-medium whitespace-nowrap text-badge-muted-foreground">
+                  <td className="truncate py-3.5 pr-3 text-[13px] font-medium text-badge-muted-foreground">
                     {user.username}
                   </td>
-                  <td className="py-3.5 pr-3 text-sm whitespace-nowrap text-nav-foreground">{user.email}</td>
+                  <td className="truncate py-3.5 pr-3 text-sm text-nav-foreground" title={user.email}>{user.email}</td>
                   <td className="py-3.5 pr-3">
                     <Badge className="whitespace-nowrap" variant={user.isAdministrator ? "identity" : "muted"}>
                       {uiLabel(user.roleName)}

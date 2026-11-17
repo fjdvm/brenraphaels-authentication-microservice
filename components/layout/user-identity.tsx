@@ -48,7 +48,7 @@ export function UserCard({ user }: { user: ShellUser }) {
   return (
     <section
       aria-label="Signed in as"
-      className="flex w-full items-center gap-3 rounded-xl border border-identity-border bg-surface py-3.5 pl-3.5 pr-3"
+      className="flex w-full items-center gap-2.5 rounded-xl border border-identity-border bg-surface py-3.5 pl-3 pr-2.5"
     >
       <UserAvatar size="lg" user={user} />
       <div className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
