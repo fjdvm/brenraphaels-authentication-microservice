@@ -576,3 +576,62 @@ export async function readMyLogs(
     actor: { type: PORTAL_USER_ACTOR, id: viewer.id },
   });
 }
+
+/**
+ * A non-administrative User's Activity log: the same own events as My Logs, narrowed by System and
+ * Action as the Member frame's filters. The Actor still comes from `viewer`, never from `filters`.
+ */
+export async function readMemberActivity(
+  client: AuditClient,
+  viewer: { id: string } | null,
+  filters: AuditLogFilters,
+): Promise<AuditLogPage> {
+  if (!viewer?.id) {
+    throw new Error("Activity log: sign in required");
+  }
+
+  const { from, to, cursor, source, action } = filters;
+
+  return client.listPage({
+    from,
+    to,
+    cursor,
+    source,
+    action,
+    limit: SYSTEM_LOG_PAGE_SIZE,
+    actor: { type: PORTAL_USER_ACTOR, id: viewer.id },
+  });
+}
+
+/** When the User last changed their password successfully; null when never, or when the service can't be read. */
+export async function readLastPasswordChange(
+  client: AuditClient,
+  viewer: { id: string } | null,
+): Promise<Date | null> {
+  if (!viewer?.id) return null;
+
+  try {
+    const page = await client.listPage({
+      action: "password.changed",
+      outcome: "SUCCESS",
+      limit: 1,
+      actor: { type: PORTAL_USER_ACTOR, id: viewer.id },
+    });
+
+    return page.entries[0]?.occurredAt ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** The System and Action names the Activity log's dropdowns offer; names only, no events. */
+export async function readMemberActivityOptions(
+  client: AuditClient,
+  viewer: { id: string } | null,
+): Promise<AuditFilterOptions> {
+  if (!viewer?.id) {
+    throw new Error("Activity log: sign in required");
+  }
+
+  return client.filterOptions();
+}

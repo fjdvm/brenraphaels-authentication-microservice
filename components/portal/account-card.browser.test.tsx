@@ -26,10 +26,10 @@ describe("AccountCard", () => {
     expect(screen.getByText("Last sign-in").nextElementSibling?.textContent).toBe("—");
   });
 
-  it("changes the password through the Forgot password email", () => {
+  it("changes the password on the signed-in Change password screen", () => {
     render(<AccountCard {...account} lastSignIn={null} otherSystemNames={[]} />);
 
-    expect(screen.getByRole("link", { name: "Change password" }).getAttribute("href")).toBe("/forgot-password");
+    expect(screen.getByRole("link", { name: "Change password" }).getAttribute("href")).toBe("/account/password");
   });
 
   it("links to the User's own Activity log (My Logs)", () => {

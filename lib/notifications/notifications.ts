@@ -2,6 +2,8 @@
 export type PortalNotification = {
   id: string;
   title: string;
+  /** The notice's text under the title; empty when the service sent none. */
+  body?: string;
   sendingApp?: string;
   link: string | null;
   createdAt: string;
@@ -23,7 +25,7 @@ export type OutgoingNotification = {
   userId: string;
   type: NotificationType;
   title: string;
-  body: string;
+  body?: string;
 };
 
 /** Sends a notification on a best-effort basis. Never throws. */
@@ -101,6 +103,7 @@ export function createNotificationsClient(config: ClientConfig): NotificationsCl
       return (body.notifications as Array<Record<string, unknown>>).map((row) => ({
         id: String(row.id),
         title: String(row.title),
+        body: typeof row.body === "string" ? row.body : "",
         sendingApp: typeof row.sendingApp === "string" ? row.sendingApp : undefined,
         link: typeof row.link === "string" ? row.link : null,
         createdAt: String(row.createdAt),
