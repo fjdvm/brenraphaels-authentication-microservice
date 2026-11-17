@@ -23,7 +23,7 @@ type Viewer = { roleName: string; canWrite: boolean };
 
 /**
  * Everything on Figma "Portal · User management" that needs no data, so it shows the moment the route opens.
- * Without a viewer (the loading state) the role pill and Add new user button are placeholders.
+ * Without a viewer (the loading state) the role pill is a placeholder and no write control shows, since the Role is not yet known.
  */
 export function UserManagementFrame({ children, viewer }: { children: ReactNode; viewer?: Viewer }) {
   return (
@@ -45,18 +45,14 @@ export function UserManagementFrame({ children, viewer }: { children: ReactNode;
             Everyone who can log in to the portal. New users get their username and a temporary password by email.
           </p>
         </div>
-        {viewer ? (
-          viewer.canWrite ? (
-            <Button asChild size="cta" variant="identity">
-              <Link href="/admin/users/new">
-                <UserPlus aria-hidden="true" />
-                Add new user
-              </Link>
-            </Button>
-          ) : null
-        ) : (
-          <Skeleton className="h-10 w-36" />
-        )}
+        {viewer?.canWrite ? (
+          <Button asChild size="cta" variant="identity">
+            <Link href="/admin/users/new">
+              <UserPlus aria-hidden="true" />
+              Add new user
+            </Link>
+          </Button>
+        ) : null}
       </div>
 
       {children}
