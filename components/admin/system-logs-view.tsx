@@ -38,6 +38,7 @@ import {
   type SystemLogsResult,
 } from "@/lib/audit/system-logs-query";
 import { cn } from "@/lib/utils/cn";
+import { uiLabel } from "@/lib/utils/ui-label";
 
 const MANILA = "Asia/Manila";
 const clockFormat = new Intl.DateTimeFormat("en-US", { timeZone: MANILA, hour: "numeric", minute: "2-digit" });
@@ -386,7 +387,7 @@ export function SystemLogsView({
               <option value="">All systems</option>
               {options?.systems.map((s) => (
                 <option key={s.value} value={s.value}>
-                  {s.label}
+                  {uiLabel(s.label)}
                 </option>
               ))}
             </FilterSelect>
@@ -473,7 +474,7 @@ export function SystemLogsView({
                         </td>
                         <td className="py-[13px] pr-3">
                           <Badge variant="muted" className={cn("whitespace-nowrap", SYSTEM_BADGE[entry.system])}>
-                            {entry.system}
+                            {uiLabel(entry.system)}
                           </Badge>
                         </td>
                         <td className="py-[13px] pr-3">

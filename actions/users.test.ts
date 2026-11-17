@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { requireAdministrator, apply } = vi.hoisted(() => ({
-  requireAdministrator: vi.fn(),
+const { requireFullAccess, apply } = vi.hoisted(() => ({
+  requireFullAccess: vi.fn(),
   apply: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn(), revalidateTag: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
-vi.mock("@/lib/auth/session", () => ({ requireAdministrator }));
+vi.mock("@/lib/auth/session", () => ({ requireFullAccess }));
 vi.mock("@/lib/admin/credential-resend.server", () => ({ createProductionResendPorts: vi.fn() }));
 vi.mock("@/lib/admin/user-provisioning.server", () => ({ createProductionProvisioningPorts: vi.fn() }));
 vi.mock("@/lib/admin/user-lifecycle.server", () => ({ createProductionLifecyclePorts: vi.fn() }));
@@ -39,18 +39,18 @@ describe("updateUserAccessAction", () => {
   beforeEach(() => {
     apply.mockReset();
     apply.mockResolvedValue({ roleChange: null, granted: 0, revoked: 0 });
-    requireAdministrator.mockReset();
+    requireFullAccess.mockReset();
   });
 
   it("changes nothing when the caller is not a current Administrator", async () => {
-    requireAdministrator.mockRejectedValue(new Error("NEXT_REDIRECT"));
+    requireFullAccess.mockRejectedValue(new Error("NEXT_REDIRECT"));
 
     await expect(updateUserAccessAction(initial, form())).rejects.toThrow("NEXT_REDIRECT");
     expect(apply).not.toHaveBeenCalled();
   });
 
   it("saves for a current Administrator, attributing the change to them", async () => {
-    requireAdministrator.mockResolvedValue({ id: "admin-1" });
+    requireFullAccess.mockResolvedValue({ id: "admin-1" });
 
     const state = await updateUserAccessAction(initial, form());
 

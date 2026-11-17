@@ -15,7 +15,7 @@ import { createProductionAccessPorts } from "@/lib/admin/user-access.server";
 import type { EditUserAccessFormState } from "@/lib/admin/user-access-form-state";
 import type { CreateUserFormState, ResendOutcome } from "@/lib/admin/user-form-state";
 import { invalidatePortalReads } from "@/lib/cache/portal-reads";
-import { requireAdministrator } from "@/lib/auth/session";
+import { requireFullAccess } from "@/lib/auth/session";
 
 function text(formData: FormData, name: string): string {
   const value = formData.get(name);
@@ -28,7 +28,7 @@ export async function updateUserAccessAction(
   formData: FormData,
 ): Promise<EditUserAccessFormState> {
   // Authority is re-checked against the live Role on every submission.
-  const administrator = await requireAdministrator();
+  const administrator = await requireFullAccess();
 
   try {
     const result = await updateUserAccess(
@@ -59,7 +59,7 @@ export async function createUserAction(
   formData: FormData,
 ): Promise<CreateUserFormState> {
   // Authority is checked here, in the portal, on every submission.
-  const administrator = await requireAdministrator();
+  const administrator = await requireFullAccess();
 
   try {
     const result = await provisionUser(
@@ -87,7 +87,7 @@ export async function createUserAction(
 
 async function changeLifecycle(action: LifecycleAction, formData: FormData): Promise<LifecycleFormState> {
   // Authority is checked here, in the portal, on every submission.
-  const administrator = await requireAdministrator();
+  const administrator = await requireFullAccess();
 
   try {
     const result = await changeUserLifecycle(
@@ -122,7 +122,7 @@ export async function restoreUserAction(
 
 export async function resendCredentialsAction(userId: string): Promise<ResendOutcome> {
   // Authority is checked here, in the portal, on every submission.
-  const administrator = await requireAdministrator();
+  const administrator = await requireFullAccess();
 
   try {
     let result: Awaited<ReturnType<typeof resendCredentials>>;

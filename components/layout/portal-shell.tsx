@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { BrandLockup } from "@/components/brand/brand-lockup";
 import { LogoutButton, NotificationButton } from "@/components/layout/portal-actions";
 import { type ShellUser, UserAvatar } from "@/components/layout/user-identity";
+import { uiLabel } from "@/lib/utils/ui-label";
 
 type PortalShellProps = {
   children: ReactNode;
@@ -14,7 +15,7 @@ type PortalShellProps = {
 /** Figma "Staff log out dialog": "You will be signed out of the portal and CRMS." */
 function logoutDescription(systemNames: string[] | undefined) {
   if (!systemNames) return "You will be signed out of the portal and every system you opened.";
-  const [last, ...others] = ["the portal", ...systemNames].reverse();
+  const [last, ...others] = ["the portal", ...systemNames.map(uiLabel)].reverse();
   const signedOutOf = others.length > 0 ? `${others.reverse().join(", ")} and ${last}` : last;
   return `You will be signed out of ${signedOutOf}.`;
 }

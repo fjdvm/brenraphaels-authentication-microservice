@@ -46,7 +46,7 @@ function renderDirectory(overrides: { remove?: Action; restore?: Action } = {}) 
     restore: overrides.restore ?? vi.fn<Action>(async () => ({ error: null })),
   };
 
-  const view = (users: ManagedUser[]) => <UserDirectory actions={actions} signedInUserId="u1" users={users} />;
+  const view = (users: ManagedUser[]) => <UserDirectory actions={actions} signedInUserId="u1" canWrite users={users} />;
   const { rerender } = render(view([admin, staff, newcomer, deleted, deletedNewcomer]));
 
   return { showConfirmed: (users: ManagedUser[]) => rerender(view(users)) };

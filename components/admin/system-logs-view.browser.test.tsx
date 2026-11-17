@@ -199,7 +199,7 @@ describe("SystemLogsView filters", () => {
     setup();
 
     const system = screen.getByLabelText("System");
-    expect(within(system).getAllByRole("option").map((o) => o.textContent)).toEqual(["All systems", "CRMS", "Portal"]);
+    expect(within(system).getAllByRole("option").map((o) => o.textContent)).toEqual(["All systems", "CREOMS", "Portal"]);
   });
 
   it("offers the actions of the chosen System only", async () => {

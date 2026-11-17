@@ -3,6 +3,7 @@ import { ArrowUpRight, LayoutGrid } from "lucide-react";
 import { pluralModules, systemStyle } from "@/components/portal/system-style";
 import { Badge } from "@/components/ui/badge";
 import type { AccessibleSystem } from "@/lib/portal/accessible-systems";
+import { uiLabel } from "@/lib/utils/ui-label";
 
 /**
  * Figma "Portal · Access": one card per Accessible System. A card only opens the
@@ -42,14 +43,14 @@ export function AccessSystemCards({ systems }: { systems: AccessibleSystem[] }) 
                 </Badge>
               </span>
               <span className="flex flex-col gap-1.5">
-                <span className="text-xl font-bold text-foreground">{system.name}</span>
+                <span className="text-xl font-bold text-foreground">{uiLabel(system.name)}</span>
                 {system.description ? (
                   <span className="text-sm text-on-surface-variant">{system.description}</span>
                 ) : null}
               </span>
               <span aria-hidden="true" className="h-px w-full bg-table-divider" />
               <span className={`mt-auto flex items-center gap-1.5 text-sm font-semibold ${style.accent}`}>
-                Open {system.name}
+                Open {uiLabel(system.name)}
                 <ArrowUpRight
                   aria-hidden="true"
                   className="size-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"

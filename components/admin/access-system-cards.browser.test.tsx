@@ -24,11 +24,11 @@ describe("AccessSystemCards", () => {
   it("opens each Accessible System at its destination and says how many Modules the User holds", () => {
     render(<AccessSystemCards systems={[crms]} />);
 
-    const card = screen.getByRole("link", { name: /CRMS/ });
+    const card = screen.getByRole("link", { name: /CREOMS/ });
     expect(card.getAttribute("href")).toBe("https://crms.example.com");
     expect(within(card).getByText("4 of 5 modules")).toBeTruthy();
     expect(within(card).getByText(crms.description!)).toBeTruthy();
-    expect(within(card).getByText("Open CRMS")).toBeTruthy();
+    expect(within(card).getByText("Open CREOMS")).toBeTruthy();
   });
 
   it("says one module, not one modules", () => {

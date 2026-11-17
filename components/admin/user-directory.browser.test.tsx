@@ -30,8 +30,8 @@ const actions = {
   restore: vi.fn(async () => ({ error: null })),
 };
 
-function renderDirectory() {
-  render(<UserDirectory actions={actions} signedInUserId="u1" users={[admin, ceo, staff, deleted]} />);
+function renderDirectory(canWrite = true) {
+  render(<UserDirectory actions={actions} signedInUserId="u1" canWrite={canWrite} users={[admin, ceo, staff, deleted]} />);
 }
 
 const rows = () => screen.getAllByRole("row").slice(1);
@@ -89,5 +89,18 @@ describe("UserDirectory", () => {
     // A Deleted User can only be restored.
     expect(within(row("2026-AB-004")).getByRole("button", { name: "Restore 2026-AB-004" })).toBeTruthy();
     expect(within(row("2026-AB-004")).queryByRole("button", { name: /resend/i })).toBeNull();
+  });
+
+  it("shows a CEO no Access, Resend, Restore or Delete control, yet still searches, filters and lists", async () => {
+    const events = userEvent.setup();
+    renderDirectory(false);
+
+    expect(screen.queryByRole("link", { name: /manage access/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /resend|delete|restore/i })).toBeNull();
+
+    await events.type(screen.getByRole("searchbox", { name: /search/i }), "fitz");
+    expect(rows().map((entry) => entry.textContent)).toEqual([expect.stringContaining("2026-FM-003")]);
+    await events.click(screen.getByRole("tab", { name: "Deleted 1" }));
+    expect(screen.getByText("No users match these filters.")).toBeTruthy();
   });
 });

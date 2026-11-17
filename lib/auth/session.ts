@@ -1,10 +1,10 @@
 import "server-only";
 import { cache } from "react";
-import { redirect } from "next/navigation";
+import { forbidden, redirect } from "next/navigation";
 
 import { prisma } from "@/lib/db/prisma";
 
-import { canView } from "./role-authority";
+import { canView, canWrite } from "./role-authority";
 
 import { auth } from "./server";
 
@@ -106,6 +106,20 @@ export async function requireAdministrator(): Promise<PortalUser> {
 
   if (user.mustChangePassword) {
     redirect("/change-password");
+  }
+
+  return user;
+}
+
+/**
+ * Guard for every write on an admin screen (ADR-0006): Admin only. A CEO may read, so a
+ * CEO who reaches a write is refused with 403, whatever the page rendered.
+ */
+export async function requireFullAccess(): Promise<PortalUser> {
+  const user = await requireAdministrator();
+
+  if (!canWrite(user.roleName)) {
+    forbidden();
   }
 
   return user;
