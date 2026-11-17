@@ -12,7 +12,12 @@ export async function callServiceLevels(userId: string, body: { firstReplyHours?
   return callCreoms(userId, "/api/service-levels", body);
 }
 
-async function callCreoms(userId: string, path: string, body: object): Promise<{ status: number; body: Record<string, unknown> }> {
+/** Reads (no `checks`) or saves the whole set of Automatic checks. CREOMS owns, validates and audits them under this live identity. */
+export async function callAutomaticChecks(userId: string, checks?: object): Promise<{ status: number; body: Record<string, unknown> }> {
+  return callCreoms(userId, "/api/automatic-checks", checks ?? {}, checks ? "PUT" : "GET");
+}
+
+async function callCreoms(userId: string, path: string, body: object, method: "POST" | "PUT" | "GET" = "POST"): Promise<{ status: number; body: Record<string, unknown> }> {
   const central = await getFreshCentralSession();
   if (central.status !== "ok" || central.userId !== userId) return { status: 401, body: { error: "Sign in again." } };
   const system = await prisma.system.findUniqueOrThrow({ where: { name: "CRMS" } });
@@ -22,8 +27,8 @@ async function callCreoms(userId: string, path: string, body: object): Promise<{
   const session = await prisma.integrationSession.create({ data: { handleHash: hashToken(handle), systemId: system.id,
     userId, neonSessionId: central.neonSessionId, expiresAt: new Date(Date.now() + 60_000) } });
   try {
-    const response = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${handle}`, "Content-Type": "application/json" },
-      body: JSON.stringify(body), cache: "no-store", redirect: "error", signal: AbortSignal.timeout(5_000) });
+    const response = await fetch(url, { method, headers: { Authorization: `Bearer ${handle}`, "Content-Type": "application/json" },
+      body: method === "GET" ? undefined : JSON.stringify(body), cache: "no-store", redirect: "error", signal: AbortSignal.timeout(5_000) });
     return { status: response.status, body: await response.json() };
   } finally {
     await prisma.integrationSession.update({ where: { id: session.id }, data: { revokedAt: new Date() } });

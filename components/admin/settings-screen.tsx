@@ -2,14 +2,16 @@
 
 import { useState } from "react";
 
+import { AutomaticChecksView } from "@/components/admin/automatic-checks-view";
 import { ApprovalLimitForm } from "@/components/admin/approval-limit-form";
 import { PaymentAccountsView } from "@/components/admin/payment-accounts-view";
 import { ServiceLevelsForm, type Targets } from "@/components/admin/service-levels-form";
 import { FigmaIcon } from "@/components/ui/figma-icon";
+import type { AutomaticChecks } from "@/lib/settings/automatic-checks";
 import type { PaymentAccount } from "@/lib/settings/payment-accounts";
 import { cn } from "@/lib/utils/cn";
 
-type Tab = "general" | "payments" | "service-levels";
+type Tab = "general" | "payments" | "automatic-checks" | "service-levels";
 
 const TABS: { id: Tab; label: string; title: string; description: string }[] = [
   {
@@ -23,6 +25,12 @@ const TABS: { id: Tab; label: string; title: string; description: string }[] = [
     label: "Payments",
     title: "Payment details",
     description: "Where customers send money for GCash, Maya and bank transfer. Shown at checkout, on the order confirmation and in My orders.",
+  },
+  {
+    id: "automatic-checks",
+    label: "Automatic checks",
+    title: "Automatic checks",
+    description: "Simple rules that run every time. They flag things for staff; they never cancel, reject or steer a customer on their own.",
   },
   {
     id: "service-levels",
@@ -43,12 +51,16 @@ export function SettingsScreen({
   centavos,
   targets,
   accounts,
+  checks = null,
+  overdueUrl = null,
 }: {
   canEdit: boolean;
   roleName: string;
   centavos: number | null;
   targets: Targets | null;
   accounts: PaymentAccount[] | null;
+  checks?: AutomaticChecks | null;
+  overdueUrl?: string | null;
 }) {
   const [tab, setTab] = useState<Tab>("general");
   const [saveSlot, setSaveSlot] = useState<HTMLElement | null>(null);
@@ -98,6 +110,9 @@ export function SettingsScreen({
       </div>
       <div aria-labelledby="settings-tab-payments" className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_440px]" hidden={tab !== "payments"} id="settings-panel-payments" role="tabpanel">
         <PaymentAccountsView active={tab === "payments"} canEdit={canEdit} initial={accounts} saveSlot={saveSlot} />
+      </div>
+      <div aria-labelledby="settings-tab-automatic-checks" className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_460px]" hidden={tab !== "automatic-checks"} id="settings-panel-automatic-checks" role="tabpanel">
+        <AutomaticChecksView active={tab === "automatic-checks"} canEdit={canEdit} initial={checks} overdueUrl={overdueUrl} saveSlot={saveSlot} />
       </div>
       <div aria-labelledby="settings-tab-service-levels" className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_440px]" hidden={tab !== "service-levels"} id="settings-panel-service-levels" role="tabpanel">
         <ServiceLevelsForm active={tab === "service-levels"} canEdit={canEdit} initial={targets} saveSlot={saveSlot} />
