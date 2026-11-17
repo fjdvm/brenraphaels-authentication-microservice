@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, ChevronDown, Info } from "lucide-react";
+import { FigmaIcon } from "@/components/ui/figma-icon";
 import Link from "next/link";
 import { startTransition, useActionState, useState, type ReactNode, type SyntheticEvent } from "react";
 
@@ -109,6 +109,7 @@ export function CreateUserForm({ action, roles, systems, request }: CreateUserFo
       <div className="flex flex-1 flex-col gap-4 px-6 pt-4 pb-7 md:px-8">
         {request ? (
           <div className="flex items-center gap-3 rounded-lg border border-panel-border bg-identity-soft px-4 py-3 text-sm text-identity">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-identity-badge"><FigmaIcon name="inbox-16" /></span>
             <div className="min-w-0 flex-1">
               <p className="font-semibold">Filled in from request {request.reference}</p>
               <p className="text-xs">Sent by {request.requesterName}{request.note ? `: “${request.note}”` : ""}. Check the details, then create the account.</p>
@@ -198,15 +199,12 @@ export function CreateUserForm({ action, roles, systems, request }: CreateUserFo
                     </option>
                   ))}
                 </select>
-                <ChevronDown
-                  aria-hidden="true"
-                  className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-on-surface-variant"
-                />
+                <FigmaIcon className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2" name="chevron-down" />
               </div>
             </Field>
           </div>
           <p className="flex items-center gap-2.5 rounded-lg bg-callout px-3 py-2.5 text-[13px] text-callout-foreground">
-            <Info aria-hidden="true" className="size-4 shrink-0 text-identity" />
+            <FigmaIcon className="shrink-0" name="info-16" />
             A temporary password is generated and emailed; you will not see it.
           </p>
         </section>
@@ -236,7 +234,7 @@ export function CreateUserForm({ action, roles, systems, request }: CreateUserFo
         </Button>
         <Button disabled={isPending} size="cta" type="submit" variant="identity">
           {isPending ? "Creating…" : "Create user"}
-          {isPending ? <Spinner /> : <ArrowRight aria-hidden="true" />}
+          {isPending ? <Spinner /> : <FigmaIcon name="arrow-right" />}
         </Button>
       </div>
     </form>

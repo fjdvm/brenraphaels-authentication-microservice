@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { seeAccountRequestAction, resendRequestLoginAction, declineAccountRequestAction } from "@/actions/account-requests";
-import { ChevronDown, ChevronRight, Info, Shield } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { FigmaIcon } from "@/components/ui/figma-icon";
 import { Dialog, DialogBody, DialogClose, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
 import {
   filterRequests,
@@ -31,6 +31,8 @@ type Props = {
   /** The server's clock, so "Today" reads the same on server and client. */
   now: string;
   initialRequestId?: string;
+  /** Full access (Admin). A CEO has View access: no write control, and opening a request does not mark it Seen. */
+  canWrite: boolean;
 };
 
 const panel = "rounded-xl border border-panel-border bg-surface";
@@ -61,13 +63,14 @@ function systemsOf(request: AccountRequestRow, systems: AccessSystem[]) {
 }
 
 /** Figma "Portal · Account requests" and "Portal · Account request detail". */
-export function AccountRequestsView({ heading, requests, systems, now, initialRequestId }: Props) {
+export function AccountRequestsView({ heading, requests, systems, now, initialRequestId, canWrite }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const router = useRouter();
   async function openRequest(id: string) {
     setOpenId(id);
     setError(null);
+    if (!canWrite) return;
     try { await seeAccountRequestAction(id); router.refresh(); } catch { setError("Could not mark this request Seen. Close and reopen to retry."); }
   }
   async function resend(id: string) {
@@ -165,14 +168,14 @@ export function AccountRequestsView({ heading, requests, systems, now, initialRe
         </div>
       ) : (
         <div className={cn(panel, "overflow-x-auto px-5 py-1")}>
-          <table className="w-full min-w-190 text-left leading-[normal]">
+          <table className="w-full min-w-190 table-fixed text-left leading-[normal]">
             <thead className="text-xs font-medium text-on-surface-variant">
               <tr className="border-b border-table-divider">
-                <th className="py-3 font-medium" scope="col">Person</th>
-                <th className="py-3 font-medium" scope="col">Role</th>
-                <th className="py-3 font-medium" scope="col">Systems</th>
-                <th className="py-3 font-medium" scope="col">Requested by</th>
-                <th className="py-3 font-medium" scope="col">Date</th>
+                <th className="w-[240px] py-3 font-medium" scope="col">Person</th>
+                <th className="w-[140px] py-3 font-medium" scope="col">Role</th>
+                <th className="w-[150px] py-3 font-medium" scope="col">Systems</th>
+                <th className="w-[170px] py-3 font-medium" scope="col">Requested by</th>
+                <th className="w-[110px] py-3 font-medium" scope="col">Date</th>
                 <th className="py-3 font-medium" scope="col"><span className="sr-only">Status</span></th>
               </tr>
             </thead>
@@ -202,7 +205,7 @@ export function AccountRequestsView({ heading, requests, systems, now, initialRe
                   <td className="py-3.5">
                     <span className="flex items-center justify-end gap-2">
                       <Badge variant={STATUS[request.status].variant}>{STATUS[request.status].label}</Badge>
-                      <ChevronRight aria-hidden="true" className="size-4 text-on-surface-variant" />
+                      <FigmaIcon name="chevron-right" />
                     </span>
                   </td>
                 </tr>
@@ -213,19 +216,19 @@ export function AccountRequestsView({ heading, requests, systems, now, initialRe
       )}
 
       <p className="flex items-start gap-2.5 rounded-lg bg-identity-soft px-4 py-3 text-[13px] text-identity">
-        <Shield aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+        <FigmaIcon className="shrink-0" name="shield-16" />
         Staff with &quot;Request accounts&quot; permission (for example HR and branch managers) can send requests from HRMS
         when they hire someone. Only admins can create the account.
       </p>
 
       <Dialog onOpenChange={(next) => !next && setOpenId(null)} open={open !== null}>
-        {open ? <RequestDetail request={open} systems={systems} now={clock} error={error} busy={busy} resend={() => { void resend(open.id); }} decline={(input) => decline(open.id, input)} /> : null}
+        {open ? <RequestDetail canWrite={canWrite} request={open} systems={systems} now={clock} error={error} busy={busy} resend={() => { void resend(open.id); }} decline={(input) => decline(open.id, input)} /> : null}
       </Dialog>
     </>
   );
 }
 
-function RequestDetail({ request, systems, now, error, busy, resend, decline }: { request: AccountRequestRow; systems: AccessSystem[]; now: Date; error: string | null; busy: boolean; resend: () => void; decline: (input: { reason: string; message?: string }) => Promise<string | null> }) {
+function RequestDetail({ canWrite, request, systems, now, error, busy, resend, decline }: { canWrite: boolean; request: AccountRequestRow; systems: AccessSystem[]; now: Date; error: string | null; busy: boolean; resend: () => void; decline: (input: { reason: string; message?: string }) => Promise<string | null> }) {
   const [declining, setDeclining] = useState(false);
   const { groups, untouched } = groupAccess(systems, request.moduleIds);
   const status = STATUS[request.status];
@@ -299,19 +302,21 @@ function RequestDetail({ request, systems, now, error, busy, resend, decline }: 
           )}
           {untouched.length ? (
             <p className="flex items-center gap-1.5 text-xs text-on-surface-variant">
-              <Info aria-hidden="true" className="size-3.5" />
+              <FigmaIcon name="info-14" />
               No access requested for {untouched.length > 1 ? `${untouched.slice(0, -1).join(", ")} or ${untouched.at(-1)}` : untouched[0]}.
             </p>
           ) : null}
         </section>
       </DialogBody>
       {error ? <p className="px-6 text-sm text-danger-text" role="alert">{error}</p> : null}
-      <DialogFooter>
-        {["new", "seen"].includes(request.status) ? <Button onClick={() => setDeclining(true)} type="button" variant="outline">Decline…</Button> : null}
-        {["new", "seen"].includes(request.status) ? (
-          <Button asChild><Link href={`/admin/users/new?request=${encodeURIComponent(request.id)}`}>Create account</Link></Button>
-        ) : request.status === "created" ? <Button disabled={busy} onClick={resend} type="button">{busy ? "Sending…" : "Resend login details"}</Button> : null}
-      </DialogFooter>
+      {canWrite ? (
+        <DialogFooter>
+          {["new", "seen"].includes(request.status) ? <Button onClick={() => setDeclining(true)} size="cta" type="button" variant="row-danger">Decline…</Button> : null}
+          {["new", "seen"].includes(request.status) ? (
+            <Button asChild size="cta" variant="identity"><Link href={`/admin/users/new?request=${encodeURIComponent(request.id)}`}>Create account <FigmaIcon name="arrow-right" /></Link></Button>
+          ) : request.status === "created" ? <Button disabled={busy} onClick={resend} size="cta" type="button" variant="identity">{busy ? "Sending…" : "Resend login details"}</Button> : null}
+        </DialogFooter>
+      ) : null}
       <Dialog onOpenChange={setDeclining} open={declining}>
         <DeclineDialog onDecline={decline} requester={request.requesterName} />
       </Dialog>
@@ -346,7 +351,7 @@ function DeclineDialog({ onDecline, requester }: { onDecline: (input: { reason: 
             <select className={cn(field, "appearance-none pr-9")} onChange={(event) => setReason(event.target.value)} value={reason}>
               {DECLINE_REASONS.map((entry) => <option key={entry} value={entry}>{entry}</option>)}
             </select>
-            <ChevronDown aria-hidden="true" className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-on-surface-variant" />
+            <FigmaIcon className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2" name="chevron-down" />
           </span>
         </label>
         <label className="flex flex-col gap-1.5 text-[13px] font-medium text-foreground">

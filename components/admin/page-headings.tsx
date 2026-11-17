@@ -1,7 +1,7 @@
-import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { FigmaIcon } from "@/components/ui/figma-icon";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Headings that need no data. Pages and their loading states share them, so the text
@@ -19,10 +19,21 @@ export function SystemLogsHeading() {
   );
 }
 
-export function AccountRequestsHeading() {
+/** The role pill shows the viewer's Role; without it (the loading state) it is a placeholder. */
+export function AccountRequestsHeading({ roleName }: { roleName?: string } = {}) {
   return (
     <>
-      <h1 className="text-2xl font-semibold text-foreground">Account requests</h1>
+      <div className="flex items-center gap-2.5">
+        <h1 className="text-2xl font-semibold text-foreground">Account requests</h1>
+        {roleName ? (
+          <span className="flex items-center gap-1.25 rounded-full bg-foreground py-1 pr-2.5 pl-2 text-xs font-semibold text-background">
+            <FigmaIcon name="shield-12" />
+            {roleName}
+          </span>
+        ) : (
+          <Skeleton className="h-6 w-16 rounded-full" />
+        )}
+      </div>
       <p className="text-sm text-on-surface-variant">
         People staff asked you to create accounts for. Open a request to review it, then create the account with the
         details already filled in.
@@ -50,7 +61,7 @@ export function NewUserHeading({ fromRequest = false }: { fromRequest?: boolean 
         className="flex w-fit items-center gap-1 rounded-sm text-[13px] font-medium text-on-surface-variant outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
         href={fromRequest ? "/admin/account-requests" : "/admin/users"}
       >
-        <ChevronLeft aria-hidden="true" className="size-4" />
+        <FigmaIcon name="back" />
         {fromRequest ? "Account requests" : "User management"}
       </Link>
       <h1 className="text-2xl font-semibold text-foreground">Add new user</h1>
