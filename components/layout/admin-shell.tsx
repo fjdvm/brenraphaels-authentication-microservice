@@ -32,8 +32,8 @@ type AdminShellProps = {
   newAccountRequests?: number;
 };
 
-// Matches the CREOMS sidebar (296px), so the Portal and CREOMS feel like one product.
-const SIDEBAR_STYLE = { "--sidebar-width": "18.5rem" } as CSSProperties;
+// Figma "Portal sidebar" is 255-256px wide; at 296px the Users table clipped its Delete button at 1440px.
+const SIDEBAR_STYLE = { "--sidebar-width": "16rem" } as CSSProperties;
 
 function AdministrativeNavigation({ user, newAccountRequests = 0 }: { user: ShellUser; newAccountRequests?: number }) {
   const pathname = usePathname();
@@ -78,7 +78,7 @@ function AdministrativeNavigation({ user, newAccountRequests = 0 }: { user: Shel
           </SidebarGroup>
         ))}
       </SidebarContent>
-      <SidebarFooter className="gap-2.5 border-t border-border px-4 py-3.5">
+      <SidebarFooter className="gap-2.5 border-t border-border px-3 pt-3.5 pb-4">
         <UserCard user={user} />
         <LogoutButton description="You will be signed out of the portal and every system you opened." layout="sidebar" />
       </SidebarFooter>
