@@ -1,3 +1,4 @@
+import { canReadShopSettings, canWrite } from "@/lib/auth/role-authority";
 import { getPortalUser } from "@/lib/auth/session";
 import { callServiceLevels } from "@/lib/integrations/approval-limit";
 
@@ -10,13 +11,13 @@ export async function POST(request: Request) {
   if (origin && origin !== new URL(request.url).origin) return Response.json({ error: "Invalid request origin." }, { status: 403, headers });
   const user = await getPortalUser();
   if (!user || user.mustChangePassword) return Response.json({ error: "Sign in first." }, { status: 401, headers });
-  if (!["Super Admin", "Admin", "CEO", "CRMS Manager", "CREOMS Manager", "Manager"].includes(user.roleName)) {
+  if (!canReadShopSettings(user.roleName)) {
     return Response.json({ error: "Your Role cannot open these Settings." }, { status: 403, headers });
   }
   try {
     const input = await request.json();
     const changing = Object.hasOwn(input, "firstReplyHours") || Object.hasOwn(input, "resolveHours");
-    if (changing && !["Super Admin", "Admin"].includes(user.roleName)) return Response.json({ error: "Only an Admin can change the Service levels." }, { status: 403, headers });
+    if (changing && !canWrite(user.roleName)) return Response.json({ error: "Only an Admin can change the Service levels." }, { status: 403, headers });
     if (changing && (!whole(input.firstReplyHours) || !whole(input.resolveHours))) return Response.json({ error: "Enter whole hours from 1 to 8760." }, { status: 400, headers });
     const result = await callServiceLevels(user.id, changing ? { firstReplyHours: input.firstReplyHours, resolveHours: input.resolveHours } : {});
     return Response.json(result.body, { status: result.status, headers });

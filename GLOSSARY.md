@@ -24,7 +24,7 @@ _Avoid_: Feature, Page, Screen, Permission.
 ### Roles, Users & Access
 
 **Role**:
-A named template (e.g. "CRMS Manager", "Cashier") used to pre-fill an AccessTemplate when an Administrator creates a User; the Super Admin and CEO Roles also confer administrative authority. A Role never determines Module access — only that User's own AccessGrants decide that.
+A named template (e.g. "CRMS Manager", "Cashier") used to pre-fill an AccessTemplate when an Administrator creates a User; the Admin Role confers Full access to the Portal's admin screens and the CEO Role confers View access to them. A Role never determines Module access — only that User's own AccessGrants decide that.
 _Avoid_: Permission group, Access level, Group.
 
 **AccessTemplate**:
@@ -32,17 +32,24 @@ The set of Modules a given Role pre-checks for a newly created User, read once a
 _Avoid_: Default permissions, Role permissions, RoleModuleAccess.
 
 **Administrator**:
-A User with the Super Admin or CEO Role, with full authority to manage Users and their AccessGrants and inspect System Logs. All other Users have no administrative authority.
-_Avoid_: Admin (as a separate Role).
+A User with the Admin Role, with Full access to every admin screen: managing Users and their AccessGrants, Account requests, the shop Settings, and System Logs. No other Role is an Administrator.
+_Avoid_: Super Admin (former name of Admin).
 
-**Super Admin**:
-An administrative Role with the same administrative authority as CEO. The first Super Admin is bootstrapped directly because no Administrator yet exists to create them.
+**Admin**:
+The Role that runs the Portal and holds Full access to every admin screen. The first Admin is bootstrapped directly because no Administrator yet exists to create them. Formerly called Super Admin; renaming preserves its Users. An Admin User cannot be deleted.
 
 **CEO**:
-An administrative Role with the same full administrative authority as Super Admin.
+The owner's Role. It sees every admin screen with View access and can change nothing in the Portal. It is not an Administrator.
+
+**Full access**:
+The ability to see and use every control on a screen, including every button that creates, changes, deletes or sends something.
+
+**View access**:
+The ability to read a screen and nothing else: every control that creates, changes, deletes or sends something is absent, not disabled. Searching, filtering, paging, opening an item to read it, the notification bell and Log out remain. Refused for writes on the server as well as hidden.
+_Avoid_: Read-only mode, disabled controls.
 
 **General Manager**:
-A non-administrative Role for the person overseeing the whole business. Its AccessTemplate pre-checks every Module in every System, but it confers no authority over Users, AccessGrants or System Logs; only an Administrator can assign it.
+A non-administrative Role for the person overseeing the whole business. Its AccessTemplate pre-checks every Module in every System, but it confers no access to the admin screens; only an Administrator can assign it.
 _Avoid_: GM, Admin.
 
 **System Logs**:
@@ -88,3 +95,16 @@ _Avoid_: Granted System, System access
 **Restore**:
 Bringing a Deleted User back as the same User — same Username, Email, and AccessGrant history — rather than creating a new one. It changes nothing else: their password and AccessGrants come back exactly as they were, so an Administrator should review both afterwards.
 _Avoid_: Undelete, reactivate, re-create.
+
+### Shop settings
+
+**Approval limit**:
+The peso amount above which a refund or write-off also needs the CEO's final approval; an amount equal to the limit stops at the Manager. Owned by CREOMS and changed only by an Admin. A request keeps the limit that applied when it was sent.
+
+**Payment account**:
+One place customers send money: a GCash number, a Maya number or a bank account, each with an account name and an optional QR code. An Admin can add any number of them and deactivate one but never delete it. The store gives each order one active account per method and the order keeps it, so older orders keep showing the account they were given.
+_Avoid_: Payment method (that is GCash, Maya, Bank transfer or Cash on Delivery itself), payment details.
+
+**Automatic check**:
+A plain rule, with no AI, that raises a flag for staff when it hits; it never cancels or rejects on its own. Each can be switched off and its numbers edited by an Admin, except the duplicate Senior/PWD ID check, which blocks and is always on.
+_Avoid_: Fraud rule, validation.

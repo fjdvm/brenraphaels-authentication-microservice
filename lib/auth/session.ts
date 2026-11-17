@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/db/prisma";
 
+import { canView } from "./role-authority";
+
 import { auth } from "./server";
 
 export type PortalUser = {
@@ -97,7 +99,8 @@ export async function requirePasswordChangeUser(): Promise<PortalUser> {
 export async function requireAdministrator(): Promise<PortalUser> {
   const user = await requirePortalUser({ allowMustChangePassword: true });
 
-  if (!user.isAdministrator) {
+  // Reading an admin page needs View or Full access, decided only by role-authority.
+  if (!canView(user.roleName)) {
     redirect("/");
   }
 
