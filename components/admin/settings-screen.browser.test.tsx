@@ -32,7 +32,7 @@ describe("Settings screen", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Settings");
     expect(screen.getByText("/ General")).toBeTruthy();
     expect(screen.getByText("Admin")).toBeTruthy();
-    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["General", "Payments", "Service levels"]);
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["General", "Payments", "Automatic checks", "Service levels"]);
     expect(screen.getByRole("tab", { name: "General" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.getByRole("heading", { name: "Approval limit" })).toBeTruthy();
     expect(screen.getByText("Only an Admin can change this. Every change is logged. Requests keep the limit that applied when they were sent.")).toBeTruthy();
