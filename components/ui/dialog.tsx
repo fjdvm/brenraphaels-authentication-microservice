@@ -1,9 +1,9 @@
 "use client";
 
-import { XIcon } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import type { ComponentProps, ReactNode } from "react";
 
+import { FigmaIcon } from "@/components/ui/figma-icon";
 import { cn } from "@/lib/utils/cn";
 
 const Dialog = DialogPrimitive.Root;
@@ -68,7 +68,7 @@ function DialogHeader({ title, description, icon, tone = "identity" }: DialogHea
         aria-label="Close"
         className="rounded-md p-1 text-on-surface-variant outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <XIcon aria-hidden="true" className="size-4.5" />
+        <FigmaIcon name="x" />
       </DialogPrimitive.Close>
     </div>
   );

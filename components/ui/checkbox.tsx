@@ -1,8 +1,8 @@
 "use client";
 
-import { Check, Minus } from "lucide-react";
 import { useEffect, useRef, type ComponentProps } from "react";
 
+import { FigmaIcon } from "@/components/ui/figma-icon";
 import { cn } from "@/lib/utils/cn";
 
 type CheckboxProps = Omit<ComponentProps<"input">, "type"> & {
@@ -26,16 +26,8 @@ export function Checkbox({ className, indeterminate = false, ...props }: Checkbo
         type="checkbox"
         {...props}
       />
-      <Check
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 m-auto hidden size-3 text-identity-foreground peer-checked:block peer-indeterminate:hidden"
-        strokeWidth={3}
-      />
-      <Minus
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 m-auto hidden size-3 text-identity-foreground peer-indeterminate:block"
-        strokeWidth={3}
-      />
+      <FigmaIcon className="pointer-events-none absolute inset-0 m-auto hidden peer-checked:block peer-indeterminate:hidden" name="check-12" />
+      <FigmaIcon className="pointer-events-none absolute inset-0 m-auto hidden peer-indeterminate:block" name="minus-12" />
     </span>
   );
 }

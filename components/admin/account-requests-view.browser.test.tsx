@@ -10,7 +10,7 @@ import { AccountRequestsView } from "./account-requests-view";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/actions/account-requests", () => ({ seeAccountRequestAction: vi.fn(async () => {}), resendRequestLoginAction: vi.fn(async () => ({ error: null })), declineAccountRequestAction: vi.fn(async () => ({ error: null })) }));
-import { declineAccountRequestAction } from "@/actions/account-requests";
+import { declineAccountRequestAction, seeAccountRequestAction } from "@/actions/account-requests";
 
 const request = (overrides: Partial<AccountRequestRow> & Pick<AccountRequestRow, "id" | "status">): AccountRequestRow => ({
   reference: "RQ-0001",
@@ -42,7 +42,7 @@ afterEach(cleanup);
 
 describe("AccountRequestsView", () => {
   it("opens a created request from its recovery link with Resend login details available", () => {
-    render(<AccountRequestsView heading={heading} now={now} requests={[request({ id: "created-1", status: "created" })]} systems={systems} initialRequestId="created-1" />);
+    render(<AccountRequestsView canWrite heading={heading} now={now} requests={[request({ id: "created-1", status: "created" })]} systems={systems} initialRequestId="created-1" />);
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByRole("button", { name: "Resend login details" })).toBeTruthy();
     expect(within(dialog).queryByRole("link", { name: "Create account" })).toBeNull();
@@ -54,7 +54,7 @@ describe("AccountRequestsView", () => {
   ];
 
   it("shows summary cards, tab counts and only New requests first", () => {
-    render(<AccountRequestsView heading={heading} now={now} requests={requests} systems={systems} />);
+    render(<AccountRequestsView canWrite heading={heading} now={now} requests={requests} systems={systems} />);
 
     expect(screen.getByRole("tab", { name: "New 1" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.getByRole("tab", { name: "Declined 1" })).toBeTruthy();
@@ -63,14 +63,14 @@ describe("AccountRequestsView", () => {
   });
 
   it("switches tabs", async () => {
-    render(<AccountRequestsView heading={heading} now={now} requests={requests} systems={systems} />);
+    render(<AccountRequestsView canWrite heading={heading} now={now} requests={requests} systems={systems} />);
     await userEvent.click(screen.getByRole("tab", { name: "All" }));
 
     expect(screen.getByText("Mark Villanueva")).toBeTruthy();
   });
 
   it("opens the detail dialog with access grouped by system and a create-from-request link", async () => {
-    render(<AccountRequestsView heading={heading} now={now} requests={requests} systems={systems} />);
+    render(<AccountRequestsView canWrite heading={heading} now={now} requests={requests} systems={systems} />);
     await userEvent.click(screen.getByText("Carla Domingo"));
 
     const dialog = screen.getByRole("dialog");
@@ -87,7 +87,7 @@ describe("AccountRequestsView", () => {
   });
 
   it("declines from the dialog with a reason and optional message", async () => {
-    render(<AccountRequestsView heading={heading} now={now} requests={requests} systems={systems} />);
+    render(<AccountRequestsView canWrite heading={heading} now={now} requests={requests} systems={systems} />);
     await userEvent.click(screen.getByText("Carla Domingo"));
     await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Decline…" }));
 
@@ -102,7 +102,7 @@ describe("AccountRequestsView", () => {
   });
 
   it("does not offer Decline on a request that is already closed", async () => {
-    render(<AccountRequestsView heading={heading} now={now} requests={requests} systems={systems} />);
+    render(<AccountRequestsView canWrite heading={heading} now={now} requests={requests} systems={systems} />);
     await userEvent.click(screen.getByRole("tab", { name: "Declined 1" }));
     await userEvent.click(screen.getByText("Mark Villanueva"));
 
@@ -110,15 +110,42 @@ describe("AccountRequestsView", () => {
   });
 
   it("explains an empty list", () => {
-    render(<AccountRequestsView heading={heading} now={now} requests={[]} systems={systems} />);
+    render(<AccountRequestsView canWrite heading={heading} now={now} requests={[]} systems={systems} />);
 
     expect(screen.getByText(/No account requests yet/)).toBeTruthy();
   });
 
   it("shows an error with Retry when requests could not be read", () => {
-    render(<AccountRequestsView heading={heading} now={now} requests={null} systems={[]} />);
+    render(<AccountRequestsView canWrite heading={heading} now={now} requests={null} systems={[]} />);
 
     expect(screen.getByRole("alert").textContent).toContain("Could not load Account requests");
     expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
+  });
+
+  describe("as a CEO (View access)", () => {
+    const all = [request({ id: "a", status: "new" }), request({ id: "c", status: "created", personName: "Liza Pascual", reference: "RQ-0003" })];
+
+    it("reads the tabs and counts, opens a request without marking it Seen, and shows no write control", async () => {
+      vi.mocked(seeAccountRequestAction).mockClear();
+      render(<AccountRequestsView canWrite={false} heading={heading} now={now} requests={all} systems={systems} />);
+      expect(screen.getByRole("tab", { name: "Created 1" })).toBeTruthy();
+
+      await userEvent.click(screen.getByText("Carla Domingo"));
+      const dialog = screen.getByRole("dialog");
+      expect(within(dialog).getByText(/Account request · RQ-0001/)).toBeTruthy();
+      expect(seeAccountRequestAction).not.toHaveBeenCalled();
+      for (const name of ["Decline…", "Create account", "Resend login details"]) {
+        expect(within(dialog).queryByRole("button", { name })).toBeNull();
+        expect(within(dialog).queryByRole("link", { name })).toBeNull();
+      }
+    });
+
+    it("shows no Resend login details on a created request", async () => {
+      render(<AccountRequestsView canWrite={false} heading={heading} now={now} requests={all} systems={systems} />);
+      await userEvent.click(screen.getByRole("tab", { name: "Created 1" }));
+      await userEvent.click(screen.getByText("Liza Pascual"));
+
+      expect(within(screen.getByRole("dialog")).queryByRole("button", { name: "Resend login details" })).toBeNull();
+    });
   });
 });
