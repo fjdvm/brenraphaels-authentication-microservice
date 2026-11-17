@@ -1,4 +1,5 @@
 /** The shop's payment details. An Admin sets them in General settings; the storefront shows them at checkout. */
+import { canWrite } from "@/lib/auth/role-authority";
 export const PAYMENT_FIELDS = [
   "gcashNumber", "gcashName", "mayaNumber", "mayaName", "bankName", "bankAccountName", "bankAccountNumber",
 ] as const;
@@ -70,7 +71,7 @@ export type PaymentSettingsPorts = {
 export async function savePaymentSettings(
   ports: PaymentSettingsPorts, actor: { id: string; roleName: string }, input: unknown,
 ): Promise<{ ok: true; settings: PaymentSettings; changed: PaymentField[] } | { ok: false; status: number; error: string }> {
-  if (actor.roleName !== "Admin") return { ok: false, status: 403, error: "Only an Admin can change the payment details." };
+  if (!canWrite(actor.roleName)) return { ok: false, status: 403, error: "Only an Admin can change the payment details." };
   const parsed = parsePaymentSettings(input);
   if (!parsed.ok) return { ok: false, status: 400, error: parsed.error };
   const before = await ports.read();

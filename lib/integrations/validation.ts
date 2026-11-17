@@ -1,3 +1,4 @@
+import { canReadShopSettings } from "@/lib/auth/role-authority";
 import { hashToken, safeEqual } from "./tokens";
 import type { HandoffPorts, IntegrationSessionRecord } from "./handoff";
 
@@ -99,7 +100,7 @@ export async function validateAccess(
 
   const settings = system.name === "CRMS" && request.moduleName === "Portal Settings";
   const staff = settings ? await ports.findStaffProfile(session.userId) : null;
-  const settingsRole = staff && ["Super Admin", "Admin", "CEO", "CRMS Manager", "CREOMS Manager", "Manager"].includes(staff.role);
+  const settingsRole = staff && canReadShopSettings(staff.role);
   if (
     !(await ports.isUserEligible(session.userId)) ||
     (settings ? !settingsRole : !(await ports.hasActiveGrantInModule(session.userId, system.id, request.moduleName)))

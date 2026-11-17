@@ -1,3 +1,4 @@
+import { canReadShopSettings, canWrite } from "@/lib/auth/role-authority";
 import { getPortalUser } from "@/lib/auth/session";
 import { callApprovalLimit } from "@/lib/integrations/approval-limit";
 
@@ -8,13 +9,13 @@ export async function POST(request: Request) {
   if (origin && origin !== new URL(request.url).origin) return Response.json({ error: "Invalid request origin." }, { status: 403, headers });
   const user = await getPortalUser();
   if (!user || user.mustChangePassword) return Response.json({ error: "Sign in first." }, { status: 401, headers });
-  if (!["Super Admin", "Admin", "CEO", "CRMS Manager", "CREOMS Manager", "Manager"].includes(user.roleName)) {
+  if (!canReadShopSettings(user.roleName)) {
     return Response.json({ error: "Your Role cannot open these Settings." }, { status: 403, headers });
   }
   try {
     const input = await request.json();
     const changing = Object.hasOwn(input, "amountInCentavos");
-    if (changing && !["Super Admin", "Admin"].includes(user.roleName)) return Response.json({ error: "Only an Admin can change the Approval limit." }, { status: 403, headers });
+    if (changing && !canWrite(user.roleName)) return Response.json({ error: "Only an Admin can change the Approval limit." }, { status: 403, headers });
     if (changing && (!Number.isSafeInteger(input.amountInCentavos) || input.amountInCentavos < 0)) return Response.json({ error: "Enter a nonnegative whole number of centavos." }, { status: 400, headers });
     const result = await callApprovalLimit(user.id, changing ? { amountInCentavos: input.amountInCentavos } : {});
     return Response.json(result.body, { status: result.status, headers });

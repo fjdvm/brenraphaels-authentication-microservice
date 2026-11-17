@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 
 import { ApprovalLimitForm } from "@/components/admin/approval-limit-form";
+import { canWrite } from "@/lib/auth/role-authority";
 import { requireAdministrator } from "@/lib/auth/session";
 import { PaymentSettingsForm } from "@/components/admin/payment-settings-form";
 import { ServiceLevelsForm, type Targets } from "@/components/admin/service-levels-form";
@@ -11,7 +12,7 @@ import { readPaymentSettings } from "@/lib/settings/payment-settings.server";
 export default async function SettingsPage() {
   await connection();
   const user = await requireAdministrator();
-  const canEdit = user.roleName === "Admin";
+  const canEdit = canWrite(user.roleName);
   let current: number | null = null;
   try {
     const result = await callApprovalLimit(user.id, {});
