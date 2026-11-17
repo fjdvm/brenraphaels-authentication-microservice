@@ -30,7 +30,7 @@ export default async function SystemLogsPage() {
   return (
     <main className="flex w-full flex-1 flex-col gap-5 px-6 py-7 md:px-8">
       <SystemLogsView
-        heading={<SystemLogsHeading />}
+        heading={<SystemLogsHeading roleName={user.roleName} />}
         initial={initial}
         options={options}
         defaultRange={defaultRange}

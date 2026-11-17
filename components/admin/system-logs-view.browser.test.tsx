@@ -301,7 +301,7 @@ describe("SystemLogsView filters", () => {
 
     expect(await screen.findByText("Only Match")).toBeTruthy();
     expect(load.mock.lastCall![0].cursor).toBeUndefined();
-    expect(screen.getByText("Showing 1–1")).toBeTruthy();
+    expect(screen.getByText("Showing 1–1 of 1 most recent events")).toBeTruthy();
   });
 });
 
@@ -312,10 +312,10 @@ describe("SystemLogsView paging", () => {
   };
   const load = () => vi.fn(async (q: { cursor?: string | null }) => (q.cursor ? pages[q.cursor] : ok(entries, "c1")));
 
-  it("shows the range without a total", () => {
+  it("shows the range inside the 200 most recent events while more pages follow", () => {
     setup(ok(entries, "c1"));
 
-    expect(screen.getByText("Showing 1–2")).toBeTruthy();
+    expect(screen.getByText("Showing 1–2 of 200 most recent events")).toBeTruthy();
   });
 
   it("pages forward with the service cursor and back through the cursors already visited", async () => {
@@ -325,21 +325,21 @@ describe("SystemLogsView paging", () => {
     await user.click(screen.getByRole("button", { name: "Next" }));
     expect(await screen.findByText("Page Two A")).toBeTruthy();
     expect(fn).toHaveBeenLastCalledWith(expect.objectContaining({ cursor: "c1" }));
-    expect(screen.getByText("Showing 3–5")).toBeTruthy();
+    expect(screen.getByText("Showing 3–5 of 200 most recent events")).toBeTruthy();
 
     await user.click(screen.getByRole("button", { name: "Next" }));
     expect(await screen.findByText("Page Three")).toBeTruthy();
-    expect(screen.getByText("Showing 6–6")).toBeTruthy();
+    expect(screen.getByText("Showing 6–6 of 6 most recent events")).toBeTruthy();
 
     await user.click(screen.getByRole("button", { name: "Previous" }));
     expect(await screen.findByText("Page Two A")).toBeTruthy();
     expect(fn).toHaveBeenLastCalledWith(expect.objectContaining({ cursor: "c1" }));
-    expect(screen.getByText("Showing 3–5")).toBeTruthy();
+    expect(screen.getByText("Showing 3–5 of 200 most recent events")).toBeTruthy();
 
     await user.click(screen.getByRole("button", { name: "Previous" }));
     expect(await screen.findByText("Ada Min (2026-ADMIN-001): Signed in.")).toBeTruthy();
     expect(fn.mock.lastCall![0].cursor).toBeUndefined();
-    expect(screen.getByText("Showing 1–2")).toBeTruthy();
+    expect(screen.getByText("Showing 1–2 of 200 most recent events")).toBeTruthy();
   });
 
   it("disables Previous on the first page and Next at the end", async () => {
@@ -353,6 +353,22 @@ describe("SystemLogsView paging", () => {
 
     expect((screen.getByRole("button", { name: "Next" }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole("button", { name: "Previous" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("stops at the 200 most recent events", async () => {
+    const full = (from: number, next: string | null) =>
+      ok(Array.from({ length: 50 }, (_, i) => entry({ id: `e${from + i}`, actor: `Actor ${from + i}` })), next);
+    const fn = vi.fn(async (q: { cursor?: string | null }) =>
+      q.cursor === "c3" ? full(151, "more") : q.cursor === "c2" ? full(101, "c3") : full(51, "c2"),
+    );
+    const { user } = setup(full(1, "c1"), fn);
+
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(await screen.findByRole("button", { name: "Next" }));
+    await user.click(await screen.findByRole("button", { name: "Next" }));
+
+    expect(await screen.findByText("Showing 151–200 of 200 most recent events")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Next" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("disables Next when the first page is also the last", () => {
