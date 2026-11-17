@@ -4,7 +4,10 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ApprovalLimitForm, toCentavos } from "./approval-limit-form";
+import { toCentavos } from "./approval-limit-form";
+import { SettingsScreen } from "./settings-screen";
+
+const screenFor = (canEdit: boolean) => <SettingsScreen canEdit={canEdit} centavos={500000} roleName={canEdit ? "Admin" : "CEO"} targets={{ firstReplyHours: 24, resolveHours: 72 }} />;
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
@@ -17,9 +20,10 @@ describe("Approval limit setting", () => {
   });
 
   it("is read-only for anyone but an Admin", () => {
-    render(<ApprovalLimitForm canEdit={false} initialCentavos={500000} />);
-    expect((screen.getByLabelText("Limit in pesos") as HTMLInputElement).disabled).toBe(true);
-    expect(screen.queryByRole("button", { name: "Save limit" })).toBeNull();
+    render(screenFor(false));
+    expect(screen.getByRole("group", { name: "Limit in pesos" }).textContent).toBe("₱5,000");
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
   });
 
   it("confirms first, then waits for CREOMS before showing the new limit", async () => {
@@ -27,12 +31,12 @@ describe("Approval limit setting", () => {
     let finish!: (r: Response) => void;
     const fetchMock = vi.fn(() => new Promise<Response>((resolve) => { finish = resolve; }));
     vi.stubGlobal("fetch", fetchMock);
-    render(<ApprovalLimitForm canEdit initialCentavos={500000} />);
+    render(screenFor(true));
 
-    expect((screen.getByRole("button", { name: "Save limit" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Save changes" }) as HTMLButtonElement).disabled).toBe(true);
     await user.clear(screen.getByLabelText("Limit in pesos"));
     await user.type(screen.getByLabelText("Limit in pesos"), "7000");
-    await user.click(screen.getByRole("button", { name: "Save limit" }));
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
     expect(fetchMock).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: "Change limit" }));
@@ -46,10 +50,10 @@ describe("Approval limit setting", () => {
   it("says why when CREOMS refuses and keeps the old limit", async () => {
     const user = userEvent.setup();
     vi.stubGlobal("fetch", vi.fn(async () => Response.json({ error: "Only an Admin can change the Approval limit." }, { status: 403 })));
-    render(<ApprovalLimitForm canEdit initialCentavos={500000} />);
+    render(screenFor(true));
     await user.clear(screen.getByLabelText("Limit in pesos"));
     await user.type(screen.getByLabelText("Limit in pesos"), "100");
-    await user.click(screen.getByRole("button", { name: "Save limit" }));
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
     await user.click(screen.getByRole("button", { name: "Change limit" }));
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("Only an Admin"));
     expect(screen.queryByText(/Approval limit is now/)).toBeNull();
