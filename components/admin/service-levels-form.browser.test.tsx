@@ -9,7 +9,7 @@ import { SettingsScreen } from "./settings-screen";
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 const screenFor = async (canEdit: boolean) => {
-  render(<SettingsScreen canEdit={canEdit} centavos={500000} roleName={canEdit ? "Admin" : "CEO"} targets={{ firstReplyHours: 24, resolveHours: 72 }} />);
+  render(<SettingsScreen accounts={[]} canEdit={canEdit} centavos={500000} roleName={canEdit ? "Admin" : "CEO"} targets={{ firstReplyHours: 24, resolveHours: 72 }} />);
   await userEvent.setup().click(screen.getByRole("tab", { name: "Service levels" }));
 };
 

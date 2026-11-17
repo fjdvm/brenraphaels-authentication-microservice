@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { toCentavos } from "./approval-limit-form";
 import { SettingsScreen } from "./settings-screen";
 
-const screenFor = (canEdit: boolean) => <SettingsScreen canEdit={canEdit} centavos={500000} roleName={canEdit ? "Admin" : "CEO"} targets={{ firstReplyHours: 24, resolveHours: 72 }} />;
+const screenFor = (canEdit: boolean) => <SettingsScreen accounts={[]} canEdit={canEdit} centavos={500000} roleName={canEdit ? "Admin" : "CEO"} targets={{ firstReplyHours: 24, resolveHours: 72 }} />;
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 

@@ -41,6 +41,14 @@ describe("Create user form", () => {
     expect(systemGroup("POS").getByRole("checkbox", { name: "Select all" })).toBeTruthy();
   });
 
+  it("shows no card for a System that has no Modules", () => {
+    render(<CreateUserForm action={vi.fn()} roles={roles} systems={[...systems, { id: "s-ecom", name: "Ecommerce", modules: [] }]} />);
+
+    expect(screen.queryByRole("group", { name: "Ecommerce" })).toBeNull();
+    expect(screen.queryByText("0 of 0")).toBeNull();
+    expect(screen.getByRole("group", { name: "POS" })).toBeTruthy();
+  });
+
   it("Select all checks only that System's Modules", async () => {
     const user = userEvent.setup();
     renderForm();
