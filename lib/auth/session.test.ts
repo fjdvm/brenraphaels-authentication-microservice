@@ -150,7 +150,7 @@ describe("requirePortalUser", () => {
   it("allows a CEO because the current Role grants administrative authority", async () => {
     mocks.findUnique.mockResolvedValue({
       ...activeUser,
-      role: { isAdministrator: true },
+      role: { name: "CEO", isAdministrator: true },
     });
     const { requireAdministrator } = await import("./session");
 
