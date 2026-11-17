@@ -159,12 +159,17 @@ const CATALOG: Record<AuditAction, { action: string; label: string }> = {
   "integration.authorize": { action: "system.handoff_authorized", label: "Authorized a System sign-in" },
   "integration.exchange": { action: "system.handoff_exchanged", label: "Exchanged a System sign-in code" },
   "integration.validate": { action: "system.handoff_denied", label: "Denied a System request" },
-  "payment_settings.change": { action: "payment_settings.changed", label: "Changed payment details" },
+  "payment_account.create": { action: "payment_account.created", label: "Added Payment account" },
+  "payment_account.update": { action: "payment_account.updated", label: "Edited Payment account" },
+  "payment_account.deactivate": { action: "payment_account.deactivated", label: "Deactivated Payment account" },
+  "payment_account.reactivate": { action: "payment_account.reactivated", label: "Reactivated Payment account" },
 };
 
 const ACTION_LABELS: Record<string, string> = {
   ...Object.fromEntries(Object.values(CATALOG).map(({ action, label }) => [action, label])),
   "user.login_failed": "Failed sign-in",
+  // Logged before Payment accounts replaced the single set of payment details.
+  "payment_settings.changed": "Changed payment details",
   "audit_log.exported": "Exported System logs",
   "record.created": "Created record",
   "record.updated": "Updated record",

@@ -29,7 +29,8 @@ export function ModuleAccessMatrix({ systems, selected, setSelected, density = "
 
   return (
     <div className={cn("grid md:grid-cols-2", isDialog ? "gap-3" : "gap-4")}>
-      {systems.map((system) => {
+      {/* A System with no Modules (Ecommerce today) has nothing to grant, so it gets no empty "0 of 0" card. */}
+      {systems.filter((system) => system.modules.length > 0).map((system) => {
         const style = systemStyle(system.iconName ?? null);
         const Icon = style.icon;
         const count = countSelectedModules(system, selected);

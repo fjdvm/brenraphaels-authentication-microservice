@@ -19,7 +19,10 @@ export const AUDIT_ACTIONS = [
   "integration.authorize",
   "integration.exchange",
   "integration.validate",
-  "payment_settings.change",
+  "payment_account.create",
+  "payment_account.update",
+  "payment_account.deactivate",
+  "payment_account.reactivate",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

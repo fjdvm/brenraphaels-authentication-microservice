@@ -1,9 +1,10 @@
 import { parseBasicCredentials } from "@/lib/integrations/basic";
 import { prismaHandoffPorts } from "@/lib/integrations/prisma-ports.server";
 import { hashToken, safeEqual } from "@/lib/integrations/tokens";
-import { readPaymentSettings } from "@/lib/settings/payment-settings.server";
+import { firstActiveByMethod } from "@/lib/settings/payment-accounts";
+import { readActivePaymentAccounts } from "@/lib/settings/payment-accounts.server";
 
-/** Backend-only: the Ecommerce System reads the shop's payment details for checkout with its System secret. */
+/** Backend-only: the Ecommerce System reads the active Payment accounts for checkout with its System secret. Inactive accounts never leave the Portal. */
 export async function GET(request: Request): Promise<Response> {
   const headers = { "Cache-Control": "no-store" };
   try {
@@ -12,7 +13,8 @@ export async function GET(request: Request): Promise<Response> {
     if (!credentials || credentials.name !== "Ecommerce" || !system?.backendSecretHash || !safeEqual(hashToken(credentials.secret), system.backendSecretHash)) {
       return Response.json({ error: "invalid_client" }, { status: 401, headers });
     }
-    return Response.json({ settings: await readPaymentSettings() }, { headers });
+    const accounts = await readActivePaymentAccounts();
+    return Response.json({ accounts, settings: firstActiveByMethod(accounts) }, { headers });
   } catch {
     return Response.json({ error: "temporarily_unavailable" }, { status: 503, headers });
   }

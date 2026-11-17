@@ -191,7 +191,7 @@ model AccountRequestDelivery {
   @@unique([requestId, status])
 }
 
-// The shop's payment details: one row, id "shop". Only an Admin changes it; the storefront reads it at checkout.
+// Retired by PaymentAccount (#297): its values were copied into PaymentAccount rows and nothing reads or writes it now.
 model PaymentSettings {
   id                String   @id @default("shop")
   gcashNumber       String   @default("")
@@ -203,4 +203,25 @@ model PaymentSettings {
   bankAccountNumber String   @default("")
   updatedAt         DateTime @default(now()) @updatedAt
   updatedById       String?
+}
+
+enum PaymentMethod {
+  GCASH
+  MAYA
+  BANK
+}
+
+// Where customers send money. An Admin adds, edits and deactivates; rows are never deleted so older orders keep their account.
+model PaymentAccount {
+  id            String        @id @default(cuid())
+  method        PaymentMethod
+  accountName   String
+  accountNumber String
+  bankName      String        @default("")
+  active        Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @default(now()) @updatedAt
+  updatedById   String?
+
+  @@index([method, active])
 }

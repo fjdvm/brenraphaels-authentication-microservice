@@ -3,11 +3,13 @@
 import { useState } from "react";
 
 import { ApprovalLimitForm } from "@/components/admin/approval-limit-form";
+import { PaymentAccountsView } from "@/components/admin/payment-accounts-view";
 import { ServiceLevelsForm, type Targets } from "@/components/admin/service-levels-form";
 import { FigmaIcon } from "@/components/ui/figma-icon";
+import type { PaymentAccount } from "@/lib/settings/payment-accounts";
 import { cn } from "@/lib/utils/cn";
 
-type Tab = "general" | "service-levels";
+type Tab = "general" | "payments" | "service-levels";
 
 const TABS: { id: Tab; label: string; title: string; description: string }[] = [
   {
@@ -15,6 +17,12 @@ const TABS: { id: Tab; label: string; title: string; description: string }[] = [
     label: "General",
     title: "Settings",
     description: "Settings for every Bren Raphael's system, grouped by topic. Use \"All systems\" to filter.",
+  },
+  {
+    id: "payments",
+    label: "Payments",
+    title: "Payment details",
+    description: "Where customers send money for GCash, Maya and bank transfer. Shown at checkout, on the order confirmation and in My orders.",
   },
   {
     id: "service-levels",
@@ -34,11 +42,13 @@ export function SettingsScreen({
   roleName,
   centavos,
   targets,
+  accounts,
 }: {
   canEdit: boolean;
   roleName: string;
   centavos: number | null;
   targets: Targets | null;
+  accounts: PaymentAccount[] | null;
 }) {
   const [tab, setTab] = useState<Tab>("general");
   const [saveSlot, setSaveSlot] = useState<HTMLElement | null>(null);
@@ -85,6 +95,9 @@ export function SettingsScreen({
           <FigmaIcon className="shrink-0" name="check-16" />
           Changes are saved to Activity logs with your name.
         </p>
+      </div>
+      <div aria-labelledby="settings-tab-payments" className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_440px]" hidden={tab !== "payments"} id="settings-panel-payments" role="tabpanel">
+        <PaymentAccountsView active={tab === "payments"} canEdit={canEdit} initial={accounts} saveSlot={saveSlot} />
       </div>
       <div aria-labelledby="settings-tab-service-levels" className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_440px]" hidden={tab !== "service-levels"} id="settings-panel-service-levels" role="tabpanel">
         <ServiceLevelsForm active={tab === "service-levels"} canEdit={canEdit} initial={targets} saveSlot={saveSlot} />
