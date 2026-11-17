@@ -9,6 +9,7 @@ const authorized = { name: "Ecommerce", secret: "s3cret" };
 
 vi.mock("@/lib/auth/session", () => ({ getPortalUser }));
 vi.mock("@/lib/audit/audit-logs.server", () => ({ recordAuditEvent }));
+vi.mock("@/lib/files/file-storage.server", () => ({ privateFiles: { upload: vi.fn(async () => "f-new"), viewUrl: vi.fn(async (id: string) => `https://files.test/${id}?sig=abc`), remove: vi.fn(async () => {}) } }));
 vi.mock("@/lib/db/prisma", () => ({
   prisma: {
     paymentAccount: {
@@ -99,5 +100,66 @@ describe("The store's payment-details endpoint", () => {
   });
   it.each([[null], ["Basic other"]])("refuses %s", async (authorization) => {
     expect((await call(authorization)).status).toBe(401);
+  });
+});
+
+describe("Payment account QR", () => {
+  const upload = (bytes: Uint8Array, type: string) => {
+    const form = new FormData();
+    form.set("file", new File([bytes as BlobPart], "qr", { type }));
+    return new Request("http://portal.test/api", { method: "POST", body: form });
+  };
+  const png = Uint8Array.of(0x89, 0x50, 0x4e, 0x47, 1, 2);
+
+  it("lets an Admin upload a PNG, returns a signed address and never the File reference, and logs it", async () => {
+    as("Admin");
+    const qr = await import("./[id]/qr/route");
+    const res = await qr.POST(upload(png, "image/png"), ctx("a"));
+    const body = (await res.json()) as { account: Record<string, unknown> };
+    expect(res.status).toBe(200);
+    expect(body.account.qrUrl).toBe("https://files.test/f-new?sig=abc");
+    expect(body.account).not.toHaveProperty("qrFileId");
+    expect(recordAuditEvent.mock.calls.map(([event]) => event.action)).toEqual(["payment_account.qr_replace"]);
+    const list = await import("./route");
+    const listed = ((await (await list.GET()).json()) as { accounts: { id: string; qrUrl: string | null }[] }).accounts;
+    expect(listed.find((a) => a.id === "a")?.qrUrl).toContain("sig=");
+  });
+  it("gives the store a signed address for an active account's QR, not a public URL", async () => {
+    as("Admin");
+    await (await import("./[id]/qr/route")).POST(upload(png, "image/png"), ctx("a"));
+    const res = await (await import("@/app/api/integrations/payment-details/route")).GET(new Request("http://portal.test/x", { headers: { authorization: "Basic ok" } }));
+    const body = (await res.json()) as { accounts: { qrUrl: string | null; qrFileId?: string }[] };
+    expect(body.accounts[0].qrUrl).toContain("sig=");
+    expect(body.accounts[0]).not.toHaveProperty("qrFileId");
+  });
+  it.each([
+    ["a GIF", Uint8Array.of(1, 2, 3), "image/gif", 400],
+    ["a PDF renamed to PNG", Uint8Array.of(0x25, 0x50, 0x44, 0x46), "image/png", 400],
+    ["an image over 2 MB", new Uint8Array(2 * 1024 * 1024 + 1).fill(0x89), "image/png", 400],
+  ])("rejects %s and stores nothing", async (_name, bytes, type, status) => {
+    as("Admin");
+    const res = await (await import("./[id]/qr/route")).POST(upload(bytes, type), ctx("a"));
+    expect(res.status).toBe(status);
+    expect(((await res.json()) as { error: string }).error).toMatch(/PNG or JPG|2 MB/);
+    expect(recordAuditEvent).not.toHaveBeenCalled();
+  });
+  it("removes a QR and logs it", async () => {
+    as("Admin");
+    const qr = await import("./[id]/qr/route");
+    await qr.POST(upload(png, "image/png"), ctx("a"));
+    const res = await qr.DELETE(new Request("http://portal.test/api", { method: "DELETE" }), ctx("a"));
+    expect(((await res.json()) as { account: { qrUrl: string | null } }).account.qrUrl).toBeNull();
+    expect(recordAuditEvent.mock.calls.map(([event]) => event.action)).toEqual(["payment_account.qr_replace", "payment_account.qr_remove"]);
+  });
+  it.each(["CEO", "Manager"])("refuses %s upload and remove", async (roleName) => {
+    as(roleName);
+    const qr = await import("./[id]/qr/route");
+    expect((await qr.POST(upload(png, "image/png"), ctx("a"))).status).toBe(403);
+    expect((await qr.DELETE(new Request("http://portal.test/api", { method: "DELETE" }), ctx("a"))).status).toBe(403);
+    expect(rows.get("a")?.qrFileId).toBeUndefined();
+  });
+  it("refuses a signed-out upload", async () => {
+    getPortalUser.mockResolvedValue(null);
+    expect((await (await import("./[id]/qr/route")).POST(upload(png, "image/png"), ctx("a"))).status).toBe(401);
   });
 });

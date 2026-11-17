@@ -10,7 +10,7 @@ import { FigmaIcon } from "@/components/ui/figma-icon";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils/cn";
-import { METHOD_LABELS, PAYMENT_METHODS, parseAccountInput, type AccountInput, type PaymentAccount, type PaymentMethod } from "@/lib/settings/payment-accounts";
+import { METHOD_LABELS, PAYMENT_METHODS, QR_MAX_BYTES, QR_TYPES, parseAccountInput, type AccountInput, type PaymentAccount, type PaymentMethod } from "@/lib/settings/payment-accounts";
 
 type Fields = Pick<AccountInput, "accountName" | "accountNumber" | "bankName">;
 type Draft = Fields & { key: number; method: PaymentMethod };
@@ -22,6 +22,7 @@ const COPY: Record<PaymentMethod, string> = {
 };
 const NUMBER_LABEL: Record<PaymentMethod, string> = { GCASH: "GCash number", MAYA: "Maya number", BANK: "Bank account number" };
 const NAME_LABEL: Record<PaymentMethod, string> = { GCASH: "GCash account name", MAYA: "Maya account name", BANK: "Bank account name" };
+const QR_TITLE: Record<PaymentMethod, string> = { GCASH: "GCash QR code", MAYA: "Maya QR code", BANK: "InstaPay QR code" };
 const inputClass = "h-auto rounded-lg px-3 py-2.25 text-sm shadow-none md:text-sm";
 
 /**
@@ -36,6 +37,7 @@ export function PaymentAccountsView({ canEdit, initial, saveSlot = null, active 
   const [confirm, setConfirm] = useState<{ kind: "save" } | { kind: "toggle"; account: PaymentAccount } | null>(null);
   const nextKey = useRef(0);
   const [pending, setPending] = useState(false);
+  const [qrBroken, setQrBroken] = useState<Record<string, boolean>>({});
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
   const valueOf = (account: PaymentAccount): Fields => edits[account.id] ?? account;
@@ -103,6 +105,64 @@ export function PaymentAccountsView({ canEdit, initial, saveSlot = null, active 
     }
   }
 
+  /** The QR is its own action: a file is stored as soon as it is chosen, not with Save changes. */
+  async function changeQr(account: PaymentAccount, file: File | null, remove = false) {
+    if (!remove) {
+      if (!file) return;
+      if (!(QR_TYPES as readonly string[]).includes(file.type)) return setMessage({ kind: "error", text: "The QR must be a PNG or JPG image." });
+      if (file.size > QR_MAX_BYTES) return setMessage({ kind: "error", text: "The QR must be 2 MB or smaller." });
+    }
+    setPending(true);
+    setMessage(null);
+    try {
+      const form = new FormData();
+      if (file && !remove) form.set("file", file);
+      const response = await fetch(`/api/settings/payment-accounts/${account.id}/qr`, { method: remove ? "DELETE" : "POST", body: remove ? undefined : form });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) throw new Error(result.error ?? "The QR could not be saved.");
+      const updated = result.account as PaymentAccount;
+      setAccounts((current) => current.map((row) => (row.id === updated.id ? { ...row, qrUrl: updated.qrUrl } : row)));
+      setQrBroken(({ [account.id]: _old, ...rest }) => rest);
+      setMessage({ kind: "ok", text: `${METHOD_LABELS[account.method]} QR ${remove ? "removed" : "saved"}.` });
+    } catch (error) {
+      setMessage({ kind: "error", text: error instanceof Error ? error.message : "The server could not be reached. Nothing was changed." });
+    } finally {
+      setPending(false);
+    }
+  }
+
+  function qrRow(account: PaymentAccount) {
+    const shown = account.qrUrl && !qrBroken[account.id];
+    const inputId = `qr-${account.id}`;
+    return (
+      <div aria-label={QR_TITLE[account.method]} className="flex items-center gap-3 overflow-hidden rounded-[10px] border border-dashed border-input p-3" role="group">
+        <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#f3e8ff]">
+          {shown ? (
+            // eslint-disable-next-line @next/next/no-img-element -- a short-lived signed address from file-storage
+            <img alt={`${METHOD_LABELS[account.method]} QR`} className="size-full object-cover" onError={() => setQrBroken((current) => ({ ...current, [account.id]: true }))} src={account.qrUrl ?? undefined} />
+          ) : (
+            <FigmaIcon name="qr-24" />
+          )}
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <p className="text-[13px] font-medium text-foreground">{QR_TITLE[account.method]}</p>
+          <p className="text-xs text-on-surface-variant">{account.qrUrl && qrBroken[account.id] ? "The QR could not load. Upload it again." : "PNG or JPG · shown to customers to scan"}</p>
+        </div>
+        {canEdit ? (
+          <>
+            <input accept="image/png,image/jpeg" aria-label={`${QR_TITLE[account.method]} file`} className="sr-only" disabled={pending} id={inputId} onChange={(event) => { void changeQr(account, event.target.files?.[0] ?? null); event.target.value = ""; }} tabIndex={-1} type="file" />
+            {account.qrUrl ? (
+              <Button disabled={pending} onClick={() => void changeQr(account, null, true)} size="row" type="button" variant="row-action">Remove</Button>
+            ) : null}
+            <Button asChild disabled={pending} size="row" variant="row-action">
+              <label className="cursor-pointer" htmlFor={inputId}><FigmaIcon name="upload-14" />{account.qrUrl ? "Replace QR" : "Upload QR"}</label>
+            </Button>
+          </>
+        ) : null}
+      </div>
+    );
+  }
+
   function field(id: string, label: string, value: string, set: (next: string) => void, readOnly: boolean, invalid: boolean) {
     return (
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
@@ -157,6 +217,7 @@ export function PaymentAccountsView({ canEdit, initial, saveSlot = null, active 
               {rows.map((account, index) => (
                 <div aria-label={`${METHOD_LABELS[method]} account ${index + 1}`} className={cn("flex flex-col gap-3", index > 0 && "border-t border-table-divider pt-3")} key={account.id} role="group">
                   {fieldsFor(method, `account-${account.id}`, valueOf(account), (next) => setEdits((current) => ({ ...current, [account.id]: next })), !canEdit || !account.active, errorFor(account.id))}
+                  {qrRow(account)}
                   <div className="flex items-center gap-2">
                     {account.active ? null : <span className="rounded-full bg-[#f1f1f3] px-2.5 py-[3px] text-xs font-medium text-[#52525b]">Inactive</span>}
                     {canEdit ? (
@@ -205,7 +266,7 @@ export function PaymentAccountsView({ canEdit, initial, saveSlot = null, active 
               const shown = activeByMethod(method);
               return shown.length === 0
                 ? [{ key: method, title: METHOD_LABELS[method], detail: "No active account · checkout shows “ask us”", badge: "Hidden" }]
-                : shown.map((account) => ({ key: account.id, title: METHOD_LABELS[method], detail: `${method === "BANK" ? `${account.bankName} ` : ""}${account.accountNumber} · ${account.accountName}`, badge: "Shown" }));
+                : shown.map((account) => ({ key: account.id, title: METHOD_LABELS[method], detail: `${method === "BANK" ? `${account.bankName} ` : ""}${account.accountNumber} · ${account.accountName}${account.qrUrl ? " · QR set" : ""}`, badge: "Shown" }));
             }).concat([{ key: "cod", title: "Cash on Delivery", detail: "No details needed", badge: "Shown" }]).map((row) => (
               <li className="flex items-center gap-2.5 py-2" key={row.key}>
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">

@@ -23,6 +23,8 @@ export const AUDIT_ACTIONS = [
   "payment_account.update",
   "payment_account.deactivate",
   "payment_account.reactivate",
+  "payment_account.qr_replace",
+  "payment_account.qr_remove",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

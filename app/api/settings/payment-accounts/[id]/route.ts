@@ -1,6 +1,6 @@
 import { getPortalUser } from "@/lib/auth/session";
 import { editPaymentAccount, setPaymentAccountActive } from "@/lib/settings/payment-accounts";
-import { paymentAccountPorts } from "@/lib/settings/payment-accounts.server";
+import { paymentAccountPorts, signQr } from "@/lib/settings/payment-accounts.server";
 
 const headers = { "Cache-Control": "no-store" };
 
@@ -19,7 +19,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const result = isActiveChange
       ? await setPaymentAccountActive(paymentAccountPorts, actor, id, (body as { active: boolean }).active)
       : await editPaymentAccount(paymentAccountPorts, actor, id, body);
-    return result.ok ? Response.json({ ok: true, account: result.account }, { headers }) : Response.json({ error: result.error }, { status: result.status, headers });
+    return result.ok ? Response.json({ ok: true, account: (await signQr([result.account]))[0] }, { headers }) : Response.json({ error: result.error }, { status: result.status, headers });
   } catch {
     return Response.json({ error: "The account could not be changed. Nothing was changed." }, { status: 503, headers });
   }
