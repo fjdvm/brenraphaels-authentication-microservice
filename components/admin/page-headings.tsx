@@ -7,13 +7,27 @@ import { Skeleton } from "@/components/ui/skeleton";
 // Headings that need no data. Pages and their loading states share them, so the text
 // shows the moment a route opens and the two can never drift apart.
 
-export function SystemLogsHeading() {
+/** The viewer's Role as a dark pill beside a page title; a placeholder while the Role is unknown (loading). */
+function RoleBadge({ roleName }: { roleName?: string }) {
+  return roleName ? (
+    <span className="flex items-center gap-1.25 rounded-full bg-foreground py-1 pr-2.5 pl-2 text-xs font-semibold text-background">
+      <FigmaIcon name="shield-12" />
+      {roleName}
+    </span>
+  ) : (
+    <Skeleton className="h-6 w-16 rounded-full" />
+  );
+}
+
+export function SystemLogsHeading({ roleName }: { roleName?: string } = {}) {
   return (
     <>
-      <h1 className="text-2xl font-semibold text-foreground">System logs</h1>
+      <div className="flex items-center gap-2.5">
+        <h1 className="text-2xl font-semibold text-foreground">System logs</h1>
+        <RoleBadge roleName={roleName} />
+      </div>
       <p className="text-sm text-on-surface-variant">
-        Every sign-in, sign-out, password and administrative event, from the Portal and every System. Times are shown in
-        Philippine time (UTC+8).
+        Every portal sign-in, sign-out and password event. Times are shown in Philippine time (UTC+8).
       </p>
     </>
   );
@@ -25,14 +39,7 @@ export function AccountRequestsHeading({ roleName }: { roleName?: string } = {})
     <>
       <div className="flex items-center gap-2.5">
         <h1 className="text-2xl font-semibold text-foreground">Account requests</h1>
-        {roleName ? (
-          <span className="flex items-center gap-1.25 rounded-full bg-foreground py-1 pr-2.5 pl-2 text-xs font-semibold text-background">
-            <FigmaIcon name="shield-12" />
-            {roleName}
-          </span>
-        ) : (
-          <Skeleton className="h-6 w-16 rounded-full" />
-        )}
+        <RoleBadge roleName={roleName} />
       </div>
       <p className="text-sm text-on-surface-variant">
         People staff asked you to create accounts for. Open a request to review it, then create the account with the

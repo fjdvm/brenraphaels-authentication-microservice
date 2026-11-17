@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export function ShellSkeleton() {
   return (
     <div aria-busy="true" aria-label="Loading portal" className="flex min-h-svh flex-1" role="status">
-      <aside className="hidden w-64 shrink-0 flex-col gap-3 border-r border-border p-5 md:flex">
+      <aside className="hidden w-[18.5rem] shrink-0 flex-col gap-3 border-r border-border p-5 md:flex">
         <Skeleton className="mb-3 h-10 w-44" />
         <Skeleton className="h-9 w-full" />
         <Skeleton className="h-9 w-full" />

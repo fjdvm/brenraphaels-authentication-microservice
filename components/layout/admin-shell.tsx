@@ -32,8 +32,8 @@ type AdminShellProps = {
   newAccountRequests?: number;
 };
 
-// Figma "Portal sidebar" is 255-256px wide; at 296px the Users table clipped its Delete button at 1440px.
-const SIDEBAR_STYLE = { "--sidebar-width": "16rem" } as CSSProperties;
+// Matches the CREOMS sidebar (296px), so the Portal and CREOMS feel like one product.
+const SIDEBAR_STYLE = { "--sidebar-width": "18.5rem" } as CSSProperties;
 
 function AdministrativeNavigation({ user, newAccountRequests = 0 }: { user: ShellUser; newAccountRequests?: number }) {
   const pathname = usePathname();

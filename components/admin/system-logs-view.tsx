@@ -37,26 +37,9 @@ import {
   type DayRange,
   type SystemLogsResult,
 } from "@/lib/audit/system-logs-query";
+import { formatEventTime } from "@/lib/audit/format-event-time";
 import { cn } from "@/lib/utils/cn";
 import { uiLabel } from "@/lib/utils/ui-label";
-
-const MANILA = "Asia/Manila";
-const clockFormat = new Intl.DateTimeFormat("en-US", { timeZone: MANILA, hour: "numeric", minute: "2-digit" });
-const dayFormat = new Intl.DateTimeFormat("en-US", { timeZone: MANILA, month: "short", day: "numeric" });
-const dayYearFormat = new Intl.DateTimeFormat("en-US", { timeZone: MANILA, month: "short", day: "numeric", year: "numeric" });
-const dayKeyFormat = new Intl.DateTimeFormat("en-CA", { timeZone: MANILA });
-
-/** Figma's "Today, 12:30 PM" and "Yesterday, 4:25 PM", in Philippine days; older events name the date. */
-function formatEventTime(at: Date, now: Date): string {
-  const day = dayKeyFormat.format(at);
-  const clock = clockFormat.format(at);
-
-  if (day === dayKeyFormat.format(now)) return `Today, ${clock}`;
-  if (day === dayKeyFormat.format(new Date(now.getTime() - 86_400_000))) return `Yesterday, ${clock}`;
-
-  const sameYear = day.slice(0, 4) === dayKeyFormat.format(now).slice(0, 4);
-  return `${(sameYear ? dayFormat : dayYearFormat).format(at)}, ${clock}`;
-}
 
 const OUTCOME_BADGE = {
   SUCCESS: { label: "Success", variant: "success" },
@@ -125,6 +108,9 @@ type Paging = {
   sizes: number[];
   index: number;
 };
+
+/** System logs shows the most recent events only: a screen never pages past this many. */
+const MAX_EVENTS = 200;
 
 const FIRST_PAGE: Paging = { cursors: [null], sizes: [], index: 0 };
 
@@ -268,8 +254,12 @@ export function SystemLogsView({
   const actionOptions = options?.actions.filter((a) => !filters.source || a.systems.includes(filters.source)) ?? [];
   const moduleOptions = options?.modules.filter((m) => !filters.source || m.systems.includes(filters.source)) ?? [];
   const loading = result === null;
-  const nextCursor = result?.status === "ok" ? result.nextCursor : null;
   const start = paging.sizes.slice(0, paging.index).reduce((sum, n) => sum + n, 0) + 1;
+  const end = start + (result?.status === "ok" ? result.entries.length : 0) - 1;
+  const capped = !personal && end >= MAX_EVENTS;
+  const nextCursor = result?.status === "ok" && !capped ? result.nextCursor : null;
+  // Without a total from the service: the last page knows its count; a page with more behind it sits inside the cap.
+  const total = result?.status === "ok" && result.nextCursor === null ? end : MAX_EVENTS;
 
   // The service exports a whole, bounded date range only.
   const exportable = Boolean(filters.from && filters.to) && !rangeInvalid;
@@ -493,7 +483,9 @@ export function SystemLogsView({
 
           <nav aria-label="Pages" className="flex items-center gap-2 pt-3 pb-2 leading-[normal]">
             <p className="flex-1 text-[13px] text-on-surface-variant">
-              {result.entries.length > 0 ? `Showing ${start}–${start + result.entries.length - 1}` : null}
+              {result.entries.length > 0
+                ? `Showing ${start}–${end}${personal ? "" : ` of ${total} most recent events`}`
+                : null}
             </p>
             <Button
               variant="row-action"
