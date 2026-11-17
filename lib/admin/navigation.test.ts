@@ -32,7 +32,7 @@ describe("SIDEBAR_NAVIGATION", () => {
 });
 
 describe("SIDEBAR_SECTIONS", () => {
-  it("groups everything after Access under an ADMIN heading", () => {
+  it("groups the sidebar as Access, MANAGEMENT, SETTINGS and AUDIT", () => {
     expect(
       SIDEBAR_SECTIONS.map(({ label, destinations }) => ({
         label,
@@ -40,10 +40,9 @@ describe("SIDEBAR_SECTIONS", () => {
       })),
     ).toEqual([
       { label: undefined, hrefs: ["/admin/access"] },
-      {
-        label: "ADMIN",
-        hrefs: ["/admin/users", "/admin/account-requests", "/admin/settings", "/admin/system-logs", "/my-logs"],
-      },
+      { label: "MANAGEMENT", hrefs: ["/admin/users", "/admin/account-requests"] },
+      { label: "SETTINGS", hrefs: ["/admin/settings"] },
+      { label: "AUDIT", hrefs: ["/admin/system-logs", "/my-logs"] },
     ]);
   });
 });

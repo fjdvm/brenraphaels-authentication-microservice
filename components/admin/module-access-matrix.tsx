@@ -10,6 +10,7 @@ import {
   type SelectableSystem,
 } from "@/lib/admin/module-selection";
 import { cn } from "@/lib/utils/cn";
+import { uiLabel } from "@/lib/utils/ui-label";
 
 type ModuleAccessMatrixProps = {
   systems: SelectableSystem[];
@@ -36,13 +37,13 @@ export function ModuleAccessMatrix({ systems, selected, setSelected, density = "
 
         return (
           <fieldset className="min-w-0 overflow-hidden rounded-[10px] border border-panel-border bg-surface leading-[normal]" key={system.id}>
-            <legend className="sr-only">{system.name}</legend>
+            <legend className="sr-only">{uiLabel(system.name)}</legend>
             <div className="flex items-center gap-2.5 border-b border-table-divider bg-dialog-footer px-3.5 py-3">
               <span className={cn("flex size-7.5 shrink-0 items-center justify-center rounded-lg", style.tile)}>
                 <Icon aria-hidden="true" className={cn("size-4", style.accent)} />
               </span>
               <span aria-hidden="true" className="min-w-0 flex-1 text-[15px] font-semibold text-foreground">
-                {system.name}
+                {uiLabel(system.name)}
               </span>
               <span className="text-xs font-medium whitespace-nowrap text-on-surface-variant">
                 {count} of {system.modules.length}

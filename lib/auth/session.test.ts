@@ -6,6 +6,9 @@ const mocks = vi.hoisted(() => ({
   redirect: vi.fn((destination: string) => {
     throw new Error(`redirect:${destination}`);
   }),
+  forbidden: vi.fn(() => {
+    throw new Error("forbidden:403");
+  }),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -18,7 +21,7 @@ vi.mock("@/lib/db/prisma", () => ({
   prisma: { user: { findUnique: mocks.findUnique } },
 }));
 
-vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
+vi.mock("next/navigation", () => ({ redirect: mocks.redirect, forbidden: mocks.forbidden }));
 
 const activeUser = {
   id: "portal-user",
@@ -171,5 +174,26 @@ describe("requirePortalUser", () => {
     const { requireAdministrator } = await import("./session");
 
     await expect(requireAdministrator()).rejects.toThrow("redirect:/change-password");
+  });
+
+  it("lets an Admin through the write guard", async () => {
+    const { requireFullAccess } = await import("./session");
+
+    await expect(requireFullAccess()).resolves.toMatchObject({ roleName: "Admin" });
+  });
+
+  it("refuses a CEO on every write with 403, while still letting them read", async () => {
+    mocks.findUnique.mockResolvedValue({ ...activeUser, role: { name: "CEO", isAdministrator: true } });
+    const { requireAdministrator, requireFullAccess } = await import("./session");
+
+    await expect(requireAdministrator()).resolves.toMatchObject({ roleName: "CEO" });
+    await expect(requireFullAccess()).rejects.toThrow("forbidden:403");
+  });
+
+  it("sends a non-administrator away from the write guard like any admin page", async () => {
+    mocks.findUnique.mockResolvedValue({ ...activeUser, role: { name: "General Manager", isAdministrator: false } });
+    const { requireFullAccess } = await import("./session");
+
+    await expect(requireFullAccess()).rejects.toThrow("redirect:/");
   });
 });

@@ -106,7 +106,7 @@ describe("Edit user access form", () => {
     await person.click(screen.getByRole("button", { name: /save access/i }));
     expect((await screen.findByRole("status")).textContent).toContain("Access saved");
 
-    await person.click(box("CRMS", "Dashboard"));
+    await person.click(box("CREOMS", "Dashboard"));
     await person.click(screen.getByRole("button", { name: /save access/i }));
 
     expect((screen.getByRole("button", { name: /saving/i }) as HTMLButtonElement).disabled).toBe(true);
@@ -142,7 +142,7 @@ describe("Edit user access form", () => {
     await person.click(screen.getByRole("button", { name: /save access/i }));
     expect((await screen.findByRole("status")).textContent).toContain("Access saved");
 
-    await person.click(box("CRMS", "Dashboard"));
+    await person.click(box("CREOMS", "Dashboard"));
 
     expect(screen.queryByRole("status")).toBeNull();
   });
@@ -152,7 +152,7 @@ describe("Edit user access form", () => {
 
     expect(box("POS", "Sales Processing").checked).toBe(true);
     expect(box("POS", "Dashboard").checked).toBe(false);
-    expect(box("CRMS", "Dashboard").checked).toBe(false);
+    expect(box("CREOMS", "Dashboard").checked).toBe(false);
     expect(box("POS", "Select all")).toBeTruthy();
   });
 
@@ -160,9 +160,9 @@ describe("Edit user access form", () => {
     const person = userEvent.setup();
     renderForm();
 
-    await person.click(box("CRMS", "Select all"));
+    await person.click(box("CREOMS", "Select all"));
 
-    expect(box("CRMS", "Dashboard").checked).toBe(true);
+    expect(box("CREOMS", "Dashboard").checked).toBe(true);
     expect(box("POS", "Dashboard").checked).toBe(false);
   });
 
@@ -197,10 +197,10 @@ describe("Edit user access form", () => {
     const person = userEvent.setup();
     renderForm({ error: "The changes were not saved. Reload the page and try again.", saved: false, fieldErrors: {} });
 
-    await person.click(box("CRMS", "Dashboard"));
+    await person.click(box("CREOMS", "Dashboard"));
     await person.click(screen.getByRole("button", { name: /save access/i }));
 
     expect((await screen.findByRole("alert")).textContent).toContain("not saved");
-    expect(box("CRMS", "Dashboard").checked).toBe(true);
+    expect(box("CREOMS", "Dashboard").checked).toBe(true);
   });
 });

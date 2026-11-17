@@ -37,7 +37,7 @@ describe("Create user form", () => {
 
     expect(systemGroup("POS").getByRole("checkbox", { name: "Dashboard" })).toBeTruthy();
     expect(systemGroup("POS").getByRole("checkbox", { name: "Sales Processing" })).toBeTruthy();
-    expect(systemGroup("CRMS").getByRole("checkbox", { name: "Dashboard" })).toBeTruthy();
+    expect(systemGroup("CREOMS").getByRole("checkbox", { name: "Dashboard" })).toBeTruthy();
     expect(systemGroup("POS").getByRole("checkbox", { name: "Select all" })).toBeTruthy();
   });
 
@@ -49,7 +49,7 @@ describe("Create user form", () => {
 
     expect((systemGroup("POS").getByRole("checkbox", { name: "Dashboard" }) as HTMLInputElement).checked).toBe(true);
     expect((systemGroup("POS").getByRole("checkbox", { name: "Sales Processing" }) as HTMLInputElement).checked).toBe(true);
-    expect((systemGroup("CRMS").getByRole("checkbox", { name: "Dashboard" }) as HTMLInputElement).checked).toBe(false);
+    expect((systemGroup("CREOMS").getByRole("checkbox", { name: "Dashboard" }) as HTMLInputElement).checked).toBe(false);
   });
 
   it("pre-checks the Role's AccessTemplate and keeps every box editable", async () => {
@@ -63,10 +63,10 @@ describe("Create user form", () => {
     expect((systemGroup("POS").getByRole("checkbox", { name: "Dashboard" }) as HTMLInputElement).checked).toBe(false);
 
     await user.click(sales);
-    await user.click(systemGroup("CRMS").getByRole("checkbox", { name: "Dashboard" }));
+    await user.click(systemGroup("CREOMS").getByRole("checkbox", { name: "Dashboard" }));
 
     expect(sales.checked).toBe(false);
-    expect((systemGroup("CRMS").getByRole("checkbox", { name: "Dashboard" }) as HTMLInputElement).checked).toBe(true);
+    expect((systemGroup("CREOMS").getByRole("checkbox", { name: "Dashboard" }) as HTMLInputElement).checked).toBe(true);
   });
 
   it("pre-checks every System for General Manager and lets the Administrator untick a Module", async () => {
@@ -76,7 +76,7 @@ describe("Create user form", () => {
     const sales = systemGroup("POS").getByRole("checkbox", { name: "Sales Processing" }) as HTMLInputElement;
     expect(sales.checked).toBe(true);
     expect((systemGroup("POS").getByRole("checkbox", { name: "Dashboard" }) as HTMLInputElement).checked).toBe(true);
-    expect((systemGroup("CRMS").getByRole("checkbox", { name: "Dashboard" }) as HTMLInputElement).checked).toBe(true);
+    expect((systemGroup("CREOMS").getByRole("checkbox", { name: "Dashboard" }) as HTMLInputElement).checked).toBe(true);
     await user.click(sales);
     expect(sales.checked).toBe(false);
   });
@@ -89,7 +89,7 @@ describe("Create user form", () => {
     await user.type(screen.getByLabelText("Last name"), "Dela Cruz");
     await user.type(screen.getByLabelText("Email"), "juan@example.com");
     await user.selectOptions(screen.getByLabelText("Role"), "r-cashier");
-    await user.click(systemGroup("CRMS").getByRole("checkbox", { name: "Select all" }));
+    await user.click(systemGroup("CREOMS").getByRole("checkbox", { name: "Select all" }));
     await user.click(screen.getByRole("button", { name: /create user/i }));
 
     await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
@@ -153,12 +153,12 @@ describe("Create user form", () => {
     await user.selectOptions(screen.getByLabelText("Role"), "r-cashier");
 
     expect(systemGroup("POS").getByText("1 of 2")).toBeTruthy();
-    expect(systemGroup("CRMS").getByText("0 of 1")).toBeTruthy();
+    expect(systemGroup("CREOMS").getByText("0 of 1")).toBeTruthy();
     const posSelectAll = systemGroup("POS").getByRole("checkbox", { name: "Select all" }) as HTMLInputElement;
     expect(posSelectAll.indeterminate).toBe(true);
     expect(screen.getByText("1 module selected across 1 system")).toBeTruthy();
 
-    await user.click(systemGroup("CRMS").getByRole("checkbox", { name: "Select all" }));
+    await user.click(systemGroup("CREOMS").getByRole("checkbox", { name: "Select all" }));
     expect(screen.getByText("2 modules selected across 2 systems")).toBeTruthy();
   });
 
@@ -199,7 +199,7 @@ describe("Create user form", () => {
       const user = userEvent.setup();
       const action = open();
       expect(screen.getByText(/matches the request/)).toBeTruthy();
-      await user.click(systemGroup("CRMS").getByRole("checkbox", { name: "Dashboard" }));
+      await user.click(systemGroup("CREOMS").getByRole("checkbox", { name: "Dashboard" }));
       expect(screen.getByText(/differs from the request/)).toBeTruthy();
       await user.click(screen.getByRole("button", { name: /Create user/ }));
       await waitFor(() => expect(action).toHaveBeenCalled());

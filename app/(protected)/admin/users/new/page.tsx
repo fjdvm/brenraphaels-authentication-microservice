@@ -7,12 +7,22 @@ import { createUserAction } from "@/actions/users";
 import { CreateUserForm } from "@/components/admin/create-user-form";
 import { NewUserHeading } from "@/components/admin/page-headings";
 import { loadUserFormOptions } from "@/lib/admin/user-form-options";
+import { canWrite } from "@/lib/auth/role-authority";
 import { requireAdministrator } from "@/lib/auth/session";
 
 /** Figma "Portal · Add new user". */
 export default async function NewUserPage({ searchParams }: { searchParams: Promise<{ request?: string }> }) {
   await connection();
-  await requireAdministrator();
+  const administrator = await requireAdministrator();
+  // A CEO has View access: the page opens, but there is no form to fill in.
+  if (!canWrite(administrator.roleName)) {
+    return (
+      <main className="flex w-full flex-1 flex-col">
+        <NewUserHeading />
+        <p className="px-6 py-5 text-sm text-on-surface-variant md:px-8">Only an Admin can add users.</p>
+      </main>
+    );
+  }
   const { request: requestId } = await searchParams;
   const request = requestId ? await prisma.accountRequest.findUnique({ where: { id: requestId } }) : null;
   // A committed account can outlive failed login delivery. A refresh must reach its Resend action, not a 404.

@@ -24,7 +24,7 @@ describe.each([
     const { container } = render(renderForm({ returnIntent: "signed.token", systemName: "CRMS" }));
 
     expect(hiddenIntent(container)?.value).toBe("signed.token");
-    expect(screen.getByRole("status").textContent).toContain("continue to CRMS");
+    expect(screen.getByRole("status").textContent).toContain("continue to CREOMS");
   });
 
   it("renders no System notice or hidden field for ordinary use", () => {

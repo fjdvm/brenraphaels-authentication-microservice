@@ -6,7 +6,6 @@ import { useId, useState } from "react";
 
 import { ResendCredentialsButton } from "@/components/admin/resend-credentials-button";
 import { UserLifecycleButton } from "@/components/admin/user-lifecycle-button";
-import { UserAvatar } from "@/components/layout/user-identity";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useOptimisticUpdate } from "@/hooks/use-optimistic-update";
@@ -23,6 +22,7 @@ import type { ResendOutcome } from "@/lib/admin/user-form-state";
 import type { LifecycleFormState } from "@/lib/admin/user-lifecycle-state";
 import { SUPER_ADMIN_ROLE_NAME } from "@/lib/seed-data";
 import { cn } from "@/lib/utils/cn";
+import { uiLabel } from "@/lib/utils/ui-label";
 
 type LifecycleAction = (previous: LifecycleFormState, data: FormData) => Promise<LifecycleFormState>;
 
@@ -30,6 +30,8 @@ type Props = {
   users: ManagedUser[];
   /** The signed-in Administrator, who can never delete themselves. */
   signedInUserId: string;
+  /** Full access shows Access, Resend, Restore and Delete; View access shows none of them. */
+  canWrite: boolean;
   actions: {
     resend: (userId: string) => Promise<ResendOutcome>;
     remove: LifecycleAction;
@@ -47,7 +49,7 @@ const panel = "rounded-xl border border-panel-border bg-surface";
 const field = "flex items-center gap-2 rounded-lg border border-input bg-surface px-3 py-[9px] text-sm leading-[normal]";
 
 /** Figma "Portal · User management": summary, filters and the Users table. */
-export function UserDirectory({ users: confirmedUsers, signedInUserId, actions }: Props) {
+export function UserDirectory({ users: confirmedUsers, signedInUserId, canWrite, actions }: Props) {
   const { value: users, refusal, run } = useOptimisticUpdate(confirmedUsers, applyLifecycleChange);
   const [tab, setTab] = useState<UserTab>("all");
   const [query, setQuery] = useState("");
@@ -144,7 +146,7 @@ export function UserDirectory({ users: confirmedUsers, signedInUserId, actions }
             <option value="">All roles</option>
             {roles.map((name) => (
               <option key={name} value={name}>
-                {name}
+                {uiLabel(name)}
               </option>
             ))}
           </select>
@@ -174,11 +176,8 @@ export function UserDirectory({ users: confirmedUsers, signedInUserId, actions }
               return (
                 <tr className="border-b border-table-divider" key={user.id}>
                   <td className="py-3.5 pr-3">
-                    <span className="flex items-center gap-2">
-                      <UserAvatar size="sm" tone={user.isAdministrator ? "solid" : "soft"} user={user} />
-                      <span className="text-sm font-medium whitespace-nowrap text-foreground">
-                        {user.firstName} {user.lastName}
-                      </span>
+                    <span className="text-sm font-medium whitespace-nowrap text-foreground">
+                      {user.firstName} {user.lastName}
                     </span>
                   </td>
                   <td className="py-3.5 pr-3 text-[13px] font-medium whitespace-nowrap text-badge-muted-foreground">
@@ -187,7 +186,7 @@ export function UserDirectory({ users: confirmedUsers, signedInUserId, actions }
                   <td className="py-3.5 pr-3 text-sm whitespace-nowrap text-nav-foreground">{user.email}</td>
                   <td className="py-3.5 pr-3">
                     <Badge className="whitespace-nowrap" variant={user.isAdministrator ? "identity" : "muted"}>
-                      {user.roleName}
+                      {uiLabel(user.roleName)}
                     </Badge>
                   </td>
                   <td className="py-3.5 pr-3">
@@ -196,34 +195,36 @@ export function UserDirectory({ users: confirmedUsers, signedInUserId, actions }
                     </Badge>
                   </td>
                   <td className="py-3.5">
-                    <div className="flex items-start justify-end gap-2">
-                      <Button asChild size="row" variant="row-action">
-                        <Link aria-label={`Manage access for ${user.username}`} href={`/admin/users/${user.id}`} scroll={false}>
-                          <Key aria-hidden="true" />
-                          Access
-                        </Link>
-                      </Button>
-                      {isDeleted ? (
-                        <UserLifecycleButton
-                          mode="restore"
-                          onConfirm={(userId) => change("restored", userId)}
-                          name={`${user.firstName} ${user.lastName}`}
-                          userId={user.id}
-                          username={user.username}
-                        />
-                      ) : (
-                        <ResendCredentialsButton action={() => actions.resend(user.id)} username={user.username} />
-                      )}
-                      {canDelete ? (
-                        <UserLifecycleButton
-                          mode="delete"
-                          onConfirm={(userId) => change("deleted", userId)}
-                          name={`${user.firstName} ${user.lastName}`}
-                          userId={user.id}
-                          username={user.username}
-                        />
-                      ) : null}
-                    </div>
+                    {canWrite ? (
+                      <div className="flex items-start justify-end gap-2">
+                        <Button asChild size="row" variant="row-action">
+                          <Link aria-label={`Manage access for ${user.username}`} href={`/admin/users/${user.id}`} scroll={false}>
+                            <Key aria-hidden="true" />
+                            Access
+                          </Link>
+                        </Button>
+                        {isDeleted ? (
+                          <UserLifecycleButton
+                            mode="restore"
+                            onConfirm={(userId) => change("restored", userId)}
+                            name={`${user.firstName} ${user.lastName}`}
+                            userId={user.id}
+                            username={user.username}
+                          />
+                        ) : (
+                          <ResendCredentialsButton action={() => actions.resend(user.id)} username={user.username} />
+                        )}
+                        {canDelete ? (
+                          <UserLifecycleButton
+                            mode="delete"
+                            onConfirm={(userId) => change("deleted", userId)}
+                            name={`${user.firstName} ${user.lastName}`}
+                            userId={user.id}
+                            username={user.username}
+                          />
+                        ) : null}
+                      </div>
+                    ) : null}
                   </td>
                 </tr>
               );

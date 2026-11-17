@@ -5,6 +5,7 @@ import { pluralModules, systemStyle } from "@/components/portal/system-style";
 import { Badge } from "@/components/ui/badge";
 import type { AccessibleSystem } from "@/lib/portal/accessible-systems";
 import { cn } from "@/lib/utils/cn";
+import { uiLabel } from "@/lib/utils/ui-label";
 
 /**
  * Figma "Staff home": one card per Accessible System, naming the Modules the User holds. A card
@@ -44,10 +45,10 @@ export function SystemLaunchCards({ systems }: { systems: AccessibleSystem[] }) 
               </Badge>
             </div>
             <div className="flex flex-col gap-1.5">
-              <h2 className="text-2xl font-bold text-foreground">{system.name}</h2>
+              <h2 className="text-2xl font-bold text-foreground">{uiLabel(system.name)}</h2>
               {system.description ? <p className="text-[15px] text-on-surface-variant">{system.description}</p> : null}
             </div>
-            <ul aria-label={`${system.name} modules`} className="flex flex-wrap gap-2">
+            <ul aria-label={`${uiLabel(system.name)} modules`} className="flex flex-wrap gap-2">
               {system.grantedModuleNames.map((moduleName) => (
                 <li
                   className="rounded-md border border-chip-border bg-chip px-2.5 py-1 text-xs font-medium text-badge-muted-foreground"
@@ -57,7 +58,7 @@ export function SystemLaunchCards({ systems }: { systems: AccessibleSystem[] }) 
                 </li>
               ))}
             </ul>
-            <OpenSystemLink name={system.name} url={system.url} />
+            <OpenSystemLink name={uiLabel(system.name)} url={system.url} />
           </li>
         );
       })}

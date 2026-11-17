@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { MY_LOGS_DESTINATION } from "@/lib/admin/navigation";
+import { uiLabel } from "@/lib/utils/ui-label";
 
 type AccountCardProps = {
   username: string;
@@ -26,7 +27,7 @@ export function AccountCard({ username, email, roleName, lastSignIn, otherSystem
   const rows = [
     ["Username", username],
     ["Email", email],
-    ["Role", roleName],
+    ["Role", uiLabel(roleName)],
     ["Last sign-in", lastSignIn ?? "—"],
   ];
 
@@ -65,7 +66,7 @@ export function AccountCard({ username, email, roleName, lastSignIn, otherSystem
       {otherSystemNames.length > 0 ? (
         <p className="flex gap-2 rounded-lg bg-callout px-3 py-2.5 text-xs text-callout-foreground">
           <Info aria-hidden="true" className="size-4 shrink-0" />
-          Need {joinWithOr(otherSystemNames)}? Ask an Admin to update your access.
+          Need {joinWithOr(otherSystemNames.map(uiLabel))}? Ask an Admin to update your access.
         </p>
       ) : null}
     </section>

@@ -39,13 +39,14 @@ export type SidebarSection = {
   destinations: readonly AdministrativeDestination[];
 };
 
-/** The sidebar, in order: Access, then the "ADMIN" section ending with Activity log. */
+const byHref = (href: string) => ADMIN_NAVIGATION.find((destination) => destination.href === href)!;
+
+/** The sidebar, in order: Access, then MANAGEMENT, SETTINGS and AUDIT (Figma "Portal sidebar"). */
 export const SIDEBAR_SECTIONS: readonly SidebarSection[] = [
-  { destinations: ADMIN_NAVIGATION.slice(0, 1) },
-  {
-    label: "ADMIN",
-    destinations: [...ADMIN_NAVIGATION.slice(1), MY_LOGS_DESTINATION],
-  },
+  { destinations: [byHref("/admin/access")] },
+  { label: "MANAGEMENT", destinations: [byHref("/admin/users"), byHref(ACCOUNT_REQUESTS_HREF)] },
+  { label: "SETTINGS", destinations: [byHref("/admin/settings")] },
+  { label: "AUDIT", destinations: [byHref("/admin/system-logs"), MY_LOGS_DESTINATION] },
 ];
 
 /** Every sidebar destination, flattened in display order. */

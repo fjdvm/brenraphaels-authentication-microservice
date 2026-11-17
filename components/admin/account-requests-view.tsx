@@ -21,6 +21,7 @@ import {
   type RequestTab,
 } from "@/lib/admin/account-requests";
 import { cn } from "@/lib/utils/cn";
+import { uiLabel } from "@/lib/utils/ui-label";
 
 type Props = {
   heading: ReactNode;
@@ -56,7 +57,7 @@ function relativeDate(iso: string, now: Date) {
 
 function systemsOf(request: AccountRequestRow, systems: AccessSystem[]) {
   const requested = new Set(request.moduleIds);
-  return systems.filter((system) => system.modules.some((module) => requested.has(module.id))).map((system) => system.name);
+  return systems.filter((system) => system.modules.some((module) => requested.has(module.id))).map((system) => uiLabel(system.name));
 }
 
 /** Figma "Portal · Account requests" and "Portal · Account request detail". */
@@ -188,7 +189,7 @@ export function AccountRequestsView({ heading, requests, systems, now, initialRe
                       <span className="text-xs text-on-surface-variant">{request.workEmail}</span>
                     </button>
                   </td>
-                  <td className="py-3.5 pr-3 text-sm text-nav-foreground">{request.roleName}</td>
+                  <td className="py-3.5 pr-3 text-sm text-nav-foreground">{uiLabel(request.roleName)}</td>
                   <td className="py-3.5 pr-3">
                     <span className="flex flex-wrap gap-1.5">
                       {systemsOf(request, systems).map((name) => (
@@ -241,7 +242,7 @@ function RequestDetail({ request, systems, now, error, busy, resend, decline }: 
   return (
     <DialogContent className="max-w-180">
       <DialogHeader
-        description={`Sent ${relativeDate(request.createdAt, now).toLowerCase()} at ${sentAt} by ${request.requesterName} from ${request.sourceSystemName}`}
+        description={`Sent ${relativeDate(request.createdAt, now).toLowerCase()} at ${sentAt} by ${request.requesterName} from ${uiLabel(request.sourceSystemName)}`}
         title={
           <span className="flex items-center gap-2">
             Account request · {request.reference}
@@ -259,7 +260,7 @@ function RequestDetail({ request, systems, now, error, busy, resend, decline }: 
         </div>
 
         <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
-          {field("Requested role", request.roleName)}
+          {field("Requested role", uiLabel(request.roleName))}
           {field("Start date", formatDate(request.startDate))}
           {field("Position", `${request.position} · ${request.branch}`)}
           {field("Account needed by", formatDate(request.neededFrom))}
@@ -280,7 +281,7 @@ function RequestDetail({ request, systems, now, error, busy, resend, decline }: 
             groups.map((group) => (
               <div className="flex flex-col gap-2 rounded-lg border border-panel-border px-3.5 py-3" key={group.system}>
                 <p className="flex items-center gap-2 text-xs text-on-surface-variant">
-                  <Badge variant="identity">{group.system}</Badge>
+                  <Badge variant="identity">{uiLabel(group.system)}</Badge>
                   {group.requested} of {group.total} modules
                 </p>
                 <ul className="flex flex-wrap gap-x-4 gap-y-1.5">

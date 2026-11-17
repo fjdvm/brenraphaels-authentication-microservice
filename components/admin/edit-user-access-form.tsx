@@ -13,6 +13,7 @@ import {
   initialEditUserAccessFormState,
   type EditUserAccessFormState,
 } from "@/lib/admin/user-access-form-state";
+import { uiLabel } from "@/lib/utils/ui-label";
 
 type EditUserAccessFormProps = {
   action: (previous: EditUserAccessFormState, formData: FormData) => Promise<EditUserAccessFormState>;
@@ -71,7 +72,7 @@ export function EditUserAccessForm({ action, user, roles, systems }: EditUserAcc
     <Dialog onOpenChange={(open) => (open ? undefined : close())} open>
       <DialogContent className="max-w-190">
         <DialogHeader
-          description={`${user.username}${savedRoleName ? ` · ${savedRoleName}` : ""}. Changes apply the next time they open a system.`}
+          description={`${user.username}${savedRoleName ? ` · ${uiLabel(savedRoleName)}` : ""}. Changes apply the next time they open a system.`}
           title={`Edit access · ${user.firstName} ${user.lastName}`}
         />
 
@@ -118,7 +119,7 @@ export function EditUserAccessForm({ action, user, roles, systems }: EditUserAcc
                   >
                     {roles.map((role) => (
                       <option key={role.id} value={role.id}>
-                        {role.name}
+                        {uiLabel(role.name)}
                       </option>
                     ))}
                   </select>

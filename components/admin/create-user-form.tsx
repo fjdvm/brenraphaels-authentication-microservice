@@ -15,6 +15,7 @@ import {
 } from "@/lib/admin/user-form-state";
 import type { RoleOption } from "@/lib/admin/user-form-options";
 import { cn } from "@/lib/utils/cn";
+import { uiLabel } from "@/lib/utils/ui-label";
 
 type CreateUserFormProps = {
   action: (previous: CreateUserFormState, formData: FormData) => Promise<CreateUserFormState>;
@@ -171,7 +172,7 @@ export function CreateUserForm({ action, roles, systems, request }: CreateUserFo
             </Field>
             <Field
               error={fieldErrors.roleId}
-              hint={`Roles: ${roles.map((role) => role.name).join(", ")}`}
+              hint={`Roles: ${roles.map((role) => uiLabel(role.name)).join(", ")}`}
               id="roleId"
               label="Role"
             >
@@ -193,7 +194,7 @@ export function CreateUserForm({ action, roles, systems, request }: CreateUserFo
                   <option value="">Select a role</option>
                   {roles.map((role) => (
                     <option className="text-foreground" key={role.id} value={role.id}>
-                      {role.name}
+                      {uiLabel(role.name)}
                     </option>
                   ))}
                 </select>

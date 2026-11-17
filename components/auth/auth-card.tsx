@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { BrandLockup } from "@/components/brand/brand-lockup";
 
 import { AuthBrandPanel } from "./brand-panel";
+import { uiLabel } from "@/lib/utils/ui-label";
 
 /** Figma auth frames: the brand panel beside a centred 400px form column. */
 export function AuthPage({ children }: { children: ReactNode }) {
@@ -152,6 +153,6 @@ export function ReturnRequestNotice({
   }
 
   return systemName ? (
-    <FormAlert tone="success">You will continue to {systemName} once you are signed in.</FormAlert>
+    <FormAlert tone="success">You will continue to {uiLabel(systemName)} once you are signed in.</FormAlert>
   ) : null;
 }
