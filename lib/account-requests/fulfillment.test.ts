@@ -9,7 +9,7 @@ it("creates the requested User and sends the same login details to both emails b
   const ports: FulfillmentPorts = {
     findRequest: async () => ({ workEmail: "ada@work.test", personalEmail: "ada@home.test", status: "seen" }),
     provisioning: {
-      store: { emailExists: async () => false, roleExists: async () => true, countModules: async ids => ids.length, createUser, discardUser: vi.fn() },
+      store: { emailExists: async () => false, roleExists: async () => true, countModules: async ids => ids.length, managementBlocked: async () => false, createUser, discardUser: vi.fn() },
       identity: { create: async () => ({ id: "auth" }), remove: vi.fn() },
       mailer: { sendCredentials: async message => { sent.push(message); } },
       audit: async () => {}, generatePassword: () => "Temp!1234",
@@ -27,7 +27,7 @@ it("refuses a closed request before attempting identity provisioning", async () 
   const create = vi.fn();
   const ports: FulfillmentPorts = {
     findRequest: async () => ({ workEmail: "ada@work.test", personalEmail: "ada@home.test", status: "cancelled" }),
-    provisioning: { store: { emailExists: vi.fn(), roleExists: vi.fn(), countModules: vi.fn(), createUser: vi.fn(), discardUser: vi.fn() }, identity: { create, remove: vi.fn() }, mailer: { sendCredentials: vi.fn() }, audit: vi.fn(), generatePassword: vi.fn() },
+    provisioning: { store: { emailExists: vi.fn(), roleExists: vi.fn(), countModules: vi.fn(), managementBlocked: vi.fn(), createUser: vi.fn(), discardUser: vi.fn() }, identity: { create, remove: vi.fn() }, mailer: { sendCredentials: vi.fn() }, audit: vi.fn(), generatePassword: vi.fn() },
     loginSent: vi.fn(),
   };
   const result = await createFromRequest("request", { firstName: "Ada", lastName: "Santos", email: "ada@work.test", roleId: "staff", moduleIds: [] }, { id: "admin" }, ports);

@@ -54,7 +54,7 @@ function createStores() {
       modules.set(key, id);
       return { id };
     },
-    async findModules() { return [...modules.values()].map((id) => ({ id })); },
+    async findModules() { return [...modules.entries()].map(([key, id]) => ({ id, name: key.split(":").slice(1).join(":") })); },
     async upsertAccessTemplate(roleId, moduleId) {
       accessTemplates.add(`${roleId}:${moduleId}`);
     },
@@ -132,7 +132,12 @@ describe("seedPortal", () => {
       roleName: "Admin",
       mustChangePassword: false,
     });
-    expect(stores.accessGrants).toHaveLength(moduleCount);
+    // Every Module but Management, which only a Manager or the CEO may hold.
+    expect(stores.accessGrants).toHaveLength(moduleCount - 1);
+    const management = stores.modules.get("system-3:Management") ?? [...stores.modules.entries()].find(([key]) => key.endsWith(":Management"))?.[1];
+    expect(management).toBeTruthy();
+    expect([...stores.accessGrants].some((grant) => grant.endsWith(`:${management}`))).toBe(false);
+    expect([...stores.accessTemplates].filter((entry) => entry.endsWith(`:${management}`))).toHaveLength(2);
     expect(stores.sequences.get(2026)).toBe(1);
   });
 
@@ -288,7 +293,7 @@ describe("seedPortal", () => {
   it("keeps the other CRMS Modules, in order", () => {
     expect(SEED_SYSTEMS.find((system) => system.name === "CRMS")!.modules).toEqual([
       "Dashboard", "Customer Profiles", "Orders", "Senior/PWD", "Payments",
-      "Fulfilment", "Returns", "Tickets", "Conversations", "Feedback", "Reports",
+      "Fulfilment", "Returns", "Tickets", "Conversations", "Feedback", "Reports", "Management",
     ]);
   });
 
@@ -321,6 +326,7 @@ describe("seedPortal", () => {
         "Conversations",
         "Feedback",
         "Reports",
+        "Management",
       ]),
     );
   });

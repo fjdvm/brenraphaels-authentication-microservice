@@ -32,6 +32,9 @@ function createWorld(options: { sendFails?: boolean; identityFails?: boolean; st
     async roleExists(roleId) {
       return roleId === ROLE_ID;
     },
+    async managementBlocked() {
+      return false;
+    },
     async countModules(ids) {
       return ids.filter((id) => MODULE_IDS.includes(id)).length;
     },

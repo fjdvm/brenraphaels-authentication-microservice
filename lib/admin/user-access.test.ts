@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { managementRefused } from "./management-module";
 import { updateUserAccess, type AccessStore } from "./user-access";
 
 import type { AuditEventInput } from "@/lib/audit/events";
@@ -11,6 +12,7 @@ const MODULES: Record<string, { system: string; name: string }> = {
   m1: { system: "CRMS", name: "Customer Profiles" },
   m2: { system: "HRMS", name: "Payroll & ESS" },
   m3: { system: "POS", name: "Sales" },
+  m4: { system: "CRMS", name: "Management" },
 };
 
 type Grant = { moduleId: string; grantedBy: string; revoked: boolean };
@@ -27,6 +29,9 @@ function createWorld(options: { deleted?: boolean; storeFails?: boolean; notific
     },
     async roleExists(roleId) {
       return roleId in roles;
+    },
+    async managementBlocked(roleId, ids) {
+      return managementRefused(roles[roleId] ?? null, ids.some((id) => MODULES[id]?.name === "Management"));
     },
     async countModules(ids) {
       return ids.filter((id) => id in MODULES).length;
@@ -76,6 +81,22 @@ describe("updateUserAccess", () => {
     expect(result).toMatchObject({ ok: true });
     expect(world.active().sort()).toEqual(["m1", "m2"]);
     expect(world.grants.find((grant) => grant.moduleId === "m2")?.grantedBy).toBe("admin-1");
+  });
+
+  it("refuses the Management Module for a Role that is not Manager or CEO, and grants nothing", async () => {
+    const world = createWorld();
+
+    const result = await save(world, { moduleIds: ["m1", "m4"] });
+
+    expect(result).toMatchObject({ ok: false, fieldErrors: { moduleIds: expect.stringContaining("Manager or the CEO") } });
+    expect(world.active()).toEqual(["m1"]);
+  });
+
+  it("grants the Management Module to a CEO", async () => {
+    const world = createWorld();
+
+    expect(await save(world, { roleId: "role-b", moduleIds: ["m1", "m4"] })).toMatchObject({ ok: true });
+    expect(world.active().sort()).toEqual(["m1", "m4"]);
   });
 
   it("revokes unchecked Modules without deleting their history", async () => {

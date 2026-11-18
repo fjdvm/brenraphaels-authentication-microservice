@@ -4,6 +4,7 @@ import { neon } from "@neondatabase/serverless";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "@prisma/client";
 
+import { MANAGEMENT_MODULE } from "../lib/admin/management-module";
 import { mergeCallbackUrls } from "../lib/integrations/callbacks";
 import {
   ADMINISTRATOR_ROLE_NAMES,
@@ -32,7 +33,7 @@ export type SeedPortalStore = {
   upsertRole(name: string, isAdministrator: boolean): Promise<SeededRecord>;
   upsertSystem(system: SeedSystem): Promise<SeededRecord>;
   upsertModule(systemId: string, name: string, formerName?: string): Promise<SeededRecord>;
-  findModules(): Promise<SeededRecord[]>;
+  findModules(): Promise<(SeededRecord & { name?: string })[]>;
   upsertAccessTemplate(roleId: string, moduleId: string): Promise<void>;
   upsertUser(user: Omit<SeedSuperAdmin, "password"> & { roleId: string; neonAuthUserId: string; mustChangePassword: boolean }): Promise<SeededRecord>;
   upsertAccessGrant(userId: string, moduleId: string): Promise<void>;
@@ -75,6 +76,7 @@ export async function seedPortal(
   }
 
   const modules: SeededRecord[] = [];
+  let managementModuleId: string | null = null;
   const imsModules: SeededRecord[] = [];
   for (const system of SEED_SYSTEMS) {
     const seededSystem = await portal.upsertSystem(system);
@@ -86,6 +88,7 @@ export async function seedPortal(
         SEED_MODULE_FORMER_NAMES[system.name]?.[moduleName],
       );
       modules.push(seededModule);
+      if (system.name === "CRMS" && moduleName === MANAGEMENT_MODULE) managementModuleId = seededModule.id;
       if (system.name === "IMS") imsModules.push(seededModule);
       if (system.name === "CRMS") {
         const staffModules = ["Dashboard", "Customer Profiles", "Orders", "Senior/PWD", "Payments", "Fulfilment", "Returns", "Tickets", "Feedback"];
@@ -102,7 +105,10 @@ export async function seedPortal(
     throw new Error("The Super Admin Role was not seeded.");
   }
 
-  for (const seededModule of modules) {
+  // Management is for a Manager or the CEO only, so the Super Admin never gets it (fjdvm/epic-crms#577).
+  const grantable = modules.filter((seededModule) => seededModule.id !== managementModuleId);
+
+  for (const seededModule of grantable) {
     await portal.upsertAccessTemplate(superAdminRole.id, seededModule.id);
   }
 
@@ -124,7 +130,7 @@ export async function seedPortal(
     mustChangePassword: false,
   });
 
-  for (const seededModule of modules) {
+  for (const seededModule of grantable) {
     await portal.upsertAccessGrant(user.id, seededModule.id);
   }
 
@@ -143,6 +149,7 @@ export async function seedPortal(
 export async function seedGeneralManager(portal: SeedPortalStore): Promise<void> {
   const role = await portal.upsertRole("General Manager", false);
   for (const seededModule of await portal.findModules()) {
+    if (seededModule.name === MANAGEMENT_MODULE) continue;
     await portal.upsertAccessTemplate(role.id, seededModule.id);
   }
 }
@@ -234,7 +241,7 @@ export function createPortalStore(prisma: PrismaClient): SeedPortalStore {
       });
     },
     async findModules() {
-      return prisma.module.findMany({ where: { retiredAt: null }, select: { id: true } });
+      return prisma.module.findMany({ where: { retiredAt: null }, select: { id: true, name: true } });
     },
     async upsertAccessTemplate(roleId, moduleId) {
       await prisma.accessTemplate.upsert({

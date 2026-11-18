@@ -2,6 +2,7 @@ import "server-only";
 
 import { recordAuditEvent } from "@/lib/audit/audit-logs.server";
 import { prisma } from "@/lib/db/prisma";
+import { managementBlocked } from "./management-module.server";
 import { notify } from "@/lib/notifications/notifications.server";
 
 import type { AccessPorts, AccessStore } from "./user-access";
@@ -53,6 +54,8 @@ export const prismaAccessStore: AccessStore = {
   async roleExists(roleId) {
     return (await prisma.role.count({ where: { id: roleId } })) === 1;
   },
+
+  managementBlocked,
 
   countModules(moduleIds) {
     return prisma.module.count({ where: { id: { in: moduleIds }, retiredAt: null } });

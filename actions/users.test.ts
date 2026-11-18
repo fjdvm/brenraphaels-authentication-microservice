@@ -18,6 +18,7 @@ vi.mock("@/lib/admin/user-access.server", () => ({
       findUser: async () => ({ id: "u-1", roleId: "r-1", isDeleted: false }),
       roleExists: async () => true,
       countModules: async () => 0,
+      managementBlocked: async () => false,
       apply,
     },
     audit: vi.fn(),

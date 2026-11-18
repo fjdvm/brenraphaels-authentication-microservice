@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { MANAGEMENT_REFUSAL } from "./management-module";
 import type { AuditEventInput } from "@/lib/audit/events";
 import type { Notifier } from "@/lib/notifications/notifications";
 import type { FieldErrors } from "@/lib/validations/user";
@@ -11,6 +12,8 @@ export type AccessStore = {
   roleExists(roleId: string): Promise<boolean>;
   /** How many of the given Module ids exist. */
   countModules(moduleIds: string[]): Promise<number>;
+  /** Whether the selection gives the Management Module to a Role other than Manager or CEO. */
+  managementBlocked(roleId: string, moduleIds: string[]): Promise<boolean>;
   /**
    * One transaction: set the Role, revoke active grants missing from `moduleIds`
    * (keeping them as history) and create grants for newly checked Modules. Never
@@ -110,6 +113,10 @@ export async function updateUserAccess(
 
   if (moduleIds.length > 0 && (await store.countModules(moduleIds)) !== moduleIds.length) {
     fieldErrors.moduleIds = "One of the selected Modules no longer exists. Reload and select again.";
+  }
+
+  if (!fieldErrors.roleId && !fieldErrors.moduleIds && (await store.managementBlocked(roleId, moduleIds))) {
+    fieldErrors.moduleIds = MANAGEMENT_REFUSAL;
   }
 
   if (Object.keys(fieldErrors).length > 0) {
