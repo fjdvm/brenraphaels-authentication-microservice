@@ -6,6 +6,7 @@ import { recordAuditEvent } from "@/lib/audit/audit-logs.server";
 import { createNeonAuthIdentityProvisioner } from "@/lib/auth/identity-provisioner";
 import { generateTemporaryPassword } from "@/lib/auth/temporary-password";
 import { prisma } from "@/lib/db/prisma";
+import { managementBlocked } from "./management-module.server";
 import { createSmtpCredentialsMailer } from "@/lib/email/credentials-mailer";
 import { generateUsername } from "@/lib/generate-username";
 import { incrementUsernameSequence, usernameYear } from "@/lib/username-sequence";
@@ -37,6 +38,8 @@ export const prismaProvisioningStore: ProvisioningStore = {
   async roleExists(roleId) {
     return (await prisma.role.count({ where: { id: roleId } })) === 1;
   },
+
+  managementBlocked,
 
   countModules(moduleIds) {
     return prisma.module.count({ where: { id: { in: moduleIds }, retiredAt: null } });

@@ -35,6 +35,7 @@ export const SEED_SYSTEMS: SeedSystem[] = [
       "Conversations",
       "Feedback",
       "Reports",
+      "Management",
     ],
   },
   {
