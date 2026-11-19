@@ -1,4 +1,4 @@
-import { createLucideIcon, FileClock, LayoutGrid, type LucideIcon, Settings, UserRound, UserRoundPlus } from "lucide-react";
+import { createLucideIcon, FileClock, LayoutGrid, type LucideIcon, UserRound, UserRoundPlus } from "lucide-react";
 
 /** A user with a clock; lucide has no such icon, so it is drawn on lucide's 24px grid. */
 const UserRoundClock = createLucideIcon("user-round-clock", [
@@ -22,7 +22,6 @@ export const ADMIN_NAVIGATION: readonly AdministrativeDestination[] = [
   { href: "/admin/access", label: "Access", icon: LayoutGrid },
   { href: "/admin/users", label: "User management", icon: UserRound },
   { href: ACCOUNT_REQUESTS_HREF, label: "Account requests", icon: UserRoundPlus },
-  { href: "/admin/settings", label: "Settings", icon: Settings },
   { href: "/admin/system-logs", label: "System logs", icon: FileClock },
 ];
 
@@ -41,11 +40,10 @@ export type SidebarSection = {
 
 const byHref = (href: string) => ADMIN_NAVIGATION.find((destination) => destination.href === href)!;
 
-/** The sidebar, in order: Access, then MANAGEMENT, SETTINGS and AUDIT (Figma "Portal sidebar"). */
+/** The sidebar, in order: Access, then MANAGEMENT and AUDIT (Figma "Portal sidebar"). */
 export const SIDEBAR_SECTIONS: readonly SidebarSection[] = [
   { destinations: [byHref("/admin/access")] },
   { label: "MANAGEMENT", destinations: [byHref("/admin/users"), byHref(ACCOUNT_REQUESTS_HREF)] },
-  { label: "SETTINGS", destinations: [byHref("/admin/settings")] },
   { label: "AUDIT", destinations: [byHref("/admin/system-logs"), MY_LOGS_DESTINATION] },
 ];
 

@@ -8,7 +8,6 @@ describe("ADMIN_NAVIGATION", () => {
       { href: "/admin/access", label: "Access" },
       { href: "/admin/users", label: "User management" },
       { href: "/admin/account-requests", label: "Account requests" },
-      { href: "/admin/settings", label: "Settings" },
       { href: "/admin/system-logs", label: "System logs" },
     ]);
   });
@@ -24,7 +23,6 @@ describe("SIDEBAR_NAVIGATION", () => {
       { href: "/admin/access", label: "Access" },
       { href: "/admin/users", label: "User management" },
       { href: "/admin/account-requests", label: "Account requests" },
-      { href: "/admin/settings", label: "Settings" },
       { href: "/admin/system-logs", label: "System logs" },
       { href: "/my-logs", label: "Activity log" },
     ]);
@@ -32,7 +30,7 @@ describe("SIDEBAR_NAVIGATION", () => {
 });
 
 describe("SIDEBAR_SECTIONS", () => {
-  it("groups the sidebar as Access, MANAGEMENT, SETTINGS and AUDIT", () => {
+  it("groups the sidebar as Access, MANAGEMENT and AUDIT", () => {
     expect(
       SIDEBAR_SECTIONS.map(({ label, destinations }) => ({
         label,
@@ -41,7 +39,6 @@ describe("SIDEBAR_SECTIONS", () => {
     ).toEqual([
       { label: undefined, hrefs: ["/admin/access"] },
       { label: "MANAGEMENT", hrefs: ["/admin/users", "/admin/account-requests"] },
-      { label: "SETTINGS", hrefs: ["/admin/settings"] },
       { label: "AUDIT", hrefs: ["/admin/system-logs", "/my-logs"] },
     ]);
   });

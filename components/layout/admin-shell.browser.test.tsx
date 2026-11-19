@@ -63,12 +63,12 @@ describe("Administrator navigation journeys", () => {
     expect(document.querySelector('[data-slot="sidebar"][data-state="collapsed"]')).toBeTruthy();
   });
 
-  it("groups the sidebar as MANAGEMENT, SETTINGS and AUDIT, with the badge on Account requests", () => {
+  it("groups the sidebar as MANAGEMENT and AUDIT, with the badge on Account requests", () => {
     setViewport(false);
     render(<AdminShell newAccountRequests={3} user={administrator}><div>Page content</div></AdminShell>);
 
     const text = document.querySelector('[data-slot="sidebar-content"]')!.textContent!;
-    const order = ["Access", "MANAGEMENT", "User management", "Account requests", "SETTINGS", "Settings", "AUDIT", "System logs", "Activity log"];
+    const order = ["Access", "MANAGEMENT", "User management", "Account requests", "AUDIT", "System logs", "Activity log"];
     expect(order.map((label) => text.indexOf(label))).toEqual([...order.map((label) => text.indexOf(label))].sort((a, b) => a - b));
     expect(order.every((label) => text.includes(label))).toBe(true);
     expect(screen.getByLabelText("3 new")).toBeTruthy();
