@@ -6,6 +6,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { CreateUserFormState } from "@/lib/admin/user-form-state";
 
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+
+import { toast } from "sonner";
+
 import { CreateUserForm } from "./create-user-form";
 
 const roles = [
@@ -29,7 +33,10 @@ function systemGroup(name: string) {
   return within(screen.getByRole("group", { name }));
 }
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
 
 describe("Create user form", () => {
   it("groups Module checkboxes under each System with a Select all", () => {
@@ -133,7 +140,7 @@ describe("Create user form", () => {
     expect((systemGroup("POS").getByRole("checkbox", { name: "Sales Processing" }) as HTMLInputElement).checked).toBe(true);
   });
 
-  it("shows a spinner at once and hides the previous error while a retry is pending", async () => {
+  it("shows a spinner at once and toasts each failure only when the server answers", async () => {
     const user = userEvent.setup();
     const action = vi.fn<(previous: CreateUserFormState, data: FormData) => Promise<CreateUserFormState>>();
     let finish: (state: CreateUserFormState) => void = () => {};
@@ -143,14 +150,14 @@ describe("Create user form", () => {
     render(<CreateUserForm action={action} roles={roles} systems={systems} />);
 
     await user.click(screen.getByRole("button", { name: /create user/i }));
-    expect((await screen.findByRole("alert")).textContent).toContain("Check the highlighted fields");
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith("Check the highlighted fields and try again."));
     await user.click(screen.getByRole("button", { name: /create user/i }));
 
     expect((screen.getByRole("button", { name: /creating/i }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.queryByText(/check the highlighted fields/i)).toBeNull();
+    expect(toast.error).toHaveBeenCalledTimes(1);
 
     finish({ error: "The email could not be sent.", fieldErrors: {} });
-    expect((await screen.findByRole("alert")).textContent).toContain("could not be sent");
+    await vi.waitFor(() => expect(toast.error).toHaveBeenLastCalledWith("The email could not be sent."));
   });
 
   it("counts each System's ticked Modules and marks a partial Select all", async () => {

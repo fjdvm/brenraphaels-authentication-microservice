@@ -3,6 +3,7 @@
 import { FigmaIcon } from "@/components/ui/figma-icon";
 import Link from "next/link";
 import { startTransition, useActionState, useState, type ReactNode, type SyntheticEvent } from "react";
+import { toast } from "sonner";
 
 import { ModuleAccessMatrix } from "@/components/admin/module-access-matrix";
 import { Button } from "@/components/ui/button";
@@ -71,7 +72,12 @@ const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ?
 
 /** Figma "Portal · Add new user": User information, System access and the action bar. */
 export function CreateUserForm({ action, roles, systems, request }: CreateUserFormProps) {
-  const [settled, formAction, isPending] = useActionState(action, initialCreateUserFormState);
+  const [settled, formAction, isPending] = useActionState(async (previous: CreateUserFormState, formData: FormData) => {
+    // On success the action redirects to User management, which shows the "created" toast.
+    const result = await action(previous, formData);
+    if (result.error) toast.error(result.error);
+    return result;
+  }, initialCreateUserFormState);
   // An earlier result is not shown while the next submission is waiting on the server.
   const state = isPending ? initialCreateUserFormState : settled;
   // Controlled, so a failed submission never wipes what the Administrator entered.
@@ -116,11 +122,6 @@ export function CreateUserForm({ action, roles, systems, request }: CreateUserFo
             </div>
             <Link className="shrink-0 text-[13px] font-semibold" href="/admin/account-requests">View request</Link>
           </div>
-        ) : null}
-        {state.error ? (
-          <p className="rounded-lg bg-badge-danger px-4 py-3 text-sm text-badge-danger-foreground" role="alert">
-            {state.error}
-          </p>
         ) : null}
 
         <section aria-labelledby="user-details-heading" className={panelClass}>

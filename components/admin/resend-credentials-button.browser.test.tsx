@@ -4,11 +4,16 @@ import { act, cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+
+import { toast } from "sonner";
+
 import { ResendCredentialsButton } from "./resend-credentials-button";
 
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.clearAllMocks();
 });
 
 function setup(outcome: { status: "success" | "error"; message: string }, confirmed = true) {
@@ -25,7 +30,7 @@ describe("Resend credentials button", () => {
     await userEvent.setup().click(screen.getByRole("button", { name: /resend credentials/i }));
 
     expect(action).toHaveBeenCalledTimes(1);
-    expect((await screen.findByRole("status")).textContent).toContain("emailed to 2026-JD-001");
+    await vi.waitFor(() => expect(toast.success).toHaveBeenCalledWith("New credentials were emailed to 2026-JD-001."));
   });
 
   it("does nothing when the Administrator cancels", async () => {
@@ -34,15 +39,16 @@ describe("Resend credentials button", () => {
     await userEvent.setup().click(screen.getByRole("button", { name: /resend credentials/i }));
 
     expect(action).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
   });
 
-  it("shows a failure as an alert, never as success", async () => {
+  it("shows a failure as an error toast, never as success", async () => {
     setup({ status: "error", message: "could not be emailed" });
 
     await userEvent.setup().click(screen.getByRole("button", { name: /resend credentials/i }));
 
-    expect((await screen.findByRole("alert")).textContent).toContain("could not be emailed");
-    expect(screen.queryByRole("status")).toBeNull();
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith("could not be emailed"));
+    expect(toast.success).not.toHaveBeenCalled();
   });
 
   it("shows a spinner at once and reports nothing until the server answers", async () => {
@@ -55,9 +61,9 @@ describe("Resend credentials button", () => {
     await userEvent.setup().click(screen.getByRole("button", { name: /resend credentials/i }));
 
     expect((screen.getByRole("button", { name: /resend credentials/i }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.queryByRole("status")).toBeNull();
+    expect(toast.success).not.toHaveBeenCalled();
 
     await act(async () => settle({ status: "success", message: "New credentials were emailed to 2026-JD-001." }));
-    expect((await screen.findByRole("status")).textContent).toContain("emailed");
+    await vi.waitFor(() => expect(toast.success).toHaveBeenCalledWith("New credentials were emailed to 2026-JD-001."));
   });
 });

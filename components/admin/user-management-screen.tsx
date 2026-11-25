@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { deleteUserAction, resendCredentialsAction, restoreUserAction } from "@/actions/users";
+import { CreatedUserToast } from "@/components/admin/created-user-toast";
 import { UserDirectory } from "@/components/admin/user-directory";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,7 +16,7 @@ type Props = {
   roleName: string;
   /** Full access (Admin) shows every write control; View access (CEO) shows none. */
   canWrite: boolean;
-  /** The Username just created, confirmed in a banner. */
+  /** The Username just created, confirmed in a toast. */
   created?: string;
 };
 
@@ -81,11 +82,7 @@ export async function UserManagementScreen({ administratorId, roleName, canWrite
 
   return (
     <UserManagementFrame viewer={{ roleName, canWrite }}>
-      {created && /^\d{4}-[A-Z]{2}-\d{3,}$/.test(created) ? (
-        <p className="rounded-lg bg-badge-success px-4 py-3 text-sm text-badge-success-foreground" role="status">
-          User {created} was created. Their Username and Temporary password have been emailed to them.
-        </p>
-      ) : null}
+      {created && /^\d{4}-[A-Z]{2}-\d{3,}$/.test(created) ? <CreatedUserToast username={created} /> : null}
 
       <UserDirectory
         canWrite={canWrite}

@@ -5,6 +5,9 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/actions/account", () => ({ updatePasswordAction: vi.fn() }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+
+import { toast } from "sonner";
 
 import { updatePasswordAction } from "@/actions/account";
 
@@ -37,7 +40,7 @@ describe("UpdatePasswordForm", () => {
     expect(met()).toEqual(["8+ characters", "Uppercase letter", "Number"]);
   });
 
-  it("shows the problem the server reports and keeps what was typed", async () => {
+  it("shows the problem the server reports as an error toast and keeps what was typed", async () => {
     vi.mocked(updatePasswordAction).mockResolvedValue({ error: "Your current password is incorrect." });
     const user = userEvent.setup();
     render(<UpdatePasswordForm />);
@@ -47,11 +50,12 @@ describe("UpdatePasswordForm", () => {
     await user.type(screen.getByLabelText("Confirm new password"), "Passw0rd12");
     await user.click(screen.getByRole("button", { name: "Update password" }));
 
-    expect((await screen.findByRole("alert")).textContent).toBe("Your current password is incorrect.");
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith("Your current password is incorrect."));
+    expect(toast.success).not.toHaveBeenCalled();
     expect((screen.getByLabelText("New password") as HTMLInputElement).value).toBe("Passw0rd12");
   });
 
-  it("confirms a saved password and empties the fields", async () => {
+  it("confirms a saved password with a success toast and empties the fields", async () => {
     vi.mocked(updatePasswordAction).mockResolvedValue({ error: null, message: "Your password was updated." });
     const user = userEvent.setup();
     render(<UpdatePasswordForm />);
@@ -61,7 +65,7 @@ describe("UpdatePasswordForm", () => {
     await user.type(screen.getByLabelText("Confirm new password"), "Passw0rd12");
     await user.click(screen.getByRole("button", { name: "Update password" }));
 
-    expect((await screen.findByRole("status")).textContent).toBe("Your password was updated.");
-    expect((screen.getByLabelText("New password") as HTMLInputElement).value).toBe("");
+    await vi.waitFor(() => expect(toast.success).toHaveBeenCalledWith("Your password was updated."));
+    await vi.waitFor(() => expect((screen.getByLabelText("New password") as HTMLInputElement).value).toBe(""));
   });
 });

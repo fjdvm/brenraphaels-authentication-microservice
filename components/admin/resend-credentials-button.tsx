@@ -1,7 +1,8 @@
 "use client";
 
 import { Mail } from "lucide-react";
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -14,26 +15,26 @@ type ResendCredentialsButtonProps = {
 
 export function ResendCredentialsButton({ username, action }: ResendCredentialsButtonProps) {
   const [isPending, startTransition] = useTransition();
-  const [outcome, setResendOutcome] = useState<ResendOutcome | null>(null);
 
   function resend() {
     if (!window.confirm(`Issue a new Temporary password to ${username}? Their current password will stop working.`)) {
       return;
     }
 
-    setResendOutcome(null);
     startTransition(async () => {
+      let outcome: ResendOutcome;
       try {
-        setResendOutcome(await action());
+        outcome = await action();
       } catch {
-        setResendOutcome({ status: "error", message: "Credentials could not be sent. Try again shortly." });
+        outcome = { status: "error", message: "Credentials could not be sent. Try again shortly." };
       }
+      if (outcome.status === "success") toast.success(outcome.message);
+      else toast.error(outcome.message);
     });
   }
 
   return (
-    <div className="flex flex-col items-start gap-1">
-      <Button
+    <Button
         aria-label={`Resend credentials to ${username}`}
         disabled={isPending}
         onClick={resend}
@@ -44,14 +45,5 @@ export function ResendCredentialsButton({ username, action }: ResendCredentialsB
         {isPending ? <Spinner /> : <Mail aria-hidden="true" />}
         Resend
       </Button>
-      {outcome ? (
-        <p
-          className={`max-w-64 text-xs ${outcome.status === "success" ? "text-primary" : "text-danger"}`}
-          role={outcome.status === "success" ? "status" : "alert"}
-        >
-          {outcome.message}
-        </p>
-      ) : null}
-    </div>
   );
 }

@@ -2,7 +2,8 @@
 
 import { ChevronDown, Key, Search } from "lucide-react";
 import Link from "next/link";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
+import { toast } from "sonner";
 
 import { ResendCredentialsButton } from "@/components/admin/resend-credentials-button";
 import { UserLifecycleButton } from "@/components/admin/user-lifecycle-button";
@@ -60,6 +61,14 @@ export function UserDirectory({ users: confirmedUsers, signedInUserId, canWrite,
   const summary = summarizeUsers(users);
   const shown = filterUsers(users, { tab, query, role });
   const refusedUser = refusal && users.find((user) => user.id === refusal.change.userId);
+  const refusalMessage = refusal
+    ? `${refusal.change.to === "deleted" ? "Could not delete" : "Could not restore"} ${refusedUser ? refusedUser.username : "the user"}: ${refusal.reason}`
+    : null;
+
+  // The row rolls back on its own; the toast says why.
+  useEffect(() => {
+    if (refusalMessage) toast.error(refusalMessage);
+  }, [refusal]); // eslint-disable-line react-hooks/exhaustive-deps -- once per refusal, not per re-render
 
   function change(to: LifecycleChange["to"], userId: string) {
     const action = to === "deleted" ? actions.remove : actions.restore;
@@ -95,12 +104,6 @@ export function UserDirectory({ users: confirmedUsers, signedInUserId, canWrite,
         ))}
       </ul>
 
-      {refusal ? (
-        <p className="rounded-lg bg-badge-danger px-4 py-3 text-sm text-badge-danger-foreground" role="alert">
-          {refusal.change.to === "deleted" ? "Could not delete" : "Could not restore"}{" "}
-          {refusedUser ? refusedUser.username : "the user"}: {refusal.reason}
-        </p>
-      ) : null}
 
       <div className="flex min-h-25 flex-wrap items-center gap-3">
         <div aria-label="Filter by status" className="flex gap-1" role="tablist">
