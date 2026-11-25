@@ -28,6 +28,12 @@ describe("proxy matcher", () => {
     expect(runsProxyFor("/api/integrations/validate")).toBe(false);
   });
 
+  it("lets a System's server ask which Systems a person may open, since it carries no browser session", () => {
+    expect(runsProxyFor("/api/integrations/systems")).toBe(false);
+    expect(runsProxyFor("/api/integrations/systems-extra")).toBe(true);
+    expect(runsProxyFor("/api/integrations/systems/extra")).toBe(true);
+  });
+
   it("keeps guarding the portal and the password-change page", () => {
     expect(runsProxyFor("/")).toBe(true);
     expect(runsProxyFor("/change-password")).toBe(true);
