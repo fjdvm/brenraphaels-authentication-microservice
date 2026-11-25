@@ -88,7 +88,7 @@ describe("NotificationBell", () => {
     expect(screen.getByRole("button", { name: "Notifications" }).textContent).toBe("");
   });
 
-  it("lists notifications newest first with title, Philippine date and an unread marker", async () => {
+  it("lists notifications newest first with title, Philippine date and time, and an unread marker", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     await renderBell();
 
@@ -97,10 +97,10 @@ describe("NotificationBell", () => {
     const dialog = screen.getByRole("dialog", { name: "Notifications" });
     const rows = within(dialog).getAllByRole("button", { name: /Your/ });
     expect(rows[0].textContent).toContain("Your Role changed");
-    expect(rows[0].textContent).toContain("Oct 20, 2026");
+    expect(rows[0].textContent).toContain("10/20/2026, 4:00:00 PM");
     expect(rows[1].textContent).toContain("Your access changed");
-    expect(within(rows[0]).getByTitle("Unread")).toBeTruthy();
-    expect(within(rows[1]).queryByTitle("Unread")).toBeNull();
+    expect(within(rows[0]).getByText("Unread")).toBeTruthy();
+    expect(within(rows[1]).queryByText("Unread")).toBeNull();
   });
 
   it("shows an empty state when there are no notifications", async () => {
@@ -161,7 +161,7 @@ describe("NotificationBell", () => {
 
     expect(fetchMock).toHaveBeenCalledWith("/api/notifications/read-all", expect.objectContaining({ method: "POST" }));
     expect(screen.getByRole("button", { name: "Notifications" }).textContent).toBe("");
-    expect(screen.queryByTitle("Unread")).toBeNull();
+    expect(screen.queryByText("Unread")).toBeNull();
   });
 
   it("updates on a live notification without idle polling", async () => {
@@ -213,11 +213,11 @@ describe("NotificationBell", () => {
       const { navigate } = await renderBell();
 
       await user.click(screen.getByRole("button", { name: "Notifications, 1 unread" }));
-      expect(screen.getByTitle("Unread")).toBeTruthy();
+      expect(screen.getByText("Unread")).toBeTruthy();
       await user.click(screen.getByRole("button", { name: /CREOMS Jane placed/ }));
 
       expect(fetchMock).toHaveBeenCalledWith("/api/notifications/n2/read", expect.objectContaining({ method: "POST" }));
-      expect(screen.queryByTitle("Unread")).toBeNull();
+      expect(screen.queryByText("Unread")).toBeNull();
       expect(screen.getByRole("button", { name: "Notifications" }).textContent).toBe("");
       expect(navigate).toHaveBeenCalledWith("https://creoms.test/orders/7");
     });
@@ -273,20 +273,20 @@ describe("NotificationBell, Member variant", () => {
     const dialog = screen.getByRole("dialog", { name: "Notifications" });
     expect(within(dialog).getByText("Your access changed")).toBeTruthy();
     expect(within(dialog).queryByText(/Jane placed/)).toBeNull();
-    expect(within(dialog).getByText("An Admin gave you CREOMS · Returns. · 10 min ago")).toBeTruthy();
+    expect(within(dialog).getByText("An Admin gave you CREOMS · Returns.")).toBeTruthy();
     expect(within(dialog).getByText("Only account and system notices appear here. Work alerts stay inside each system.")).toBeTruthy();
   });
 
-  it("offers Mark all as read and clears the unread marker", async () => {
+  it("offers Mark all read and clears the unread marker", async () => {
     inbox = { available: true, unread: 1, notifications: [accessChanged] };
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     await renderMemberBell();
 
     await user.click(screen.getByRole("button", { name: "Notifications, 1 unread" }));
-    await user.click(screen.getByRole("button", { name: "Mark all as read" }));
+    await user.click(screen.getByRole("button", { name: "Mark all read" }));
 
     expect(fetchMock).toHaveBeenCalledWith("/api/notifications/read-all", expect.objectContaining({ method: "POST" }));
-    expect(screen.queryByTitle("Unread")).toBeNull();
+    expect(screen.queryByText("Unread")).toBeNull();
   });
 
   it("does not poll while idle", async () => {
