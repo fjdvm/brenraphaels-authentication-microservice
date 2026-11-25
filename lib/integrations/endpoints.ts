@@ -10,6 +10,8 @@ import {
 import { RETURN_INTENT_PARAM, issueReturnIntent } from "./return-intent";
 import {
   validateAccess,
+  listAccessibleSystems,
+  type SystemsPorts,
   validationFailure,
   type ValidationErrorCode,
   type ValidationPorts,
@@ -349,4 +351,44 @@ export async function handleValidate(
     },
     { headers: NO_STORE },
   );
+}
+
+/**
+ * POST /api/integrations/systems — server-to-server. Basic backend credentials plus `{ handle }`.
+ * `200 { systems: ["CRMS", …] }` lists the Systems the User holds an active grant in; every
+ * other status means the System must show only itself.
+ */
+export async function handleSystems(request: Request, deps: { ports: SystemsPorts }): Promise<Response> {
+  const credentials = parseBasicCredentials(request.headers.get("authorization"));
+
+  let body: unknown = null;
+  try {
+    body = await request.json();
+  } catch {
+    body = null;
+  }
+
+  let result;
+  try {
+    result = await listAccessibleSystems(deps.ports, {
+      systemName: credentials?.name ?? null,
+      secret: credentials?.secret ?? null,
+      handle: stringField(body, "handle"),
+    });
+  } catch (error) {
+    console.error("Integration systems unavailable:", error instanceof Error ? error.name : "unknown");
+    const unavailable = validationFailure("temporarily_unavailable");
+
+    return errorResponse(unavailable.error, unavailable.status, { "Retry-After": "5" });
+  }
+
+  if (!result.ok) {
+    return errorResponse(
+      result.error,
+      result.status,
+      result.error === "invalid_client" ? { "WWW-Authenticate": 'Basic realm="integrations"' } : {},
+    );
+  }
+
+  return Response.json({ systems: result.systems }, { headers: NO_STORE });
 }

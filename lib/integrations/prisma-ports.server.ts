@@ -5,9 +5,9 @@ import { prisma } from "@/lib/db/prisma";
 import { HRMS_HIRING_MODULES, LEGACY_HRMS_HIRING } from "./hrms-legacy-hiring";
 
 import type { HandoffPorts } from "./handoff";
-import type { ValidationPorts } from "./validation";
+import type { SystemsPorts, ValidationPorts } from "./validation";
 
-export const prismaHandoffPorts: HandoffPorts & ValidationPorts = {
+export const prismaHandoffPorts: HandoffPorts & ValidationPorts & SystemsPorts = {
   findSystemByName: (name) =>
     prisma.system.findUnique({
       where: { name },
@@ -92,6 +92,15 @@ export const prismaHandoffPorts: HandoffPorts & ValidationPorts = {
         revokedAt: true,
       },
     }),
+
+  async listSystemNamesWithGrants(userId) {
+    const systems = await prisma.system.findMany({
+      where: { modules: { some: { retiredAt: null, accessGrants: { some: { userId, revokedAt: null } } } } },
+      select: { name: true },
+    });
+
+    return systems.map((system) => system.name);
+  },
 
   async hasActiveGrantInModule(userId, systemId, moduleName) {
     const grant = await prisma.accessGrant.findFirst({

@@ -116,3 +116,56 @@ export async function validateAccess(
 
   return { ok: true, userId: session.userId, system: system.name, module: request.moduleName, staff: profile };
 }
+
+export type SystemsPorts = Pick<ValidationPorts, "findSystemByName" | "isUserEligible" | "isCentralSessionActive" | "findIntegrationSession" | "now"> & {
+  /** Names of the Systems where the User holds an unrevoked AccessGrant on an unretired Module. */
+  listSystemNamesWithGrants(userId: string): Promise<string[]>;
+};
+
+export type SystemsResult = { ok: true; systems: string[] } | ValidationFailure;
+
+/**
+ * Which Systems the User behind a handle may enter, from current central truth, so a
+ * System's switcher shows only what an Admin granted. Same credential and handle rules
+ * as validateAccess; nothing is cached.
+ */
+export async function listAccessibleSystems(
+  ports: SystemsPorts,
+  request: { systemName: string | null; secret: string | null; handle: string | null },
+): Promise<SystemsResult> {
+  const system = request.systemName ? await ports.findSystemByName(request.systemName) : null;
+
+  if (
+    !system ||
+    !system.backendSecretHash ||
+    !request.secret ||
+    !safeEqual(hashToken(request.secret), system.backendSecretHash)
+  ) {
+    return validationFailure("invalid_client");
+  }
+
+  const identified = { id: system.id, name: system.name };
+
+  if (!request.handle) {
+    return { ...validationFailure("invalid_request"), system: identified };
+  }
+
+  const now = ports.now();
+  const session = await ports.findIntegrationSession(hashToken(request.handle));
+
+  if (
+    !session ||
+    session.systemId !== system.id ||
+    session.revokedAt !== null ||
+    session.expiresAt <= now ||
+    !(await ports.isCentralSessionActive(session.neonSessionId, now))
+  ) {
+    return { ...validationFailure("invalid_handle"), system: identified };
+  }
+
+  if (!(await ports.isUserEligible(session.userId))) {
+    return { ...validationFailure("access_denied"), system: identified, userId: session.userId };
+  }
+
+  return { ok: true, systems: await ports.listSystemNamesWithGrants(session.userId) };
+}
