@@ -1,13 +1,12 @@
 "use client";
 
 import { Bell, CheckCheck } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { FigmaIcon } from "@/components/ui/figma-icon";
 import { cn } from "@/lib/utils/cn";
 import type { Inbox, PortalNotification } from "@/lib/notifications/notifications";
-import { relativeTime } from "@/lib/notifications/relative-time";
 import { uiLabel } from "@/lib/utils/ui-label";
 
 const MAX_BADGE = 99;
@@ -25,11 +24,15 @@ function isWebLink(link: string) {
   }
 }
 
+/** Same date and time as the other Systems' bells, e.g. "11/26/2026, 12:26:48 AM", in Philippine time. */
 const dateFormat = new Intl.DateTimeFormat("en-US", {
   timeZone: "Asia/Manila",
-  month: "short",
-  day: "numeric",
   year: "numeric",
+  month: "numeric",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  second: "2-digit",
 });
 
 async function fetchInbox(): Promise<Inbox> {
@@ -126,6 +129,84 @@ const BELL_SIZES = {
 /** Figma "Member · Notifications open": account and system notices only; work alerts stay inside each System. */
 const isAccountOrSystemNotice = ({ sendingApp }: PortalNotification) => sendingApp == null || sendingApp === "Portal";
 
+/** One panel look in every System (it follows the IMS bell): header, rows with a bell icon, inner scroll. */
+function NotificationPanel({
+  className,
+  inbox,
+  unread,
+  onMarkAllRead,
+  onOpen,
+  footer,
+}: {
+  className: string;
+  inbox: Inbox;
+  unread: number;
+  onMarkAllRead: () => void;
+  onOpen: (notification: PortalNotification) => void;
+  footer?: ReactNode;
+}) {
+  return (
+    <section
+      aria-labelledby="notifications-title"
+      className={cn("absolute right-0 top-full z-20 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-border bg-surface shadow-lg", className)}
+      role="dialog"
+    >
+      <div className="flex items-center justify-between border-b border-border p-3">
+        <h2 className="text-base font-semibold text-foreground" id="notifications-title">Notifications</h2>
+        <Button
+          className="h-auto gap-1.5 px-0 py-0 text-sm font-medium text-identity hover:bg-transparent hover:text-identity/80"
+          disabled={unread === 0}
+          onClick={onMarkAllRead}
+          type="button"
+          variant="ghost"
+        >
+          <CheckCheck aria-hidden="true" className="size-4" />
+          Mark all read
+        </Button>
+      </div>
+      {inbox.notifications.length === 0 ? (
+        <div className="space-y-1 p-6 text-center text-on-surface-variant">
+          <Bell aria-hidden="true" className="mx-auto size-6 opacity-30" />
+          <p className="text-sm font-medium">{inbox.available ? "No notifications yet." : "Notifications are unavailable right now."}</p>
+        </div>
+      ) : (
+        <ul className="max-h-80 divide-y divide-border overflow-y-auto">
+          {inbox.notifications.map((notification) => (
+            <li key={notification.id}>
+              <button
+                className={cn(
+                  "flex w-full items-start gap-2.5 p-3 text-left hover:bg-accent focus-visible:bg-accent focus-visible:outline-none",
+                  !notification.read && "bg-accent/60",
+                )}
+                onClick={() => onOpen(notification)}
+                type="button"
+              >
+                <span aria-hidden="true" className="mt-0.5 shrink-0 rounded-full border border-border bg-accent p-1.5">
+                  <Bell className="size-3.5 text-on-surface-variant" />
+                </span>
+                <span className="min-w-0 flex-1 space-y-0.5">
+                  <span className="block break-words text-sm font-semibold text-foreground">
+                    {notification.sendingApp === "CREOMS" ? <span className="mr-2 rounded bg-accent px-1 text-xs">CREOMS</span> : null}{" "}
+                    {notification.title}
+                  </span>
+                  {notification.body ? (
+                    <span className="block break-words text-sm text-on-surface-variant">{uiLabel(notification.body)}</span>
+                  ) : null}
+                  <time className="block text-xs text-on-surface-variant" dateTime={notification.createdAt}>
+                    {dateFormat.format(new Date(notification.createdAt))}
+                  </time>
+                  {notification.read ? null : <span className="sr-only">Unread</span>}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {footer ? <p className="border-t border-border p-3 text-xs text-on-surface-variant">{footer}</p> : null}
+    </section>
+  );
+}
+
 export function NotificationBell({
   className,
   size = "md",
@@ -217,64 +298,14 @@ export function NotificationBell({
           <FigmaIcon name={unread > 0 ? "bell-unread" : "bell"} />
         </button>
         {isOpen ? (
-          <section
-            aria-labelledby="notifications-title"
-            className="absolute top-full right-0 z-20 mt-[7px] w-[380px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-panel-border bg-surface shadow-[0_12px_40px_rgba(0,0,0,0.18)]"
-            role="dialog"
-          >
-            <div className="flex items-start justify-between px-4 py-3.5 leading-[normal]">
-              <h2 className="text-[15px] font-semibold text-foreground" id="notifications-title">Notifications</h2>
-              <button
-                className="text-[13px] font-semibold text-identity disabled:opacity-50"
-                disabled={unread === 0}
-                onClick={() => void markAllRead()}
-                type="button"
-              >
-                Mark all as read
-              </button>
-            </div>
-            {inbox.notifications.length === 0 ? (
-              <p className="border-t border-[#f0edf4] px-4 py-3 text-xs leading-[normal] text-on-surface-variant">
-                {inbox.available ? "No notifications yet." : "Notifications are unavailable right now."}
-              </p>
-            ) : (
-              <ul className="max-h-96 overflow-y-auto">
-                {inbox.notifications.map((notification) => (
-                  <li className="border-t border-[#f0edf4]" key={notification.id}>
-                    <button
-                      className={cn(
-                        "flex w-full items-start gap-2.5 px-4 py-3 text-left leading-[normal] hover:bg-[#fbf8ff]",
-                        !notification.read && "bg-[#fbf8ff]",
-                      )}
-                      onClick={() => void open(notification)}
-                      type="button"
-                    >
-                      {notification.read ? (
-                        <span aria-hidden="true" className="h-[13px] w-2 shrink-0" />
-                      ) : (
-                        <span className="shrink-0" title="Unread">
-                          <FigmaIcon name="dot-unread" />
-                        </span>
-                      )}
-                      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <span className="text-[13px] font-semibold text-foreground">
-                          {notification.title}
-                        </span>
-                        <span className="text-xs text-on-surface-variant">
-                          {[notification.body ? uiLabel(notification.body) : null, relativeTime(new Date(notification.createdAt), new Date())]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </span>
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <p className="border-t border-[#f0edf4] px-4 py-3 text-xs leading-[normal] text-on-surface-variant">
-              Only account and system notices appear here. Work alerts stay inside each system.
-            </p>
-          </section>
+          <NotificationPanel
+            className="mt-[7px]"
+            footer="Only account and system notices appear here. Work alerts stay inside each system."
+            inbox={inbox}
+            onMarkAllRead={() => void markAllRead()}
+            onOpen={(notification) => void open(notification)}
+            unread={unread}
+          />
         ) : null}
       </div>
     );
@@ -304,56 +335,13 @@ export function NotificationBell({
         ) : null}
       </Button>
       {isOpen ? (
-        <section
-          aria-labelledby="notifications-title"
-          className="absolute right-0 top-full z-20 mt-2 w-80 overflow-hidden rounded-lg border border-border bg-surface shadow-lg"
-          role="dialog"
-        >
-          <div className="flex items-center justify-between px-5 py-3">
-            <h2 className="text-sm font-semibold text-foreground" id="notifications-title">Notifications</h2>
-            <Button
-              className="h-auto gap-1.5 px-0 py-0 text-xs text-on-surface-variant hover:bg-transparent hover:text-foreground"
-              disabled={unread === 0}
-              onClick={() => void markAllRead()}
-              type="button"
-              variant="ghost"
-            >
-              <CheckCheck aria-hidden="true" className="size-4" />
-              Mark all read
-            </Button>
-          </div>
-          {inbox.notifications.length === 0 ? (
-            <p className="border-t border-border px-5 py-4 text-center text-xs text-on-surface-variant">
-              {inbox.available ? "No notifications yet." : "Notifications are unavailable right now."}
-            </p>
-          ) : (
-            <ul className="max-h-96 divide-y divide-border overflow-y-auto border-t border-border">
-              {inbox.notifications.map((notification) => (
-                <li key={notification.id}>
-                  <button
-                    className="flex w-full items-start gap-3 px-5 py-3 text-left hover:bg-accent"
-                    onClick={() => void open(notification)}
-                    type="button"
-                  >
-                    <span
-                      className={`mt-1.5 size-2 shrink-0 rounded-full ${notification.read ? "bg-transparent" : "bg-destructive"}`}
-                      title={notification.read ? undefined : "Unread"}
-                    />
-                    <span className="min-w-0">
-                      <span className={`block truncate text-sm text-foreground ${notification.read ? "" : "font-semibold"}`}>
-                        {notification.sendingApp === "CREOMS" ? <span className="mr-2 rounded bg-accent px-1 text-xs">CREOMS</span> : null}{" "}
-                        {notification.title}
-                      </span>
-                      <span className="block text-xs text-on-surface-variant">
-                        {dateFormat.format(new Date(notification.createdAt))}
-                      </span>
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <NotificationPanel
+          className="mt-2"
+          inbox={inbox}
+          onMarkAllRead={() => void markAllRead()}
+          onOpen={(notification) => void open(notification)}
+          unread={unread}
+        />
       ) : null}
     </div>
   );
