@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition, type FormEvent } from "react";
+import { toast } from "sonner";
 
 import { updatePasswordAction } from "@/actions/account";
 import type { FormState } from "@/actions/auth";
@@ -57,7 +58,7 @@ function UpdateButton({ pending }: { pending: boolean }) {
   );
 }
 
-function Fields({ state, pending }: { state: State; pending: boolean }) {
+function Fields({ pending }: { pending: boolean }) {
   const [password, setPassword] = useState("");
 
   return (
@@ -97,12 +98,6 @@ function Fields({ state, pending }: { state: State; pending: boolean }) {
           );
         })}
       </ul>
-      {state.error ? (
-        <p className="w-full text-[13px] leading-[normal] text-danger-text" role="alert">{state.error}</p>
-      ) : null}
-      {state.message ? (
-        <p className="w-full text-[13px] leading-[normal] text-badge-success-foreground" role="status">{state.message}</p>
-      ) : null}
       <UpdateButton pending={pending} />
     </>
   );
@@ -112,6 +107,8 @@ function Fields({ state, pending }: { state: State; pending: boolean }) {
 export function UpdatePasswordForm() {
   const [state, formAction, isActionPending] = useActionState(async (previous: State, formData: FormData): Promise<State> => {
     const result = await updatePasswordAction(previous, formData);
+    if (result.error) toast.error(result.error);
+    else if (result.message) toast.success(result.message);
 
     return { ...result, saves: previous.saves + (result.message ? 1 : 0) };
   }, initialState);
@@ -132,7 +129,7 @@ export function UpdatePasswordForm() {
       // A saved password clears the fields: the new form instance starts empty.
       key={state.saves}
     >
-      <Fields pending={isActionPending || isSubmitting} state={state} />
+      <Fields pending={isActionPending || isSubmitting} />
     </form>
   );
 }

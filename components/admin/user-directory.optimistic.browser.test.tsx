@@ -7,6 +7,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ManagedUser } from "@/lib/admin/user-directory";
 import type { LifecycleFormState } from "@/lib/admin/user-lifecycle-state";
 
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+
+import { toast } from "sonner";
+
 import { UserDirectory } from "./user-directory";
 
 type Action = (previous: LifecycleFormState, data: FormData) => Promise<LifecycleFormState>;
@@ -63,6 +67,7 @@ async function confirmDelete(username: string) {
 afterEach(async () => {
   await act(async () => open.splice(0).forEach((settle) => settle({ error: null })));
   cleanup();
+  vi.clearAllMocks();
 });
 
 describe("Deleting a User", () => {
@@ -90,7 +95,7 @@ describe("Deleting a User", () => {
     });
 
     expect(within(row("2026-FM-003")).getByText("Deleted")).toBeTruthy();
-    expect(screen.queryByRole("alert")).toBeNull();
+    expect(toast.error).not.toHaveBeenCalled();
   });
 
   it("rolls the User back and says why when the server refuses", async () => {
@@ -100,9 +105,7 @@ describe("Deleting a User", () => {
     await confirmDelete("2026-FM-003");
     settle({ error: "You are not allowed to manage Users." });
 
-    const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toContain("2026-FM-003");
-    expect(alert.textContent).toContain("You are not allowed to manage Users.");
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith("Could not delete 2026-FM-003: You are not allowed to manage Users."));
     expect(within(row("2026-FM-003")).queryByText("Deleted")).toBeNull();
     expect(within(row("2026-FM-003")).getByRole("button", { name: "Delete 2026-FM-003" })).toBeTruthy();
     expect(summary("Deleted")).toBe("2");
@@ -113,7 +116,7 @@ describe("Deleting a User", () => {
 
     await confirmDelete("2026-FM-003");
 
-    expect((await screen.findByRole("alert")).textContent).toContain("2026-FM-003");
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("Could not delete 2026-FM-003")));
     expect(within(row("2026-FM-003")).queryByText("Deleted")).toBeNull();
   });
 
@@ -158,14 +161,12 @@ describe("Restoring a User", () => {
     await userEvent.click(within(row("2026-AB-004")).getByRole("button", { name: "Restore 2026-AB-004" }));
     settle({ error: "You are not allowed to manage Users." });
 
-    const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toContain("2026-AB-004");
-    expect(alert.textContent).toContain("You are not allowed to manage Users.");
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith("Could not restore 2026-AB-004: You are not allowed to manage Users."));
     expect(within(row("2026-AB-004")).getByText("Deleted")).toBeTruthy();
     expect(within(row("2026-AB-004")).getByRole("button", { name: "Restore 2026-AB-004" })).toBeTruthy();
   });
 
-  it("clears an earlier refusal when the Administrator tries again", async () => {
+  it("toasts a refusal once and stays quiet while the retry is pending", async () => {
     const restore = vi
       .fn<Action>()
       .mockResolvedValueOnce({ error: "You are not allowed to manage Users." })
@@ -173,9 +174,9 @@ describe("Restoring a User", () => {
     renderDirectory({ restore });
 
     await userEvent.click(within(row("2026-AB-004")).getByRole("button", { name: "Restore 2026-AB-004" }));
-    await screen.findByRole("alert");
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalledTimes(1));
     await userEvent.click(within(row("2026-AB-004")).getByRole("button", { name: "Restore 2026-AB-004" }));
 
-    expect(screen.queryByRole("alert")).toBeNull();
+    expect(toast.error).toHaveBeenCalledTimes(1);
   });
 });

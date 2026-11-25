@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Fraunces, Geist_Mono, Inter } from "next/font/google";
 import { PageSkeleton } from "@/components/layout/shell-skeleton";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const inter = Inter({
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${inter.variable} ${fraunces.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <Toaster />
         <Suspense fallback={<PageSkeleton />}>
           {children}
         </Suspense>

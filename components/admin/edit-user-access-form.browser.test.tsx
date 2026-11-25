@@ -8,6 +8,9 @@ import type { EditUserAccessFormState } from "@/lib/admin/user-access-form-state
 
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+
+import { toast } from "sonner";
 
 import { EditUserAccessForm } from "./edit-user-access-form";
 
@@ -47,6 +50,7 @@ const box = (system: string, name: string) => group(system).getByRole("checkbox"
 afterEach(() => {
   cleanup();
   push.mockReset();
+  vi.clearAllMocks();
 });
 
 describe("Edit user access form", () => {
@@ -92,10 +96,10 @@ describe("Edit user access form", () => {
 
     expect(push).not.toHaveBeenCalled();
     finish({ error: null, saved: true, fieldErrors: {} });
-    expect((await screen.findByRole("status")).textContent).toContain("Access saved");
+    await vi.waitFor(() => expect(toast.success).toHaveBeenCalledWith("Access saved."));
   });
 
-  it("shows a spinner at once and no earlier result while a second save is pending", async () => {
+  it("shows a spinner at once and toasts each save only when the server answers", async () => {
     const person = userEvent.setup();
     const saved: EditUserAccessFormState = { error: null, saved: true, fieldErrors: {} };
     const action = vi.fn<(previous: EditUserAccessFormState, data: FormData) => Promise<EditUserAccessFormState>>();
@@ -104,19 +108,19 @@ describe("Edit user access form", () => {
     render(<EditUserAccessForm action={action} roles={roles} systems={systems} user={user} />);
 
     await person.click(screen.getByRole("button", { name: /save access/i }));
-    expect((await screen.findByRole("status")).textContent).toContain("Access saved");
+    await vi.waitFor(() => expect(toast.success).toHaveBeenCalledTimes(1));
 
     await person.click(box("CREOMS", "Dashboard"));
     await person.click(screen.getByRole("button", { name: /save access/i }));
 
     expect((screen.getByRole("button", { name: /saving/i }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.queryByRole("status")).toBeNull();
+    expect(toast.success).toHaveBeenCalledTimes(1);
 
     finish({ error: null, saved: true, fieldErrors: {} });
-    expect((await screen.findByRole("status")).textContent).toContain("Access saved");
+    await vi.waitFor(() => expect(toast.success).toHaveBeenCalledTimes(2));
   });
 
-  it("does not show the previous error while a retry is pending", async () => {
+  it("toasts the error once, then the retry's success", async () => {
     const person = userEvent.setup();
     const failed: EditUserAccessFormState = { error: "The changes were not saved.", saved: false, fieldErrors: {} };
     const action = vi.fn<(previous: EditUserAccessFormState, data: FormData) => Promise<EditUserAccessFormState>>();
@@ -125,27 +129,17 @@ describe("Edit user access form", () => {
     render(<EditUserAccessForm action={action} roles={roles} systems={systems} user={user} />);
 
     await person.click(screen.getByRole("button", { name: /save access/i }));
-    expect((await screen.findByRole("alert")).textContent).toContain("not saved");
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith("The changes were not saved."));
     await person.click(screen.getByRole("button", { name: /save access/i }));
 
     expect(screen.getByRole("button", { name: /saving/i })).toBeTruthy();
-    expect(screen.queryByRole("alert")).toBeNull();
+    expect(toast.success).not.toHaveBeenCalled();
 
     finish({ error: null, saved: true, fieldErrors: {} });
-    expect((await screen.findByRole("status")).textContent).toContain("Access saved");
+    await vi.waitFor(() => expect(toast.success).toHaveBeenCalledWith("Access saved."));
+    expect(toast.error).toHaveBeenCalledTimes(1);
   });
 
-  it("stops saying Access saved once the Administrator edits again", async () => {
-    const person = userEvent.setup();
-    renderForm();
-
-    await person.click(screen.getByRole("button", { name: /save access/i }));
-    expect((await screen.findByRole("status")).textContent).toContain("Access saved");
-
-    await person.click(box("CREOMS", "Dashboard"));
-
-    expect(screen.queryByRole("status")).toBeNull();
-  });
 
   it("shows the User's current grants grouped by System with Select all", () => {
     renderForm();
@@ -190,7 +184,7 @@ describe("Edit user access form", () => {
     expect(data.get("userId")).toBe("u-1");
     expect(data.get("roleId")).toBe("r-ceo");
     expect(data.getAll("moduleIds")).toEqual(["p-dash"]);
-    expect((await screen.findByRole("status")).textContent).toContain("Access saved");
+    await vi.waitFor(() => expect(toast.success).toHaveBeenCalledWith("Access saved."));
   });
 
   it("keeps the Administrator's edits and shows the error when saving fails", async () => {
@@ -200,7 +194,7 @@ describe("Edit user access form", () => {
     await person.click(box("CREOMS", "Dashboard"));
     await person.click(screen.getByRole("button", { name: /save access/i }));
 
-    expect((await screen.findByRole("alert")).textContent).toContain("not saved");
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith("The changes were not saved. Reload the page and try again."));
     expect(box("CREOMS", "Dashboard").checked).toBe(true);
   });
 });

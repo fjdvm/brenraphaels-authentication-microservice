@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { seeAccountRequestAction, resendRequestLoginAction, declineAccountRequestAction } from "@/actions/account-requests";
 import { useState, type ReactNode } from "react";
@@ -64,18 +65,16 @@ function systemsOf(request: AccountRequestRow, systems: AccessSystem[]) {
 
 /** Figma "Portal · Account requests" and "Portal · Account request detail". */
 export function AccountRequestsView({ heading, requests, systems, now, initialRequestId, canWrite }: Props) {
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const router = useRouter();
   async function openRequest(id: string) {
     setOpenId(id);
-    setError(null);
     if (!canWrite) return;
-    try { await seeAccountRequestAction(id); router.refresh(); } catch { setError("Could not mark this request Seen. Close and reopen to retry."); }
+    try { await seeAccountRequestAction(id); router.refresh(); } catch { toast.error("Could not mark this request Seen. Close and reopen to retry."); }
   }
   async function resend(id: string) {
     setBusy(true);
-    try { const result = await resendRequestLoginAction(id); setError(result.error); router.refresh(); } catch { setError("Login details could not be sent. Try again."); } finally { setBusy(false); }
+    try { const result = await resendRequestLoginAction(id); if (result.error) toast.error(result.error); router.refresh(); } catch { toast.error("Login details could not be sent. Try again."); } finally { setBusy(false); }
   }
   async function decline(id: string, input: { reason: string; message?: string }) {
     try {
@@ -222,13 +221,13 @@ export function AccountRequestsView({ heading, requests, systems, now, initialRe
       </p>
 
       <Dialog onOpenChange={(next) => !next && setOpenId(null)} open={open !== null}>
-        {open ? <RequestDetail canWrite={canWrite} request={open} systems={systems} now={clock} error={error} busy={busy} resend={() => { void resend(open.id); }} decline={(input) => decline(open.id, input)} /> : null}
+        {open ? <RequestDetail canWrite={canWrite} request={open} systems={systems} now={clock} busy={busy} resend={() => { void resend(open.id); }} decline={(input) => decline(open.id, input)} /> : null}
       </Dialog>
     </>
   );
 }
 
-function RequestDetail({ canWrite, request, systems, now, error, busy, resend, decline }: { canWrite: boolean; request: AccountRequestRow; systems: AccessSystem[]; now: Date; error: string | null; busy: boolean; resend: () => void; decline: (input: { reason: string; message?: string }) => Promise<string | null> }) {
+function RequestDetail({ canWrite, request, systems, now, busy, resend, decline }: { canWrite: boolean; request: AccountRequestRow; systems: AccessSystem[]; now: Date; busy: boolean; resend: () => void; decline: (input: { reason: string; message?: string }) => Promise<string | null> }) {
   const [declining, setDeclining] = useState(false);
   const { groups, untouched } = groupAccess(systems, request.moduleIds);
   const status = STATUS[request.status];
@@ -308,7 +307,6 @@ function RequestDetail({ canWrite, request, systems, now, error, busy, resend, d
           ) : null}
         </section>
       </DialogBody>
-      {error ? <p className="px-6 text-sm text-danger-text" role="alert">{error}</p> : null}
       {canWrite ? (
         <DialogFooter>
           {["new", "seen"].includes(request.status) ? <Button onClick={() => setDeclining(true)} size="cta" type="button" variant="row-danger">Decline…</Button> : null}
@@ -330,15 +328,13 @@ const DECLINE_REASONS = ["Already has an account", "Duplicate request", "Details
 function DeclineDialog({ onDecline, requester }: { onDecline: (input: { reason: string; message?: string }) => Promise<string | null>; requester: string }) {
   const [reason, setReason] = useState<string>(DECLINE_REASONS[0]);
   const [message, setMessage] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const field = "w-full rounded-lg border border-panel-border bg-surface px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50";
   async function submit() {
     setBusy(true);
-    setError(null);
     const message_ = message.trim();
     const failure = await onDecline(message_ ? { reason, message: message_ } : { reason });
-    setError(failure);
+    if (failure) toast.error(failure);
     setBusy(false);
   }
   return (
@@ -358,7 +354,6 @@ function DeclineDialog({ onDecline, requester }: { onDecline: (input: { reason: 
           Message to requester (optional)
           <textarea className={cn(field, "min-h-20 resize-none font-normal")} maxLength={5000} onChange={(event) => setMessage(event.target.value)} value={message} />
         </label>
-        {error ? <p className="text-sm text-danger-text" role="alert">{error}</p> : null}
       </DialogBody>
       <DialogFooter>
         <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
