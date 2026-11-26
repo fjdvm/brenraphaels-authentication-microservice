@@ -83,6 +83,26 @@ describe("Edit user access form", () => {
     expect(screen.getAllByRole("button", { name: "Close" })).toHaveLength(1);
   });
 
+  it("closes back to User management once the save succeeds", async () => {
+    const person = userEvent.setup();
+    renderForm();
+
+    await person.click(screen.getByRole("button", { name: /save access/i }));
+
+    await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/admin/users", { scroll: false }));
+    expect(toast.success).toHaveBeenCalledWith("Access saved.");
+  });
+
+  it("stays open when the save fails", async () => {
+    const person = userEvent.setup();
+    renderForm({ error: "The changes were not saved.", saved: false, fieldErrors: {} });
+
+    await person.click(screen.getByRole("button", { name: /save access/i }));
+
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith("The changes were not saved."));
+    expect(push).not.toHaveBeenCalled();
+  });
+
   it("stays open while the save is in flight", async () => {
     const person = userEvent.setup();
     let finish: (state: EditUserAccessFormState) => void = () => {};
