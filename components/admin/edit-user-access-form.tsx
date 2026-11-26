@@ -42,7 +42,11 @@ export function EditUserAccessForm({ action, user, roles, systems }: EditUserAcc
   const [settled, formAction, isPending] = useActionState(async (previous: EditUserAccessFormState, formData: FormData) => {
     const result = await action(previous, formData);
     if (result.error) toast.error(result.error);
-    else if (result.saved) toast.success("Access saved.");
+    else if (result.saved) {
+      toast.success("Access saved.");
+      // A saved change closes the dialog, back to User management.
+      router.push(USER_MANAGEMENT, { scroll: false });
+    }
     return result;
   }, initialEditUserAccessFormState);
   // An earlier result is not shown while the next save is waiting on the server.

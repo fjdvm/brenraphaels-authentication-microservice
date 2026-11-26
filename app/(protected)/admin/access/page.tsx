@@ -2,7 +2,7 @@ import { connection } from "next/server";
 
 import { AccessSystemCards } from "@/components/admin/access-system-cards";
 import { AccessIntro } from "@/components/admin/page-headings";
-import { RecentSignIns } from "@/components/admin/recent-sign-ins";
+import { RECENT_ACTIVITY_SHOWN, RecentActivity } from "@/components/admin/recent-activity";
 import { listMyLogEvents } from "@/lib/audit/audit-logs.server";
 import { requireAdministrator } from "@/lib/auth/session";
 import { listAccessibleSystems } from "@/lib/portal/accessible-systems";
@@ -15,9 +15,9 @@ export default async function AccessPage() {
     listAccessibleSystems(administrator.id),
     // The card is a convenience: if the audit service can't be read the Systems still show.
     listMyLogEvents({}).then(
-      (page) => page.entries.slice(0, 2),
+      (page) => page.entries.slice(0, RECENT_ACTIVITY_SHOWN),
       (error) => {
-        console.error("Failed to read recent sign-ins", error);
+        console.error("Failed to read recent activity", error);
         return null;
       },
     ),
@@ -32,7 +32,7 @@ export default async function AccessPage() {
         <AccessIntro />
       </div>
       <AccessSystemCards systems={systems} />
-      {recent ? <RecentSignIns entries={recent} now={new Date()} /> : null}
+      {recent ? <RecentActivity entries={recent} now={new Date()} /> : null}
     </main>
   );
 }
